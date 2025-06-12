@@ -140,7 +140,7 @@ class SimplifiedBugHunter:
     """
 
     def __init__(self, feature_selection_threshold: float = 0.001,
-                 tfidf_max_features: int = 1000,
+                 tfidf_max_features: int = 500,
                  java_tokenizer_min_length: int = 2,
                  include_package_tokens: bool = False,
                  # NNのための新しいハイパーパラメータのデフォルト値
@@ -1004,7 +1004,7 @@ if __name__ == "__main__":
     # カスタムJavaトークナイザー統合版バグハンターのインスタンス作成
     bug_hunter = SimplifiedBugHunter(
         feature_selection_threshold=0.001, # NN版ではあまり意味をなさないが、引数として残しておく
-        tfidf_max_features=1000,
+        tfidf_max_features=500,
         java_tokenizer_min_length=2,
         include_package_tokens=False, # パッケージ名を除外して、より重要な部分に集中
         # ニューラルネットワークのハイパーパラメータの固定値（最適化対象外）
