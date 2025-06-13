@@ -502,7 +502,7 @@ class SimplifiedBugHunter:
             return float('inf')
 
     def optimize_hyperparameters_with_log_loss(self, X: pd.DataFrame, y: pd.Series,
-                                                max_iterations: int = 30) -> dict:
+                                                max_iterations: int = 10) -> dict:
         """Log Loss損失関数を用いたベイジアン最適化（ダウンサンプリングは外部で適用済み）"""
         print("\n=== Log Lossベース ベイジアン最適化（カスタムJavaトークナイザー使用）===")
         print("最適化手法: Bayesian Optimization (scikit-optimize)")
@@ -709,7 +709,7 @@ class SimplifiedBugHunter:
 
         # 7. Log Lossベースハイパーパラメータ最適化（削減された訓練データで実施）
         optimal_params = self.optimize_hyperparameters_with_log_loss(
-            X_train_reduced, y_train_ds, max_iterations=30
+            X_train_reduced, y_train_ds, max_iterations=10
         )
 
         # 8. 最適化モデル学習（削減された訓練データで実施）
