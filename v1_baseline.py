@@ -521,8 +521,8 @@ class SimplifiedBugHunter:
 
         # 探索空間の定義
         search_space = [
-            Integer(100, 500, name='n_estimators'),
-            Integer(10, 30, name='max_depth'),
+            Integer(100, 300, name='n_estimators'),
+            Integer(10, 20, name='max_depth'),
         ]
 
         # 目的関数
@@ -685,215 +685,6 @@ class SimplifiedBugHunter:
 
         return results, y_pred, y_pred_proba
 
-    def plot_results(self, results: dict, y_test: pd.Series, y_pred: np.ndarray,
-                    y_pred_proba: np.ndarray, X_test: pd.DataFrame):
-        """結果の可視化（カスタムJavaトークナイザー版）"""
-        print("\n=== 結果可視化 ===")
-
-        plt.figure(figsize=(16, 12))
-
-        # 1. 混同行列
-        plt.subplot(3, 3, 1)
-        conf_matrix = confusion_matrix(y_test, y_pred)
-        display_matrix = ConfusionMatrixDisplay(confusion_matrix=conf_matrix,
-                                              display_labels=[0, 1])
-        display_matrix.plot(ax=plt.gca(), cmap='Blues')
-        plt.title(f"混同行列（しきい値=0.5）")
-
-        # 2. ROC曲線
-        plt.subplot(3, 3, 2)
-        fpr, tpr, _ = roc_curve(y_test, y_pred_proba)
-        roc_auc = auc(fpr, tpr)
-        plt.plot(fpr, tpr, color='darkorange', lw=2,
-                label=f'ROC曲線 (AUC = {roc_auc:.3f})')
-        plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
-        plt.xlim([0.0, 1.0])
-        plt.ylim([0.0, 1.05])
-        plt.xlabel('偽陽性率')
-        plt.ylabel('真陽性率')
-        plt.title('ROC曲線')
-        plt.legend(loc="lower right")
-
-        # 3. Precision-Recall曲線
-        plt.subplot(3, 3, 3)
-        precision, recall, _ = precision_recall_curve(y_test, y_pred_proba)
-        plt.plot(recall, precision, color='blue', lw=2)
-        plt.xlabel('Recall')
-        plt.ylabel('Precision')
-        plt.title('Precision-Recall曲線')
-        plt.grid(True, alpha=0.3)
-
-        # 4. 評価指標表示
-        plt.subplot(3, 3, 4)
-        metrics = ['Accuracy', 'F1', 'Precision', 'Recall']
-        values = [results.get(metric, 0) for metric in metrics]
-
-        bars = plt.bar(metrics, values, color='lightblue', alpha=0.8)
-        plt.title('評価指標')
-        plt.ylabel('スコア')
-        plt.ylim(0, 1)
-
-        for bar, value in zip(bars, values):
-            plt.text(bar.get_x() + bar.get_width()/2., bar.get_height() + 0.01,
-                    f'{value:.3f}', ha='center', va='bottom', fontsize=10)
-
-        # 5. 特徴量重要度（上位10個）
-        plt.subplot(3, 3, 5)
-        if self.feature_importance is not None and len(self.feature_importance) > 0 and self.selected_features is not None:
-            feature_names = self.selected_features
-            if len(self.feature_importance) == len(feature_names):
-                top_indices = self.feature_importance.argsort()[-10:][::-1]
-                top_features = [feature_names[i] for i in top_indices]
-
-                # 特徴量名を短縮して表示
-                short_features = []
-                for feat in top_features:
-                    if len(feat) > 20:
-                        short_features.append(feat[:17] + '...')
-                    else:
-                        short_features.append(feat)
-
-                plt.barh(range(len(top_indices)),
-                        self.feature_importance[top_indices],
-                        color='lightgreen')
-                plt.yticks(range(len(top_indices)), short_features)
-                plt.xlabel('重要度')
-                plt.title('上位10特徴量の重要度')
-                plt.gca().invert_yaxis()
-            else:
-                plt.text(0.5, 0.5, '特徴量名と重要度の不一致',
-                         horizontalalignment='center', verticalalignment='center',
-                         transform=plt.gca().transAxes, fontsize=12, color='gray')
-                plt.title('特徴量重要度')
-                plt.axis('off')
-        else:
-            plt.text(0.5, 0.5, '特徴量重要度は利用できません',
-                     horizontalalignment='center', verticalalignment='center',
-                     transform=plt.gca().transAxes, fontsize=12, color='gray')
-            plt.title('特徴量重要度')
-            plt.axis('off')
-
-        # 6. ベイジアン最適化履歴
-        plt.subplot(3, 3, 6)
-        if self.optimization_history:
-            losses = [entry['loss'] for entry in self.optimization_history]
-            iterations = range(len(losses))
-
-            plt.plot(iterations, losses, 'bo-', linewidth=2, markersize=4,
-                    alpha=0.7, label='評価点')
-
-            # 最良値の推移
-            cumulative_best = []
-            current_best = float('inf')
-            for loss in losses:
-                if loss < current_best:
-                    current_best = loss
-                cumulative_best.append(current_best)
-
-            plt.plot(iterations, cumulative_best, 'r-', linewidth=3,
-                    label='最良値推移')
-
-            plt.xlabel('評価回数')
-            plt.ylabel('Log Loss値')
-            plt.title('ベイジアン最適化過程')
-            plt.grid(True, alpha=0.3)
-            plt.legend()
-
-        # 7. ダウンサンプリング効果の可視化
-        plt.subplot(3, 3, 7)
-        if self.original_class_distribution and self.downsampled_train_distribution:
-            # 元のクラス分布（データ全体）
-            original_counts_total = [self.original_class_distribution['class_0'],
-                                     self.original_class_distribution['class_1']]
-            # ダウンサンプリング後の訓練データのクラス分布
-            downsampled_counts_train = [self.downsampled_train_distribution['class_0'],
-                                        self.downsampled_train_distribution['class_1']]
-
-            x = np.arange(2)
-            width = 0.35
-
-            plt.bar(x - width/2, original_counts_total, width, label='元データ全体', alpha=0.7, color='lightcoral')
-            plt.bar(x + width/2, downsampled_counts_train, width, label='ダウンサンプリング後訓練データ', alpha=0.7, color='lightblue')
-
-            plt.xlabel('クラス')
-            plt.ylabel('サンプル数')
-            plt.title('ダウンサンプリング効果')
-            plt.xticks(x, ['クラス 0', 'クラス 1'])
-            plt.legend()
-
-            # 数値をバーの上に表示
-            for i, (orig, down) in enumerate(zip(original_counts_total, downsampled_counts_train)):
-                plt.text(i - width/2, orig + max(original_counts_total) * 0.01, f'{orig}',
-                        ha='center', va='bottom', fontsize=9)
-                plt.text(i + width/2, down + max(original_counts_total) * 0.01, f'{down}',
-                        ha='center', va='bottom', fontsize=9)
-        else:
-            plt.text(0.5, 0.5, 'ダウンサンプリング情報なし',
-                     horizontalalignment='center', verticalalignment='center',
-                     transform=plt.gca().transAxes, fontsize=12, color='gray')
-            plt.title('ダウンサンプリング効果')
-            plt.axis('off')
-
-        # 8. 予測確率分布
-        plt.subplot(3, 3, 8)
-        plt.hist(y_pred_proba[y_test == 0], bins=30, alpha=0.7, label='実際のクラス 0', color='blue')
-        plt.hist(y_pred_proba[y_test == 1], bins=30, alpha=0.7, label='実際のクラス 1', color='red')
-        plt.axvline(x=0.5, color='gray', linestyle='--', label='しきい値 0.5')
-        plt.xlabel('予測確率')
-        plt.ylabel('頻度')
-        plt.title('予測確率分布')
-        plt.legend()
-
-        # 9. サマリー表示
-        plt.subplot(3, 3, 9)
-        plt.axis('off')
-
-        feature_count = len(self.selected_features) if self.selected_features else 0
-
-        # ダウンサンプリング情報の取得
-        if self.original_class_distribution and self.downsampled_train_distribution:
-            # 元データ全体に対するダウンサンプリングされた訓練データの削減率
-            reduction_rate = (1 - self.downsampled_train_distribution['total'] / self.original_class_distribution['total']) * 100
-            downsample_info = f"ダウンサンプリング: {reduction_rate:.1f}%削減"
-        else:
-            downsample_info = "ダウンサンプリング: 情報なし"
-
-        # 特徴量タイプ別の統計
-        if self.selected_features:
-            longname_count = len([f for f in self.selected_features if f.startswith('LongName_tfidf_')])
-            parent_count = len([f for f in self.selected_features if f.startswith('Parent_tfidf_')])
-            project_count = len([f for f in self.selected_features if f.startswith('Project_')])
-            numerical_count = feature_count - longname_count - parent_count - project_count
-        else:
-            longname_count = parent_count = project_count = numerical_count = 0
-
-        summary_text = f"""
-カスタムJavaトークナイザー版バグ予測結果
-
-使用特徴量数: {feature_count}個
-  数値: {numerical_count}, LongName TF-IDF: {longname_count}
-  Parent TF-IDF: {parent_count}, Project: {project_count}
-特徴量削減閾値: {self.feature_selection_threshold:.4f}
-TF-IDF最大特徴量数: {self.tfidf_max_features}
-{downsample_info}
-使用しきい値: 0.500 (固定)
-
-評価結果:
-F1スコア: {results['F1']:.3f}
-Precision: {results['Precision']:.3f}
-Recall: {results['Recall']:.3f}
-Accuracy: {results['Accuracy']:.3f}
-
-Java固有の構造を考慮したトークン化で
-CamelCase、パッケージ名、メソッド名を
-適切に分割してバグ予測を実現
-        """
-        plt.text(0.1, 0.5, summary_text, fontsize=8,
-                verticalalignment='center', fontfamily='monospace')
-
-        plt.tight_layout()
-        plt.show()
-
     def run_pipeline(self, data_path: str):
         """カスタムJavaトークナイザーを組み込んだパイプラインの実行"""
         print("=== カスタムJavaトークナイザー版ダウンサンプリングバグ予測パイプライン ===")
@@ -934,11 +725,6 @@ CamelCase、パッケージ名、メソッド名を
         # 9. 評価（削減されたテストデータで実施）
         results, y_pred, y_pred_proba = self.comprehensive_evaluation(
             X_test_reduced, y_test_ds
-        )
-
-        # 10. 結果可視化
-        self.plot_results(
-            results, y_test_ds, y_pred, y_pred_proba, X_test_reduced
         )
 
         return results, optimal_params
@@ -1128,7 +914,7 @@ CamelCase、パッケージ名、メソッド名を
         # サンプルの取得と表示
         if hasattr(self, 'initial_X'):
             # 元データから LongName と Parent を取得
-            data_sample = pd.read_csv("../method-p.csv").head(sample_size)
+            data_sample = pd.read_csv("method-p.csv").head(sample_size)
 
             print(f"\n=== LongName トークン化例 (上位{sample_size}件) ===")
             for i, longname in enumerate(data_sample['LongName'].head(sample_size)):
