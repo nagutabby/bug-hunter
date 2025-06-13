@@ -1,21 +1,16 @@
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-import japanize_matplotlib
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split, cross_val_score, StratifiedKFold
-from sklearn.metrics import (confusion_matrix, ConfusionMatrixDisplay,
-                           roc_curve, auc, precision_recall_curve,
-                           log_loss, accuracy_score, f1_score,
-                           precision_score, recall_score)
+from sklearn.metrics import log_loss, accuracy_score, f1_score, precision_score, recall_score
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.preprocessing import StandardScaler
-from sklearn.utils import resample  # ダウンサンプリング用
+from sklearn.utils import resample
 from skopt import gp_minimize
-from skopt.space import Integer, Real, Categorical
-import warnings
+from skopt.space import Integer
 import re
-from typing import List, Set
+
+import warnings
 warnings.filterwarnings('ignore')
 
 # 再現性のためのseed固定
@@ -57,7 +52,7 @@ class JavaCodeTokenizer:
             'impl', 'default', 'base', 'simple', 'empty'
         }
 
-    def _split_camel_case(self, text: str) -> List[str]:
+    def _split_camel_case(self, text: str) -> list[str]:
         """
         CamelCaseの文字列を単語に分割
 
@@ -67,7 +62,7 @@ class JavaCodeTokenizer:
         parts = re.sub(r'(?<!^)(?=[A-Z])', ' ', text).split()
         return [part for part in parts if len(part) >= self.min_token_length]
 
-    def _split_snake_case(self, text: str) -> List[str]:
+    def _split_snake_case(self, text: str) -> list[str]:
         """
         snake_caseやkebab-caseの文字列を単語に分割
 
@@ -76,7 +71,7 @@ class JavaCodeTokenizer:
         parts = re.split(r'[_\-]', text)
         return [part for part in parts if len(part) >= self.min_token_length]
 
-    def _extract_method_signature_tokens(self, method_signature: str) -> List[str]:
+    def _extract_method_signature_tokens(self, method_signature: str) -> list[str]:
         """
         メソッドシグネチャからトークンを抽出
 
@@ -141,7 +136,7 @@ class JavaCodeTokenizer:
 
         return tokens
 
-    def _extract_class_name_tokens(self, class_name: str) -> List[str]:
+    def _extract_class_name_tokens(self, class_name: str) -> list[str]:
         """
         クラス名からトークンを抽出
 
@@ -171,7 +166,7 @@ class JavaCodeTokenizer:
 
         return tokens
 
-    def tokenize_longname(self, longname: str) -> List[str]:
+    def tokenize_longname(self, longname: str) -> list[str]:
         """
         LongName列の値をトークン化（メソッドシグネチャ）
         """
@@ -188,7 +183,7 @@ class JavaCodeTokenizer:
 
         return filtered_tokens
 
-    def tokenize_parent(self, parent: str) -> List[str]:
+    def tokenize_parent(self, parent: str) -> list[str]:
         """
         Parent列の値をトークン化（クラス名）
         """
@@ -205,7 +200,7 @@ class JavaCodeTokenizer:
 
         return filtered_tokens
 
-    def __call__(self, text: str) -> List[str]:
+    def __call__(self, text: str) -> list[str]:
         """
         TfidfVectorizerのtokenizer引数で使用するためのメソッド
         LongNameとParentの両方に対応する汎用的なトークン化
