@@ -12,6 +12,8 @@ import re
 
 # 新規追加のインポート
 import xgboost as xgb
+import lightgbm as lgb
+from catboost import CatBoostClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.linear_model import LogisticRegression
 from typing import Set, Dict, Any, Tuple
@@ -519,8 +521,8 @@ class SimplifiedBugHunter:
         print("--- XGBoostの最適化 ---")
         search_space = [
             Integer(100, 300, name='n_estimators'),
-            Integer(10, 20, name='max_depth'),
-            Real(0.001, 0.1, name='learning_rate'),
+            Integer(3, 10, name='max_depth'),
+            Real(0.01, 0.3, name='learning_rate'),
             Real(0.6, 1.0, name='subsample'),
             Real(0.6, 1.0, name='colsample_bytree')
         ]
@@ -555,11 +557,97 @@ class SimplifiedBugHunter:
         print(f"XGBoost 最良損失: {result.fun:.4f}, 最良パラメータ: {optimal_params}")
         return optimal_params
 
+    def optimize_lightgbm(self, X: pd.DataFrame, y: pd.Series, max_iterations: int = 15) -> Dict[str, Any]:
+        """LightGBMのLog Lossベース ベイジアン最適化"""
+        print("--- LightGBMの最適化 ---")
+        search_space = [
+            Integer(100, 500, name='n_estimators'),
+            Integer(3, 15, name='max_depth'),
+            Real(0.01, 0.3, name='learning_rate'),
+            Real(0.6, 1.0, name='subsample'),
+            Real(0.6, 1.0, name='colsample_bytree'),
+            Integer(10, 100, name='num_leaves')
+        ]
+
+        def objective(params):
+            n_estimators, max_depth, learning_rate, subsample, colsample_bytree, num_leaves = params
+            model = lgb.LGBMClassifier(
+                n_estimators=int(n_estimators),
+                max_depth=int(max_depth),
+                learning_rate=learning_rate,
+                subsample=subsample,
+                colsample_bytree=colsample_bytree,
+                num_leaves=int(num_leaves),
+                random_state=GLOBAL_SEED,
+                n_jobs=-1,
+                verbose=-1  # ログ出力を抑制
+            )
+            loss = self._evaluate_model_with_cv(model, X, y)
+            print(f"  LGB Params: n_estimators={int(n_estimators)}, max_depth={int(max_depth)}, "
+                  f"learning_rate={learning_rate:.3f}, subsample={subsample:.3f}, "
+                  f"colsample_bytree={colsample_bytree:.3f}, num_leaves={int(num_leaves)}, Loss: {loss:.4f}")
+            return loss
+
+        result = gp_minimize(objective, search_space, n_calls=max_iterations, random_state=GLOBAL_SEED, acq_func='EI', n_initial_points=5)
+        optimal_params = {
+            'n_estimators': int(result.x[0]),
+            'max_depth': int(result.x[1]),
+            'learning_rate': result.x[2],
+            'subsample': result.x[3],
+            'colsample_bytree': result.x[4],
+            'num_leaves': int(result.x[5])
+        }
+        print(f"LightGBM 最良損失: {result.fun:.4f}, 最良パラメータ: {optimal_params}")
+        return optimal_params
+
+    def optimize_catboost(self, X: pd.DataFrame, y: pd.Series, max_iterations: int = 15) -> Dict[str, Any]:
+        """CatBoostのLog Lossベース ベイジアン最適化"""
+        print("--- CatBoostの最適化 ---")
+        search_space = [
+            Integer(100, 500, name='iterations'),
+            Integer(3, 10, name='depth'),
+            Real(0.01, 0.3, name='learning_rate'),
+            Real(0.5, 1.0, name='subsample')
+        ]
+
+        def objective(params):
+            iterations, depth, learning_rate, subsample = params
+            model = CatBoostClassifier(
+                iterations=int(iterations),
+                depth=int(depth),
+                learning_rate=learning_rate,
+                subsample=subsample,
+                random_state=GLOBAL_SEED,
+                verbose=False,  # ログ出力を抑制
+                thread_count=-1
+            )
+            loss = self._evaluate_model_with_cv(model, X, y)
+            print(f"  CAT Params: iterations={int(iterations)}, depth={int(depth)}, "
+                  f"learning_rate={learning_rate:.3f}, subsample={subsample:.3f}, Loss: {loss:.4f}")
+            return loss
+
+        result = gp_minimize(objective, search_space, n_calls=max_iterations, random_state=GLOBAL_SEED, acq_func='EI', n_initial_points=5)
+        optimal_params = {
+            'iterations': int(result.x[0]),
+            'depth': int(result.x[1]),
+            'learning_rate': result.x[2],
+            'subsample': result.x[3]
+        }
+        print(f"CatBoost 最良損失: {result.fun:.4f}, 最良パラメータ: {optimal_params}")
+        return optimal_params # This line was missing
+
+        result = gp_minimize(objective, search_space, n_calls=max_iterations, random_state=GLOBAL_SEED, acq_func='EI', n_initial_points=5)
+        optimal_params = {
+            'iterations': int(result.x[0]),
+            'depth': int(result.x[1]),
+            'learning_rate': result.x[2],
+            'subsample': result.x[3]
+        }
     def optimize_knn(self, X: pd.DataFrame, y: pd.Series, max_iterations: int = 10) -> Dict[str, Any]:
         """KNNのLog Lossベース ベイジアン最適化"""
         print("--- KNNの最適化 ---")
         search_space = [
-            Integer(10, 20, name='n_neighbors'),
+            Integer(3, 15, name='n_neighbors'),
             Categorical(['uniform', 'distance'], name='weights'),
             Integer(1, 2, name='p') # p=1 for Manhattan, p=2 for Euclidean
         ]
@@ -822,6 +910,20 @@ class StackedBugHunter(SimplifiedBugHunter):
             )
         elif model_name == 'knn':
             model = KNeighborsClassifier(n_jobs=-1, **params)
+        elif model_name == 'lgb':
+            model = lgb.LGBMClassifier(
+                random_state=GLOBAL_SEED,
+                n_jobs=-1,
+                verbose=-1,
+                **params
+            )
+        elif model_name == 'catboost':
+            model = CatBoostClassifier(
+                random_state=GLOBAL_SEED,
+                verbose=False,
+                thread_count=-1,
+                **params
+            )
         else:
             raise ValueError(f"不明なベースモデル名: {model_name}")
 
@@ -901,7 +1003,7 @@ class StackedBugHunter(SimplifiedBugHunter):
         """スタッキングアンサンブルパイプラインの実行"""
         print("\n" + "="*60)
         print("=== 改良版スタッキングアンサンブル バグ予測パイプライン ===")
-        print("=== (RandomForest + XGBoost + KNN + LogisticRegression) ===")
+        print("=== (RF + XGBoost + KNN + LightGBM + CatBoost + LogisticRegression) ===")
         print("="*60)
 
         # 1. データ読み込み
@@ -936,6 +1038,12 @@ class StackedBugHunter(SimplifiedBugHunter):
             X_train_reduced, y_train_ds, max_iterations=15
         )
         self.base_model_optimal_params['knn'] = self.optimize_knn(
+            X_train_reduced, y_train_ds, max_iterations=15
+        )
+        self.base_model_optimal_params['lgb'] = self.optimize_lightgbm(
+            X_train_reduced, y_train_ds, max_iterations=15
+        )
+        self.base_model_optimal_params['catboost'] = self.optimize_catboost(
             X_train_reduced, y_train_ds, max_iterations=15
         )
 
@@ -1289,7 +1397,8 @@ if __name__ == "__main__":
     stacked_results, optimal_base_params, base_model_results = bug_hunter.run_stacking_pipeline(data_path)
 
     print("\n" + "="*60)
-    print("=== 改良版スタッキングアンサンブル バグ予測完了! ===")
+    print("=== 拡張スタッキングアンサンブル バグ予測完了! ===")
+    print("=== (RF + XGBoost + KNN + LightGBM + CatBoost) ===")
     print("="*60)
     print(f"スタッキング F1スコア: {stacked_results['F1']:.4f}")
     print(f"スタッキング Precision: {stacked_results['Precision']:.4f}")
