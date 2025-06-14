@@ -224,7 +224,7 @@ class BaseBugHunter:
     """
 
     def __init__(self, feature_selection_threshold: float = 0.001,
-                 tfidf_max_features: int = 1000,
+                 tfidf_max_features: int = 100,
                  java_tokenizer_min_length: int = 2,
                  include_package_tokens: bool = False):
         """

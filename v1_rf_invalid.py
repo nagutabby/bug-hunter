@@ -14,7 +14,7 @@ class SimplifiedBugHunter(BaseBugHunter):
     """
 
     def __init__(self, feature_selection_threshold: float = 0.001,
-                 tfidf_max_features: int = 1000,
+                 tfidf_max_features: int = 100,
                  java_tokenizer_min_length: int = 2,
                  include_package_tokens: bool = False):
         """
@@ -243,7 +243,7 @@ if __name__ == "__main__":
     # RandomForest版バグハンターのインスタンス作成
     bug_hunter = SimplifiedBugHunter(
         feature_selection_threshold=0.001,
-        tfidf_max_features=1000,
+        tfidf_max_features=100,
         java_tokenizer_min_length=3,
         include_package_tokens=False
         # k_neighborsを削除
