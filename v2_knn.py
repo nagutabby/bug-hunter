@@ -34,7 +34,7 @@ class KNNBugHunter(BaseBugHunter):
             # k-NNモデルの作成
             knn = KNeighborsClassifier(
                 n_neighbors=int(params['n_neighbors']),
-                weights=params['weights'],
+                weights='distance',  # distanceに固定
                 metric=params['metric'],
                 n_jobs=-1
             )
@@ -69,7 +69,7 @@ class KNNBugHunter(BaseBugHunter):
         """Log Loss損失関数を用いたk-NN用ベイジアン最適化"""
         print("\n=== k-NN Log Lossベース ベイジアン最適化（カスタムJavaトークナイザー使用）===")
         print("最適化手法: Bayesian Optimization (scikit-optimize)")
-        print("探索パラメータ: n_neighbors, weights, metric")
+        print("探索パラメータ: n_neighbors, metric (weights='distance'に固定)")
         print("クラス不均衡対応: ダウンサンプリング (事前に適用済み)")
         print("特徴量: 数値 + Java TF-IDF + One-Hot Encoding + 正規化")
 
@@ -77,20 +77,21 @@ class KNNBugHunter(BaseBugHunter):
         self.best_params = None
         self.optimization_history = []
 
-        # k-NN用の探索空間の定義
+        # k-NN用の探索空間の定義（metricの選択肢を増やし、weightsを固定）
         search_space = [
-            Integer(10, 100, name='n_neighbors'),
-            Categorical(['uniform', 'distance'], name='weights'),
-            Categorical(['euclidean', 'manhattan', 'cosine'], name='metric')
+            Integer(10, 200, name='n_neighbors'),
+            Categorical([
+                'euclidean', 'manhattan', 'cosine', 'minkowski',
+                'chebyshev', 'hamming', 'canberra', 'braycurtis'
+            ], name='metric')
         ]
 
         # 目的関数
         def objective(params):
-            n_neighbors, weights, metric = params
+            n_neighbors, metric = params
 
             param_dict = {
                 'n_neighbors': int(n_neighbors),
-                'weights': weights,
                 'metric': metric,
             }
 
@@ -126,6 +127,7 @@ class KNNBugHunter(BaseBugHunter):
         print(f"\nk-NN Bayesian Optimization完了!")
         print(f"最良損失: {self.best_loss:.4f}")
         final_best_params = self.best_params.copy() if self.best_params else {}
+        final_best_params['weights'] = 'distance'  # 固定値を明示的に追加
         print(f"最良パラメータ: {final_best_params}")
         print(f"総評価回数: {len(self.optimization_history)}")
 
@@ -153,7 +155,7 @@ class KNNBugHunter(BaseBugHunter):
 
         knn_params = {
             'n_neighbors': int(optimal_params['n_neighbors']),
-            'weights': optimal_params['weights'],
+            'weights': 'distance',  # distanceに固定
             'metric': optimal_params['metric'],
             'n_jobs': -1
         }
@@ -262,7 +264,7 @@ class KNNBugHunter(BaseBugHunter):
 
         print("\n=== k-NNモデル情報 ===")
         print(f"近傍数 (k): {self.best_model.n_neighbors}")
-        print(f"重み付け方法: {self.best_model.weights}")
+        print(f"重み付け方法: {self.best_model.weights} (固定)")
         print(f"距離メトリック: {self.best_model.metric}")
         print(f"使用特徴量数: {len(self.selected_features) if self.selected_features else 'N/A'}")
 
