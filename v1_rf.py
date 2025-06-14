@@ -8,7 +8,7 @@ import pandas as pd
 
 class SimplifiedBugHunter(BaseBugHunter):
     """
-    RandomForest版バグ予測クラス
+    RandomForest版バグ予測クラス（SMOTE使用）
 
     BaseBugHunterから継承し、RandomForest固有の機能を実装
     """
@@ -16,16 +16,17 @@ class SimplifiedBugHunter(BaseBugHunter):
     def __init__(self, feature_selection_threshold: float = 0.001,
                  tfidf_max_features: int = 1000,
                  java_tokenizer_min_length: int = 2,
-                 include_package_tokens: bool = False):
+                 include_package_tokens: bool = False,
+                 k_neighbors: int = 5):
         """
         コンストラクタ
         """
         super().__init__(feature_selection_threshold, tfidf_max_features,
-                        java_tokenizer_min_length, include_package_tokens)
+                        java_tokenizer_min_length, include_package_tokens, k_neighbors)
 
     def evaluate_model_with_cv(self, params: dict, X_original: pd.DataFrame, y_original: pd.Series,
                               k_folds: int = 3) -> float:
-        """交差検証を用いたRandomForestモデル評価（各フォールドで独立にダウンサンプリング）"""
+        """交差検証を用いたRandomForestモデル評価（各フォールドで独立にSMOTEオーバーサンプリング）"""
         try:
             # Random Forestモデルの作成
             rf = RandomForestClassifier(
@@ -47,13 +48,13 @@ class SimplifiedBugHunter(BaseBugHunter):
                 X_val_fold = X_original.iloc[val_idx]
                 y_val_fold = y_original.iloc[val_idx]
 
-                # 訓練フォールドのみにダウンサンプリングを適用
-                X_train_fold_ds, y_train_fold_ds = self.apply_downsampling(
+                # 訓練フォールドのみにSMOTEオーバーサンプリングを適用
+                X_train_fold_smote, y_train_fold_smote = self.apply_oversampling(
                     X_train_fold_orig, y_train_fold_orig
                 )
 
-                # モデル学習（ダウンサンプリング済み訓練データ）
-                rf.fit(X_train_fold_ds, y_train_fold_ds)
+                # モデル学習（SMOTE適用済み訓練データ）
+                rf.fit(X_train_fold_smote, y_train_fold_smote)
 
                 # 検証（元の検証データ）
                 y_pred_proba = rf.predict_proba(X_val_fold)[:, 1]
@@ -63,7 +64,7 @@ class SimplifiedBugHunter(BaseBugHunter):
                 total_loss += fold_loss
 
                 if fold_idx == 0:  # 最初のフォールドでのみログ出力
-                    print(f"  フォールド例: 訓練 {len(X_train_fold_orig)}→{len(X_train_fold_ds)}行, 検証 {len(X_val_fold)}行")
+                    print(f"  フォールド例: 訓練 {len(X_train_fold_orig)}→{len(X_train_fold_smote)}行, 検証 {len(X_val_fold)}行")
 
             avg_loss = total_loss / k_folds
             return avg_loss
@@ -75,10 +76,10 @@ class SimplifiedBugHunter(BaseBugHunter):
     def optimize_hyperparameters_with_log_loss(self, X_original: pd.DataFrame, y_original: pd.Series,
                                                 max_iterations: int = 10) -> dict:
         """Log Loss損失関数を用いたRandomForest用ベイジアン最適化（適切な交差検証）"""
-        print("\n=== RandomForest Log Lossベース ベイジアン最適化（適切な交差検証）===")
+        print("\n=== RandomForest Log Lossベース ベイジアン最適化（SMOTE + 適切な交差検証）===")
         print("最適化手法: Bayesian Optimization (scikit-optimize)")
         print("探索パラメータ: n_estimators, max_depth")
-        print("クラス不均衡対応: 各CVフォールドで独立にダウンサンプリング適用")
+        print("クラス不均衡対応: 各CVフォールドで独立にSMOTEオーバーサンプリング適用")
         print("特徴量: 数値 + Java TF-IDF + One-Hot Encoding + 正規化")
 
         self.best_loss = float('inf')
@@ -100,7 +101,7 @@ class SimplifiedBugHunter(BaseBugHunter):
                 'max_depth': int(max_depth),
             }
 
-            # モデル評価（元の訓練データで交差検証、各フォールドで独立にダウンサンプリング）
+            # モデル評価（元の訓練データで交差検証、各フォールドで独立にSMOTE適用）
             loss = self.evaluate_model_with_cv(param_dict, X_original, y_original)
 
             # 履歴記録
@@ -181,9 +182,9 @@ class SimplifiedBugHunter(BaseBugHunter):
         return self.best_model
 
     def run_pipeline(self, data_path: str):
-        """RandomForest用パイプライン（修正版）"""
-        print("=== RandomForest版ダウンサンプリングバグ予測パイプライン（修正版） ===")
-        print("修正点: テストデータにはアンダーサンプリングを適用しない")
+        """RandomForest用パイプライン（SMOTE版）"""
+        print("=== RandomForest版SMOTEオーバーサンプリングバグ予測パイプライン ===")
+        print("特徴: テストデータにはSMOTEを適用せず、訓練データのみに適用")
 
         # 1. データ読み込み
         data = self.read_data(data_path)
@@ -191,35 +192,35 @@ class SimplifiedBugHunter(BaseBugHunter):
         # 2. データ準備
         X_full, y_full = self.prepare_data(data, is_training=True)
 
-        # 3. データ分割（アンダーサンプリング前に実施）
+        # 3. データ分割（SMOTEオーバーサンプリング前に実施）
         X_train, X_test, y_train, y_test = train_test_split(
             X_full, y_full, test_size=0.2, random_state=GLOBAL_SEED, stratify=y_full
         )
         print(f"データ分割: 訓練データ {len(X_train)}行, テストデータ {len(X_test)}行")
 
-        # 4. 訓練データのみにダウンサンプリング適用
-        X_train_ds, y_train_ds = self.apply_downsampling(X_train, y_train)
-        print(f"訓練データのアンダーサンプリング: {len(X_train)}行 → {len(X_train_ds)}行")
-        print(f"テストデータ: {len(X_test)}行（アンダーサンプリング適用なし）")
+        # 4. 訓練データのみにSMOTEオーバーサンプリング適用
+        X_train_smote, y_train_smote = self.apply_oversampling(X_train, y_train)
+        print(f"訓練データのSMOTEオーバーサンプリング: {len(X_train)}行 → {len(X_train_smote)}行")
+        print(f"テストデータ: {len(X_test)}行（SMOTEオーバーサンプリング適用なし）")
 
-        # 5. 特徴量重要度取得のための初期モデル学習（ダウンサンプリング後の訓練データで）
-        self.train_initial_model_for_feature_importance(X_train_ds, y_train_ds)
+        # 5. 特徴量重要度取得のための初期モデル学習（SMOTE適用後の訓練データで）
+        self.train_initial_model_for_feature_importance(X_train_smote, y_train_smote)
 
         # 6. 特徴量削減（訓練データで学習した基準を両方に適用）
-        X_train_reduced = self.select_features_by_importance(X_train_ds)
+        X_train_reduced = self.select_features_by_importance(X_train_smote)
         X_test_reduced = self.select_features_by_importance(X_test)
 
         # 特徴量選択の基準を元の訓練データにも適用（ハイパーパラメータ最適化用）
         X_train_reduced_orig = self.select_features_by_importance(X_train)
 
-        # 7. ハイパーパラメータ最適化（元の訓練データで、各CVフォールドで独立にダウンサンプリング）
+        # 7. ハイパーパラメータ最適化（元の訓練データで、各CVフォールドで独立にSMOTE適用）
         optimal_params = self.optimize_hyperparameters_with_log_loss(
             X_train_reduced_orig, y_train, max_iterations=10
         )
 
-        # 8. 最適化モデル学習（ダウンサンプリング後の訓練データで）
+        # 8. 最適化モデル学習（SMOTE適用後の訓練データで）
         optimized_model = self.train_optimized_model(
-            X_train_reduced, y_train_ds, optimal_params
+            X_train_reduced, y_train_smote, optimal_params
         )
 
         # 9. 評価（元のテストデータで評価）
@@ -235,12 +236,13 @@ if __name__ == "__main__":
     # CSVファイルパスを指定
     data_path = "method-p.csv"
 
-    # RandomForest版バグハンターのインスタンス作成
+    # RandomForest版バグハンター（SMOTE使用）のインスタンス作成
     bug_hunter = SimplifiedBugHunter(
         feature_selection_threshold=0.001,
         tfidf_max_features=1000,
         java_tokenizer_min_length=3,
-        include_package_tokens=False
+        include_package_tokens=False,
+        k_neighbors=5
     )
 
     # パイプライン実行
@@ -253,9 +255,10 @@ if __name__ == "__main__":
     print(f"Precision: {results['Precision']:.3f}")
     print(f"Recall: {results['Recall']:.3f}")
     print(f"Accuracy: {results['Accuracy']:.3f}")
+    print(f"ROC-AUC: {results['ROC_AUC']:.3f}")
 
-    # ダウンサンプリングサマリーの表示
-    bug_hunter.display_downsampling_summary()
+    # SMOTEオーバーサンプリングサマリーの表示
+    bug_hunter.display_oversampling_summary()
 
     # 特徴量重要度テーブルの表示
     bug_hunter.display_feature_importance_table(top_n=15)
@@ -270,7 +273,7 @@ if __name__ == "__main__":
     print(f"TF-IDF最大特徴量数: {feature_analysis['tfidf_max_features']}")
 
     if feature_analysis['downsampling_info']:
-        ds_info = feature_analysis['downsampling_info']
-        print(f"データ削減率: {ds_info['reduction_rate']:.1f}%")
+        smote_info = feature_analysis['downsampling_info']
+        print(f"SMOTE増加率: {smote_info['increase_rate']:.1f}%")
 
     print("\n" + "="*60)

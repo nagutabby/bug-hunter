@@ -1,10 +1,10 @@
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split, StratifiedKFold
-from sklearn.metrics import log_loss, accuracy_score, f1_score, precision_score, recall_score, roc_auc_score # roc_auc_score を追加
+from sklearn.metrics import log_loss, accuracy_score, f1_score, precision_score, recall_score, roc_auc_score
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.preprocessing import StandardScaler
-from sklearn.utils import resample
+from imblearn.over_sampling import SMOTE
 import re
 from typing import Set
 import warnings
@@ -226,7 +226,8 @@ class BaseBugHunter:
     def __init__(self, feature_selection_threshold: float = 0.001,
                  tfidf_max_features: int = 1000,
                  java_tokenizer_min_length: int = 2,
-                 include_package_tokens: bool = False):
+                 include_package_tokens: bool = False,
+                 k_neighbors: int = 5):
         """
         コンストラクタ
 
@@ -235,6 +236,7 @@ class BaseBugHunter:
             tfidf_max_features (int): TF-IDFで生成する特徴量の最大数
             java_tokenizer_min_length (int): Javaトークナイザーの最小トークン長
             include_package_tokens (bool): パッケージ名のトークンを含めるかどうか
+            k_neighbors (int): SMOTEで使用する近傍数
         """
         self.best_model = None
         self.feature_importance = None
@@ -258,11 +260,13 @@ class BaseBugHunter:
             include_package_tokens=include_package_tokens
         )
 
-        # ダウンサンプリング関連の属性
-        self.downsampled_X = None
-        self.downsampled_y = None
+        # SMOTE関連の属性
+        self.k_neighbors = k_neighbors
+        self.smote_sampler = None
+        self.oversampled_X = None
+        self.oversampled_y = None
         self.original_class_distribution = None
-        self.downsampled_train_distribution = None
+        self.oversampled_train_distribution = None
 
     def read_data(self, data_path: str) -> pd.DataFrame:
         """データ読み込み"""
@@ -388,67 +392,69 @@ class BaseBugHunter:
 
         return X, y
 
-    def apply_downsampling(self, X: pd.DataFrame, y: pd.Series) -> tuple:
+    def apply_oversampling(self, X: pd.DataFrame, y: pd.Series) -> tuple:
         """
-        ダウンサンプリングを適用してクラス不均衡を解決
+        SMOTEを適用してクラス不均衡を解決
 
         Parameters:
             X (pd.DataFrame): 特徴量データ
             y (pd.Series): ラベルデータ
 
         Returns:
-            tuple: ダウンサンプリング後の(X, y)
+            tuple: オーバーサンプリング後の(X, y)
         """
-        print("\n=== ダウンサンプリング適用 ===")
+        print(f"\n=== SMOTE オーバーサンプリング適用 ===")
 
-        # 各クラスのデータを分離
-        X_class_0 = X[y == 0]
-        X_class_1 = X[y == 1]
-        y_class_0 = y[y == 0]
-        y_class_1 = y[y == 1]
+        print(f"オーバーサンプリング前 - クラス0: {sum(y==0)}件, クラス1: {sum(y==1)}件")
 
-        print(f"ダウンサンプリング前 - クラス0: {len(X_class_0)}件, クラス1: {len(X_class_1)}件")
+        # SMOTEの適用
+        try:
+            # 少数派クラス（クラス1）のサンプル数を確認し、k_neighborsを調整
+            minority_samples = sum(y == 1)
+            if minority_samples <= 1:
+                print("警告: 少数派クラスのサンプルが1件以下のため、SMOTEを適用できません。元のデータを使用します。")
+                X_balanced = X.copy()
+                y_balanced = y.copy()
+            else:
+                # k_neighborsを少数派クラスのサンプル数-1以下に調整
+                effective_k_neighbors = min(self.k_neighbors, minority_samples - 1)
 
-        # 少数派クラス（クラス1）の数に合わせて多数派クラス（クラス0）をダウンサンプリング
-        minority_class_size = len(X_class_1)
+                self.smote_sampler = SMOTE(
+                    random_state=GLOBAL_SEED,
+                    k_neighbors=effective_k_neighbors
+                )
 
-        if len(X_class_0) > minority_class_size:
-            # ダウンサンプリングを実行
-            X_class_0_downsampled, y_class_0_downsampled = resample(
-                X_class_0, y_class_0,
-                n_samples=minority_class_size,
-                random_state=GLOBAL_SEED,
-                replace=False
-            )
+                print(f"SMOTE設定: k_neighbors={effective_k_neighbors}")
 
-            # ダウンサンプリング後のデータを結合
-            X_balanced = pd.concat([X_class_0_downsampled, X_class_1], axis=0)
-            y_balanced = pd.concat([y_class_0_downsampled, y_class_1], axis=0)
+                # SMOTEを実行
+                X_resampled, y_resampled = self.smote_sampler.fit_resample(X, y)
 
-            # インデックスをリセット
-            X_balanced = X_balanced.reset_index(drop=True)
-            y_balanced = y_balanced.reset_index(drop=True)
+                # DataFrameとSeriesに変換
+                X_balanced = pd.DataFrame(X_resampled, columns=X.columns)
+                y_balanced = pd.Series(y_resampled)
 
-            # ランダムにシャッフル
-            shuffle_indices = np.random.RandomState(GLOBAL_SEED).permutation(len(X_balanced))
-            X_balanced = X_balanced.iloc[shuffle_indices].reset_index(drop=True)
-            y_balanced = y_balanced.iloc[shuffle_indices].reset_index(drop=True)
+                print(f"オーバーサンプリング後 - クラス0: {sum(y_balanced==0)}件, クラス1: {sum(y_balanced==1)}件")
+                print(f"総データ数: {len(X_balanced)}件 (増加率: {(len(X_balanced) / len(X) - 1) * 100:.1f}%)")
 
-            print(f"ダウンサンプリング後 - クラス0: {len(X_class_0_downsampled)}件, クラス1: {len(X_class_1)}件")
-            print(f"総データ数: {len(X_balanced)}件 (削減率: {(1 - len(X_balanced) / len(X)) * 100:.1f}%)")
+            # オーバーサンプリング後の訓練データのクラス分布を保存
+            self.oversampled_train_distribution = {
+                'class_0': sum(y_balanced == 0),
+                'class_1': sum(y_balanced == 1),
+                'total': len(y_balanced)
+            }
 
-        else:
-            # ダウンサンプリングが不要な場合
+        except Exception as e:
+            print(f"SMOTEでエラーが発生しました: {e}")
+            print("元のデータを使用して続行します。")
             X_balanced = X.copy()
             y_balanced = y.copy()
-            print("ダウンサンプリング不要: クラス1の方が多いか、同数です")
 
-        # ダウンサンプリング後の訓練データのクラス分布を保存
-        self.downsampled_train_distribution = {
-            'class_0': sum(y_balanced == 0),
-            'class_1': sum(y_balanced == 1),
-            'total': len(y_balanced)
-        }
+            # エラー時は元のデータの分布を保存
+            self.oversampled_train_distribution = {
+                'class_0': sum(y_balanced == 0),
+                'class_1': sum(y_balanced == 1),
+                'total': len(y_balanced)
+            }
 
         return X_balanced, y_balanced
 
@@ -516,7 +522,7 @@ class BaseBugHunter:
             'Precision': precision_score(y_test, y_pred, zero_division=0),
             'Recall': recall_score(y_test, y_pred),
             'LogLoss': self.log_loss_function(y_test, y_pred_proba),
-            'ROC_AUC': roc_auc_score(y_test, y_pred_proba), # ROC_AUC scoreを追加
+            'ROC_AUC': roc_auc_score(y_test, y_pred_proba),
             'Threshold': 0.5
         }
 
@@ -592,17 +598,17 @@ class BaseBugHunter:
         """特徴量分析結果の取得"""
         params_to_return = self.best_params.copy() if self.best_params else {}
 
-        # ダウンサンプリング情報を追加
-        downsampling_info = {}
-        if self.original_class_distribution and self.downsampled_train_distribution:
-            downsampling_info = {
+        # オーバーサンプリング情報を追加
+        oversampling_info = {}
+        if self.original_class_distribution and self.oversampled_train_distribution:
+            oversampling_info = {
                 'original_class_0': self.original_class_distribution['class_0'],
                 'original_class_1': self.original_class_distribution['class_1'],
                 'original_total': self.original_class_distribution['total'],
-                'downsampled_train_class_0': self.downsampled_train_distribution['class_0'],
-                'downsampled_train_class_1': self.downsampled_train_distribution['class_1'],
-                'downsampled_train_total': self.downsampled_train_distribution['total'],
-                'reduction_rate': (1 - self.downsampled_train_distribution['total'] / self.original_class_distribution['total']) * 100
+                'oversampled_train_class_0': self.oversampled_train_distribution['class_0'],
+                'oversampled_train_class_1': self.oversampled_train_distribution['class_1'],
+                'oversampled_train_total': self.oversampled_train_distribution['total'],
+                'increase_rate': (self.oversampled_train_distribution['total'] / self.original_class_distribution['total'] - 1) * 100
             }
 
         return {
@@ -613,7 +619,7 @@ class BaseBugHunter:
             'all_feature_names': self.all_feature_names,
             'feature_selection_threshold': self.feature_selection_threshold,
             'tfidf_max_features': self.tfidf_max_features,
-            'downsampling_info': downsampling_info,
+            'downsampling_info': oversampling_info,
             'java_tokenizer_settings': {
                 'min_token_length': self.java_tokenizer.min_token_length,
                 'include_package_tokens': self.java_tokenizer.include_package_tokens,
@@ -664,35 +670,39 @@ class BaseBugHunter:
 
         return importance_df_filtered
 
-    def display_downsampling_summary(self):
-        """ダウンサンプリングのサマリー表示"""
-        if not self.original_class_distribution or not self.downsampled_train_distribution:
-            print("ダウンサンプリング情報がありません。")
+    def display_oversampling_summary(self):
+        """SMOTEオーバーサンプリングのサマリー表示"""
+        if not self.original_class_distribution or not self.oversampled_train_distribution:
+            print("オーバーサンプリング情報がありません。")
             return
 
-        print("\n=== ダウンサンプリング サマリー ===")
+        print("\n=== SMOTE オーバーサンプリング サマリー ===")
         print(f"元データ (全データ):")
         print(f"  クラス 0: {self.original_class_distribution['class_0']:,}件")
         print(f"  クラス 1: {self.original_class_distribution['class_1']:,}件")
         print(f"  合計: {self.original_class_distribution['total']:,}件")
 
-        downsampled_class_0 = self.downsampled_train_distribution['class_0']
-        downsampled_class_1 = self.downsampled_train_distribution['class_1']
-        downsampled_total = self.downsampled_train_distribution['total']
+        oversampled_class_0 = self.oversampled_train_distribution['class_0']
+        oversampled_class_1 = self.oversampled_train_distribution['class_1']
+        oversampled_total = self.oversampled_train_distribution['total']
 
-        print(f"\nダウンサンプリング後 (訓練データ):")
-        print(f"  クラス 0: {downsampled_class_0:,}件")
-        print(f"  クラス 1: {downsampled_class_1:,}件")
-        print(f"  合計: {downsampled_total:,}件")
+        print(f"\nSMOTE適用後 (訓練データ):")
+        print(f"  クラス 0: {oversampled_class_0:,}件")
+        print(f"  クラス 1: {oversampled_class_1:,}件")
+        print(f"  合計: {oversampled_total:,}件")
 
-        reduction_rate = (1 - downsampled_total / self.original_class_distribution['total']) * 100
-        print(f"\n元データ全体からの削減率: {reduction_rate:.1f}%")
+        increase_rate = (oversampled_total / self.original_class_distribution['total'] - 1) * 100
+        print(f"\n元データ全体からの増加率: {increase_rate:.1f}%")
 
         original_imbalance = self.original_class_distribution['class_0'] / self.original_class_distribution['class_1'] if self.original_class_distribution['class_1'] > 0 else float('inf')
-        new_imbalance = downsampled_class_0 / downsampled_class_1 if downsampled_class_1 > 0 else float('inf')
+        new_imbalance = oversampled_class_0 / oversampled_class_1 if oversampled_class_1 > 0 else float('inf')
         print(f"クラス不均衡比 (クラス0/クラス1):")
         print(f"  元データ (全データ): {original_imbalance:.2f}:1")
-        print(f"  ダウンサンプリング後 (訓練データ): {new_imbalance:.2f}:1")
+        print(f"  SMOTE適用後 (訓練データ): {new_imbalance:.2f}:1")
+
+        # 新しく生成されたサンプル数
+        generated_samples = oversampled_class_1 - self.original_class_distribution['class_1']
+        print(f"\n生成された合成サンプル数: {generated_samples:,}件")
 
     def display_tokenizer_analysis(self, sample_size: int = 5):
         """Javaトークナイザーの動作例を表示"""
