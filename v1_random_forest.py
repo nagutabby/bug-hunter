@@ -197,7 +197,7 @@ class SimplifiedBugHunter(BaseBugHunter):
 
         # 7. ハイパーパラメータ最適化
         optimal_params = self.optimize_hyperparameters_with_log_loss(
-            X_train_reduced, y_train_ds, max_iterations=15
+            X_train_reduced, y_train_ds, max_iterations=20
         )
 
         # 8. 最適化モデル学習
