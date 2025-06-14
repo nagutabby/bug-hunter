@@ -4,6 +4,7 @@ from sklearn.model_selection import train_test_split, StratifiedKFold
 from sklearn.metrics import log_loss, accuracy_score, f1_score, precision_score, recall_score, roc_auc_score
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.preprocessing import StandardScaler
+from sklearn.feature_selection import SelectPercentile, mutual_info_classif, mutual_info_regression
 from imblearn.under_sampling import RandomUnderSampler  # SMOTEからRandomUnderSamplerに変更
 import re
 from typing import Set
@@ -223,7 +224,7 @@ class BaseBugHunter:
     RandomForestとk-NNで共通の機能を提供
     """
 
-    def __init__(self, feature_selection_threshold: float = 0.001,
+    def __init__(self, feature_selection_percentile: float = 30.0,
                  tfidf_max_features: int = 100,
                  java_tokenizer_min_length: int = 2,
                  include_package_tokens: bool = False):
@@ -231,7 +232,7 @@ class BaseBugHunter:
         コンストラクタ
 
         Parameters:
-            feature_selection_threshold (float): 特徴量重要度の閾値
+            feature_selection_percentile (float): 相互情報量による特徴量選択の閾値（パーセンタイル）
             tfidf_max_features (int): TF-IDFで生成する特徴量の最大数
             java_tokenizer_min_length (int): Javaトークナイザーの最小トークン長
             include_package_tokens (bool): パッケージ名のトークンを含めるかどうか
@@ -243,7 +244,7 @@ class BaseBugHunter:
         self.optimization_history = []
         self.best_params = None
         self.best_loss = float('inf')
-        self.feature_selection_threshold = feature_selection_threshold
+        self.feature_selection_percentile = feature_selection_percentile
         self.initial_X = None
         self.initial_y = None
         self.tfidf_vectorizer_longname = None
@@ -251,6 +252,10 @@ class BaseBugHunter:
         self.tfidf_max_features = tfidf_max_features
         self.project_dummies_columns = None
         self.scaler = None
+
+        # 相互情報量による特徴量選択器
+        self.feature_selector = None
+        self.mutual_info_scores = None
 
         # Javaトークナイザーの初期化
         self.java_tokenizer = JavaCodeTokenizer(
@@ -438,47 +443,60 @@ class BaseBugHunter:
         y_pred_proba_clipped = np.clip(y_pred_proba, 1e-15, 1 - 1e-15)
         return log_loss(y_true, y_pred_proba_clipped)
 
-    def select_features_by_importance(self, X: pd.DataFrame) -> pd.DataFrame:
-        """特徴量重要度に基づいて特徴量を選択"""
-        if self.feature_importance is None:
-            raise ValueError("特徴量重要度が計算されていません。まず初期モデルを学習してください。")
+    def select_features_by_mutual_info(self, X: pd.DataFrame, y: pd.Series) -> pd.DataFrame:
+        """相互情報量に基づいて特徴量を選択"""
+        print(f"\n=== 相互情報量による特徴量選択 ===")
+        print(f"特徴量選択前の数: {len(X.columns)}")
 
-        feature_names = self.all_feature_names
-        if len(feature_names) != len(self.feature_importance):
-            print("警告: 特徴量名と重要度の数が一致しません。現在のXのカラムを再確認します。")
-            feature_names = X.columns.tolist()
-            if len(feature_names) != len(self.feature_importance):
-                raise ValueError("特徴量名と重要度の数が一致しません。")
+        # 相互情報量による特徴量選択器を初期化
+        self.feature_selector = SelectPercentile(
+            score_func=mutual_info_classif,
+            percentile=self.feature_selection_percentile
+        )
 
-        # 重要度が閾値以上の特徴量を選択
-        selected_feature_indices = np.where(self.feature_importance >= self.feature_selection_threshold)[0]
-        self.selected_features = [feature_names[i] for i in selected_feature_indices]
+        # 特徴量選択を適用
+        try:
+            X_selected = self.feature_selector.fit_transform(X, y)
 
-        # 選択された特徴量が存在しない場合のエラーハンドリング
-        if not self.selected_features:
-            print(f"警告: 特徴量重要度の閾値 {self.feature_selection_threshold} では、どの特徴量も選択されませんでした。")
-            print("すべての特徴量を再度含めて処理を続行します。")
-            self.selected_features = feature_names
-            X_selected = X
-        else:
-            X_selected = X[self.selected_features]
+            # 選択された特徴量のインデックスを取得
+            selected_indices = self.feature_selector.get_support(indices=True)
+            self.selected_features = [X.columns[i] for i in selected_indices]
 
-        print(f"\n=== 特徴量削減 ===")
-        print(f"特徴量削減前の数: {len(feature_names)}")
-        print(f"選択された特徴量数 (閾値 {self.feature_selection_threshold}): {len(self.selected_features)}")
+            # 相互情報量スコアを取得
+            self.mutual_info_scores = self.feature_selector.scores_
 
-        # 特徴量タイプ別の統計
-        longname_count = len([f for f in self.selected_features if f.startswith('LongName_tfidf_')])
-        parent_count = len([f for f in self.selected_features if f.startswith('Parent_tfidf_')])
-        project_count = len([f for f in self.selected_features if f.startswith('Project_')])
-        numerical_count = len(self.selected_features) - longname_count - parent_count - project_count
+            # DataFrameとして再構成
+            X_selected_df = pd.DataFrame(X_selected, columns=self.selected_features, index=X.index)
 
-        print(f"  - 数値特徴量: {numerical_count}")
-        print(f"  - LongName TF-IDF: {longname_count}")
-        print(f"  - Parent TF-IDF: {parent_count}")
-        print(f"  - Project One-Hot: {project_count}")
+            print(f"選択された特徴量数 (上位{self.feature_selection_percentile}%): {len(self.selected_features)}")
 
-        return X_selected
+            # 特徴量タイプ別の統計
+            longname_count = len([f for f in self.selected_features if f.startswith('LongName_tfidf_')])
+            parent_count = len([f for f in self.selected_features if f.startswith('Parent_tfidf_')])
+            project_count = len([f for f in self.selected_features if f.startswith('Project_')])
+            numerical_count = len(self.selected_features) - longname_count - parent_count - project_count
+
+            print(f"  - 数値特徴量: {numerical_count}")
+            print(f"  - LongName TF-IDF: {longname_count}")
+            print(f"  - Parent TF-IDF: {parent_count}")
+            print(f"  - Project One-Hot: {project_count}")
+
+            # 相互情報量の統計情報
+            selected_scores = [self.mutual_info_scores[i] for i in selected_indices]
+            print(f"相互情報量スコア統計:")
+            print(f"  - 平均: {np.mean(selected_scores):.4f}")
+            print(f"  - 最大: {np.max(selected_scores):.4f}")
+            print(f"  - 最小: {np.min(selected_scores):.4f}")
+            print(f"  - 閾値: {self.feature_selector.scores_[selected_indices[-1]]:.4f}")
+
+        except Exception as e:
+            print(f"相互情報量による特徴量選択でエラーが発生しました: {e}")
+            print("全ての特徴量を使用して続行します。")
+            self.selected_features = X.columns.tolist()
+            self.mutual_info_scores = np.zeros(len(X.columns))
+            X_selected_df = X.copy()
+
+        return X_selected_df
 
     def comprehensive_evaluation(self, X_test: pd.DataFrame, y_test: pd.Series) -> dict:
         """包括的評価（デフォルトしきい値0.5のみ使用）"""
@@ -512,8 +530,8 @@ class BaseBugHunter:
         """予測（基底クラス用の共通実装）"""
         if self.best_model is None:
             raise ValueError("モデルが学習されていません。まずrun_pipeline()を実行してください。")
-        if self.selected_features is None:
-            raise ValueError("特徴量削減が実行されていません。まずrun_pipeline()を実行してください。")
+        if self.selected_features is None or self.feature_selector is None:
+            raise ValueError("特徴量選択が実行されていません。まずrun_pipeline()を実行してください。")
         if self.tfidf_vectorizer_longname is None or self.tfidf_vectorizer_parent is None:
             raise ValueError("TF-IDF Vectorizerが学習されていません。まずrun_pipeline()を実行してください。")
         if self.project_dummies_columns is None:
@@ -555,14 +573,12 @@ class BaseBugHunter:
         # 予測用の全特徴量を結合
         X_processed_full = pd.concat([X_numerical_scaled_df, X_longname_tfidf_df_pred, X_parent_tfidf_df_pred, X_project_onehot_pred], axis=1)
 
-        # 学習時に選択された特徴量のみを選択
-        X_processed = pd.DataFrame(0, index=X_processed_full.index, columns=self.selected_features)
-        for col in self.selected_features:
-            if col in X_processed_full.columns:
-                X_processed[col] = X_processed_full[col]
+        # 学習時に選択された特徴量のみを選択（相互情報量による特徴量選択器を使用）
+        X_processed = self.feature_selector.transform(X_processed_full)
+        X_processed_df = pd.DataFrame(X_processed, columns=self.selected_features, index=X_processed_full.index)
 
         # 予測確率取得
-        y_pred_proba = self.best_model.predict_proba(X_processed)[:, 1]
+        y_pred_proba = self.best_model.predict_proba(X_processed_df)[:, 1]
 
         # デフォルトしきい値での予測
         y_pred = (y_pred_proba >= 0.5).astype(int)
@@ -589,12 +605,12 @@ class BaseBugHunter:
         return {
             'best_params': params_to_return,
             'optimization_history': self.optimization_history,
-            'feature_importance': self.feature_importance,
+            'mutual_info_scores': self.mutual_info_scores,
             'selected_features': self.selected_features,
             'all_feature_names': self.all_feature_names,
-            'feature_selection_threshold': self.feature_selection_threshold,
+            'feature_selection_percentile': self.feature_selection_percentile,
             'tfidf_max_features': self.tfidf_max_features,
-            'sampling_info': sampling_info, # 'downsampling_info'から'sampling_info'に変更
+            'sampling_info': sampling_info,
             'java_tokenizer_settings': {
                 'min_token_length': self.java_tokenizer.min_token_length,
                 'include_package_tokens': self.java_tokenizer.include_package_tokens,
@@ -602,48 +618,58 @@ class BaseBugHunter:
             }
         }
 
-    def display_feature_importance_table(self, top_n: int = 10):
-        """特徴量重要度テーブルの表示"""
-        if self.feature_importance is None or self.selected_features is None:
-            print("特徴量重要度は計算されていません。または利用可能なモデルから取得できませんでした。")
+    def display_mutual_info_table(self, top_n: int = 10):
+        """相互情報量スコアテーブルの表示"""
+        if self.mutual_info_scores is None or self.selected_features is None:
+            print("相互情報量スコアは計算されていません。")
             return
 
-        feature_names = self.selected_features
-        if len(feature_names) != len(self.feature_importance):
-            if self.all_feature_names is not None and len(self.feature_importance) == len(self.all_feature_names):
-                feature_names = self.all_feature_names
-            else:
-                print("エラー: 選択された特徴量名と重要度の数が一致しません。")
-                return
+        if self.all_feature_names is None:
+            print("全特徴量名が取得できません。")
+            return
 
-        importance_df = pd.DataFrame({
-            '特徴量': feature_names,
-            '重要度': self.feature_importance
-        }).sort_values('重要度', ascending=False)
+        # 全特徴量の相互情報量スコアをDataFrameに変換
+        all_features_df = pd.DataFrame({
+            '特徴量': self.all_feature_names,
+            '相互情報量スコア': self.mutual_info_scores
+        }).sort_values('相互情報量スコア', ascending=False)
 
-        # self.selected_features に含まれる特徴量のみをフィルタリング
-        importance_df_filtered = importance_df[importance_df['特徴量'].isin(self.selected_features)]
+        # 選択された特徴量のみをフィルタリング
+        selected_features_df = all_features_df[all_features_df['特徴量'].isin(self.selected_features)]
 
         # 特徴量タイプの分類
-        importance_df_filtered['タイプ'] = importance_df_filtered['特徴量'].apply(
+        selected_features_df['タイプ'] = selected_features_df['特徴量'].apply(
             lambda x: 'LongName TF-IDF' if x.startswith('LongName_tfidf_')
                      else 'Parent TF-IDF' if x.startswith('Parent_tfidf_')
                      else 'Project' if x.startswith('Project_')
                      else '数値'
         )
 
-        print(f"\n=== 上位{top_n}特徴量重要度 ===")
-        display_df = importance_df_filtered.head(top_n)[['特徴量', 'タイプ', '重要度']].copy()
+        print(f"\n=== 上位{top_n}特徴量（相互情報量スコア） ===")
+        display_df = selected_features_df.head(top_n)[['特徴量', 'タイプ', '相互情報量スコア']].copy()
         print(display_df.to_string(index=False))
 
         # タイプ別の統計
-        print(f"\n=== 特徴量タイプ別統計 ===")
-        type_stats = importance_df_filtered['タイプ'].value_counts()
+        print(f"\n=== 特徴量タイプ別統計（選択された特徴量のみ） ===")
+        type_stats = selected_features_df['タイプ'].value_counts()
         for feature_type, count in type_stats.items():
-            avg_importance = importance_df_filtered[importance_df_filtered['タイプ'] == feature_type]['重要度'].mean()
-            print(f"{feature_type}: {count}個 (平均重要度: {avg_importance:.4f})")
+            avg_score = selected_features_df[selected_features_df['タイプ'] == feature_type]['相互情報量スコア'].mean()
+            print(f"{feature_type}: {count}個 (平均相互情報量: {avg_score:.4f})")
 
-        return importance_df_filtered
+        # 選択された特徴量と選択されなかった特徴量の比較
+        unselected_features_df = all_features_df[~all_features_df['特徴量'].isin(self.selected_features)]
+        print(f"\n=== 特徴量選択統計 ===")
+        print(f"選択された特徴量数: {len(selected_features_df)} / {len(all_features_df)} ({len(selected_features_df)/len(all_features_df)*100:.1f}%)")
+        print(f"選択された特徴量の平均相互情報量: {selected_features_df['相互情報量スコア'].mean():.4f}")
+        if len(unselected_features_df) > 0:
+            print(f"選択されなかった特徴量の平均相互情報量: {unselected_features_df['相互情報量スコア'].mean():.4f}")
+
+        return selected_features_df
+
+    def display_feature_importance_table(self, top_n: int = 10):
+        """特徴量重要度テーブルの表示（相互情報量版）"""
+        print("注意: この実装では相互情報量を使用しています。display_mutual_info_table()を使用してください。")
+        return self.display_mutual_info_table(top_n)
 
     def display_sampling_summary(self):
         """アンダーサンプリングのサマリー表示"""
@@ -712,6 +738,31 @@ class BaseBugHunter:
                 if i < sample_size - 1:
                     print()
 
+    def display_feature_selection_summary(self):
+        """相互情報量による特徴量選択のサマリー表示"""
+        if self.mutual_info_scores is None or self.selected_features is None:
+            print("特徴量選択が実行されていません。")
+            return
+
+        print(f"\n=== 相互情報量による特徴量選択サマリー ===")
+        print(f"特徴量選択手法: SelectPercentile with mutual_info_classif")
+        print(f"選択パーセンタイル: 上位{self.feature_selection_percentile}%")
+        print(f"元の特徴量数: {len(self.all_feature_names)}")
+        print(f"選択された特徴量数: {len(self.selected_features)}")
+        print(f"選択率: {len(self.selected_features)/len(self.all_feature_names)*100:.1f}%")
+
+        if hasattr(self.feature_selector, 'scores_'):
+            selected_indices = self.feature_selector.get_support(indices=True)
+            selected_scores = [self.feature_selector.scores_[i] for i in selected_indices]
+            all_scores = self.feature_selector.scores_
+
+            print(f"\n相互情報量スコア統計:")
+            print(f"  全特徴量の平均スコア: {np.mean(all_scores):.4f}")
+            print(f"  選択された特徴量の平均スコア: {np.mean(selected_scores):.4f}")
+            print(f"  選択された特徴量の最高スコア: {np.max(selected_scores):.4f}")
+            print(f"  選択された特徴量の最低スコア: {np.min(selected_scores):.4f}")
+            print(f"  選択閾値: {np.min(selected_scores):.4f}")
+
     # 抽象メソッド（サブクラスで実装）
     def evaluate_model_with_cv(self, params: dict, X: pd.DataFrame, y: pd.Series, k_folds: int = 3) -> float:
         """交差検証を用いたモデル評価（サブクラスで実装）"""
@@ -719,10 +770,6 @@ class BaseBugHunter:
 
     def optimize_hyperparameters_with_log_loss(self, X: pd.DataFrame, y: pd.Series, max_iterations: int = 15) -> dict:
         """ハイパーパラメータ最適化（サブクラスで実装）"""
-        raise NotImplementedError("サブクラスで実装してください")
-
-    def train_initial_model_for_feature_importance(self, X: pd.DataFrame, y: pd.Series):
-        """特徴量重要度取得のための初期モデル学習（サブクラスで実装）"""
         raise NotImplementedError("サブクラスで実装してください")
 
     def train_optimized_model(self, X: pd.DataFrame, y: pd.Series, optimal_params: dict):

@@ -8,20 +8,26 @@ import pandas as pd
 
 class SimplifiedBugHunter(BaseBugHunter):
     """
-    RandomForest版バグ予測クラス（不適切なアンダーサンプリング適用）
+    RandomForest版バグ予測クラス（不適切なアンダーサンプリング適用 + 相互情報量による特徴量選択）
 
     BaseBugHunterから継承し、RandomForest固有の機能を実装
+    警告: データ分割前にアンダーサンプリングを適用する不適切な実装例
     """
 
-    def __init__(self, feature_selection_threshold: float = 0.001,
+    def __init__(self, feature_selection_percentile: float = 30.0,
                  tfidf_max_features: int = 100,
                  java_tokenizer_min_length: int = 2,
                  include_package_tokens: bool = False):
         """
         コンストラクタ
+
+        Parameters:
+            feature_selection_percentile (float): 相互情報量による特徴量選択の閾値（パーセンタイル）
+            tfidf_max_features (int): TF-IDFで生成する特徴量の最大数
+            java_tokenizer_min_length (int): Javaトークナイザーの最小トークン長
+            include_package_tokens (bool): パッケージ名のトークンを含めるかどうか
         """
-        # k_neighborsを削除
-        super().__init__(feature_selection_threshold, tfidf_max_features,
+        super().__init__(feature_selection_percentile, tfidf_max_features,
                         java_tokenizer_min_length, include_package_tokens)
 
     def evaluate_model_with_cv(self, params: dict, X_original: pd.DataFrame, y_original: pd.Series,
@@ -76,7 +82,9 @@ class SimplifiedBugHunter(BaseBugHunter):
         print("\n=== RandomForest Log Lossベース ベイジアン最適化（事前サンプリング済みデータ使用）===")
         print("最適化手法: Bayesian Optimization (scikit-optimize)")
         print("探索パラメータ: n_estimators, max_depth")
+        print("特徴量選択: 相互情報量による特徴量選択")
         print("特徴量: 数値 + Java TF-IDF + One-Hot Encoding + 正規化")
+        print("警告: 事前にアンダーサンプリング済みのデータを使用（不適切な実装）")
 
         self.best_loss = float('inf')
         self.best_params = None
@@ -134,21 +142,6 @@ class SimplifiedBugHunter(BaseBugHunter):
 
         return final_best_params
 
-    def train_initial_model_for_feature_importance(self, X: pd.DataFrame, y: pd.Series):
-        """特徴量重要度を取得するための初期RandomForestモデルを学習"""
-        print("\n=== 特徴量重要度取得のための初期RandomForestモデル学習 ===")
-
-        initial_rf = RandomForestClassifier(
-            n_estimators=100,
-            max_depth=5,
-            random_state=GLOBAL_SEED,
-            n_jobs=-1
-        )
-        initial_rf.fit(X, y)
-        self.feature_importance = initial_rf.feature_importances_
-        print("初期RandomForestモデル学習と特徴量重要度の計算が完了しました。")
-        return initial_rf
-
     def train_optimized_model(self, X: pd.DataFrame, y: pd.Series, optimal_params: dict):
         """最適化されたパラメータでRandomForestモデルを学習"""
         print("\n=== 最適化RandomForestモデル学習 ===")
@@ -167,25 +160,32 @@ class SimplifiedBugHunter(BaseBugHunter):
         print(f"最終パラメータ: {rf_params}")
         print(f"学習データ: {len(X)}件")
 
-        # 特徴量重要度の取得
+        # 参考情報として、学習済みRandomForestの特徴量重要度も取得
         if hasattr(self.best_model, 'feature_importances_'):
-            self.feature_importance = self.best_model.feature_importances_
-            print("学習済みRandomForestモデルから特徴量重要度を計算しました。")
-        else:
-            self.feature_importance = None
-            print("警告: 学習済みモデルは特徴量重要度を提供しません。")
+            rf_feature_importance = self.best_model.feature_importances_
+            print("参考: 学習済みRandomForestモデルの特徴量重要度も取得しました。")
+
+            # 上位5特徴量の表示（参考情報）
+            if len(rf_feature_importance) > 0 and len(self.selected_features) == len(rf_feature_importance):
+                top_indices = rf_feature_importance.argsort()[-5:][::-1]
+                print("参考: RandomForest特徴量重要度 上位5:")
+                for i, idx in enumerate(top_indices):
+                    feature_name = self.selected_features[idx]
+                    importance = rf_feature_importance[idx]
+                    print(f"  {i+1}. {feature_name}: {importance:.4f}")
 
         return self.best_model
 
     def run_pipeline(self, data_path: str):
         """
         【不適切な実装例】RandomForest用パイプライン
-        データ分割前にアンダーサンプリングを適用する誤った実装
+        データ分割前にアンダーサンプリングを適用する誤った実装 + 相互情報量による特徴量選択
         """
-        print("="*60)
+        print("="*80)
         print("### 不適切なアンダーサンプリング適用パイプライン（データリーケージあり） ###")
         print("警告: データ分割前に全体へRandomUnderSamplerを適用しています。")
-        print("="*60)
+        print("特徴量選択: 相互情報量による特徴量選択を使用")
+        print("="*80)
 
         # 1. データ読み込み
         data = self.read_data(data_path)
@@ -208,28 +208,32 @@ class SimplifiedBugHunter(BaseBugHunter):
         )
         print(f"\nアンダーサンプリング済みデータからの分割: 訓練 {len(X_train)}行, テスト {len(X_test)}行")
 
-        # 5. 特徴量重要度取得のための初期モデル学習（既にサンプリング済みの訓練データを使用）
-        self.train_initial_model_for_feature_importance(X_train, y_train)
+        # 5. 相互情報量による特徴量選択（既にサンプリング済みの訓練データを使用）
+        print("\n=== 相互情報量による特徴量選択（不適切なサンプリング適用後）===")
+        X_train_reduced = self.select_features_by_mutual_info(X_train, y_train)
 
-        # 6. 特徴量削減
-        X_train_reduced = self.select_features_by_importance(X_train)
-        X_test_reduced = self.select_features_by_importance(X_test)
+        # テストデータにも同じ特徴量選択器を適用
+        X_test_reduced = self.feature_selector.transform(X_test)
+        X_test_reduced_df = pd.DataFrame(X_test_reduced, columns=self.selected_features, index=X_test.index)
 
-        # 7. ハイパーパラメータ最適化（既にサンプリング済みの訓練データを使用）
+        print("警告: 特徴量選択が不適切にアンダーサンプリング済みデータに基づいています。")
+        print("これにより選択される特徴量が実際の本番環境と異なる可能性があります。")
+
+        # 6. ハイパーパラメータ最適化（既にサンプリング済みの訓練データを使用）
         # ★注意：evaluate_model_with_cvも内部でサンプリングをしないように修正済み
         optimal_params = self.optimize_hyperparameters_with_log_loss(
             X_train_reduced, y_train, max_iterations=10
         )
 
-        # 8. 最適化モデル学習（既にサンプリング済みの訓練データで）
+        # 7. 最適化モデル学習（既にサンプリング済みの訓練データで）
         optimized_model = self.train_optimized_model(
             X_train_reduced, y_train, optimal_params
         )
 
-        # 9. 評価
+        # 8. 評価
         # これにより評価指標が人為的に高く、または低く算出される可能性がある
         results, y_pred, y_pred_proba = self.comprehensive_evaluation(
-            X_test_reduced, y_test
+            X_test_reduced_df, y_test
         )
 
         return results, optimal_params
@@ -240,22 +244,22 @@ if __name__ == "__main__":
     # CSVファイルパスを指定
     data_path = "method-p.csv"
 
-    # RandomForest版バグハンターのインスタンス作成
+    # RandomForest版バグハンター（不適切なアンダーサンプリング + 相互情報量による特徴量選択）のインスタンス作成
     bug_hunter = SimplifiedBugHunter(
-        feature_selection_threshold=0.001,
+        feature_selection_percentile=30.0,
         tfidf_max_features=100,
         java_tokenizer_min_length=3,
         include_package_tokens=False
-        # k_neighborsを削除
     )
 
     # パイプライン実行
     results, optimal_params = bug_hunter.run_pipeline(data_path)
 
-    print("\n" + "="*60)
+    print("\n" + "="*80)
     print("【不適切な】RandomForest版バグ予測完了!")
-    print("="*60)
+    print("="*80)
     print("警告: 以下の評価指標はデータリーケージにより信頼できない可能性があります。")
+    print("特徴量選択も不適切なサンプリング後のデータに基づいています。")
     print(f"F1スコア: {results['F1']:.3f}")
     print(f"Precision: {results['Precision']:.3f}")
     print(f"Recall: {results['Recall']:.3f}")
@@ -265,8 +269,12 @@ if __name__ == "__main__":
     # アンダーサンプリングサマリーの表示
     bug_hunter.display_sampling_summary()
 
-    # 特徴量重要度テーブルの表示
-    bug_hunter.display_feature_importance_table(top_n=15)
+    # 相互情報量による特徴量選択の結果表示
+    bug_hunter.display_mutual_info_table(top_n=15)
+
+    # 特徴量選択のサマリー表示
+    print("\n警告: 以下の特徴量選択は不適切なサンプリング後のデータに基づいています。")
+    bug_hunter.display_feature_selection_summary()
 
     # トークナイザーの動作例表示
     bug_hunter.display_tokenizer_analysis(sample_size=3)
@@ -275,10 +283,17 @@ if __name__ == "__main__":
     print(f"\n最適パラメータ: {feature_analysis['best_params']}")
     print(f"選択された特徴量数: {len(feature_analysis['selected_features'])}")
     print(f"全特徴量数: {len(feature_analysis['all_feature_names'])}")
+    print(f"特徴量選択パーセンタイル: {feature_analysis['feature_selection_percentile']}%")
     print(f"TF-IDF最大特徴量数: {feature_analysis['tfidf_max_features']}")
 
     if feature_analysis['sampling_info']:
         sampling_info = feature_analysis['sampling_info']
         print(f"データサイズ変化率: {sampling_info['change_rate_percent']:.1f}%")
 
-    print("\n" + "="*60)
+    print("\n" + "="*80)
+    print("重要な注意事項:")
+    print("この実装はデータ分割前にアンダーサンプリングを適用する不適切な例です。")
+    print("実際のプロジェクトでは、v1_rf_valid.py のような適切な実装を使用してください。")
+    print("特徴量選択も不適切なサンプリング後のデータに基づいており、")
+    print("本番環境での性能と大きく乖離する可能性があります。")
+    print("="*80)

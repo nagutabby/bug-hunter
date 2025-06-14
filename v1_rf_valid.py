@@ -8,20 +8,25 @@ import pandas as pd
 
 class SimplifiedBugHunter(BaseBugHunter):
     """
-    RandomForest版バグ予測クラス（RandomUnderSampler使用）
+    RandomForest版バグ予測クラス（RandomUnderSampler + 相互情報量による特徴量選択使用）
 
     BaseBugHunterから継承し、RandomForest固有の機能を実装
     """
 
-    def __init__(self, feature_selection_threshold: float = 0.001,
+    def __init__(self, feature_selection_percentile: float = 30.0,
                  tfidf_max_features: int = 100,
                  java_tokenizer_min_length: int = 2,
                  include_package_tokens: bool = False):
         """
         コンストラクタ
+
+        Parameters:
+            feature_selection_percentile (float): 相互情報量による特徴量選択の閾値（パーセンタイル）
+            tfidf_max_features (int): TF-IDFで生成する特徴量の最大数
+            java_tokenizer_min_length (int): Javaトークナイザーの最小トークン長
+            include_package_tokens (bool): パッケージ名のトークンを含めるかどうか
         """
-        # k_neighborsを削除
-        super().__init__(feature_selection_threshold, tfidf_max_features,
+        super().__init__(feature_selection_percentile, tfidf_max_features,
                         java_tokenizer_min_length, include_package_tokens)
 
     def evaluate_model_with_cv(self, params: dict, X_original: pd.DataFrame, y_original: pd.Series,
@@ -80,6 +85,7 @@ class SimplifiedBugHunter(BaseBugHunter):
         print("最適化手法: Bayesian Optimization (scikit-optimize)")
         print("探索パラメータ: n_estimators, max_depth")
         print("クラス不均衡対応: 各CVフォールドで独立にRandomUnderSampler適用")
+        print("特徴量選択: 相互情報量による特徴量選択")
         print("特徴量: 数値 + Java TF-IDF + One-Hot Encoding + 正規化")
 
         self.best_loss = float('inf')
@@ -138,21 +144,6 @@ class SimplifiedBugHunter(BaseBugHunter):
 
         return final_best_params
 
-    def train_initial_model_for_feature_importance(self, X: pd.DataFrame, y: pd.Series):
-        """特徴量重要度を取得するための初期RandomForestモデルを学習"""
-        print("\n=== 特徴量重要度取得のための初期RandomForestモデル学習 ===")
-
-        initial_rf = RandomForestClassifier(
-            n_estimators=100,
-            max_depth=5,
-            random_state=GLOBAL_SEED,
-            n_jobs=-1
-        )
-        initial_rf.fit(X, y)
-        self.feature_importance = initial_rf.feature_importances_
-        print("初期RandomForestモデル学習と特徴量重要度の計算が完了しました。")
-        return initial_rf
-
     def train_optimized_model(self, X: pd.DataFrame, y: pd.Series, optimal_params: dict):
         """最適化されたパラメータでRandomForestモデルを学習"""
         print("\n=== 最適化RandomForestモデル学習 ===")
@@ -171,20 +162,28 @@ class SimplifiedBugHunter(BaseBugHunter):
         print(f"最終パラメータ: {rf_params}")
         print(f"学習データ: {len(X)}件")
 
-        # 特徴量重要度の取得
+        # 参考情報として、学習済みRandomForestの特徴量重要度も取得
         if hasattr(self.best_model, 'feature_importances_'):
-            self.feature_importance = self.best_model.feature_importances_
-            print("学習済みRandomForestモデルから特徴量重要度を計算しました。")
-        else:
-            self.feature_importance = None
-            print("警告: 学習済みモデルは特徴量重要度を提供しません。")
+            rf_feature_importance = self.best_model.feature_importances_
+            print("参考: 学習済みRandomForestモデルの特徴量重要度も取得しました。")
+
+            # 上位5特徴量の表示（参考情報）
+            if len(rf_feature_importance) > 0 and len(self.selected_features) == len(rf_feature_importance):
+                top_indices = rf_feature_importance.argsort()[-5:][::-1]
+                print("参考: RandomForest特徴量重要度 上位5:")
+                for i, idx in enumerate(top_indices):
+                    feature_name = self.selected_features[idx]
+                    importance = rf_feature_importance[idx]
+                    print(f"  {i+1}. {feature_name}: {importance:.4f}")
 
         return self.best_model
 
     def run_pipeline(self, data_path: str):
-        """RandomForest用パイプライン（アンダーサンプリング版）"""
-        print("=== RandomForest版RandomUnderSampler アンダーサンプリングバグ予測パイプライン ===")
-        print("特徴: テストデータにはアンダーサンプリングを適用せず、訓練データのみに適用")
+        """RandomForest用パイプライン（アンダーサンプリング + 相互情報量による特徴量選択版）"""
+        print("=== RandomForest版 RandomUnderSampler + 相互情報量による特徴量選択バグ予測パイプライン ===")
+        print("特徴: ")
+        print("- テストデータにはアンダーサンプリングを適用せず、訓練データのみに適用")
+        print("- 相互情報量による特徴量選択を使用")
 
         # 1. データ読み込み
         data = self.read_data(data_path)
@@ -192,7 +191,7 @@ class SimplifiedBugHunter(BaseBugHunter):
         # 2. データ準備
         X_full, y_full = self.prepare_data(data, is_training=True)
 
-        # 3. データ分割（アンダーサンプリング前に実施）
+        # 3. データ分割（特徴量選択前に実施）
         X_train, X_test, y_train, y_test = train_test_split(
             X_full, y_full, test_size=0.2, random_state=GLOBAL_SEED, stratify=y_full
         )
@@ -203,29 +202,30 @@ class SimplifiedBugHunter(BaseBugHunter):
         print(f"訓練データのアンダーサンプリング: {len(X_train)}行 → {len(X_train_resampled)}行")
         print(f"テストデータ: {len(X_test)}行（アンダーサンプリング適用なし）")
 
-        # 5. 特徴量重要度取得のための初期モデル学習（アンダーサンプリング適用後の訓練データで）
-        self.train_initial_model_for_feature_importance(X_train_resampled, y_train_resampled)
+        # 5. 相互情報量による特徴量選択（アンダーサンプリング適用後の訓練データで実行）
+        X_train_reduced = self.select_features_by_mutual_info(X_train_resampled, y_train_resampled)
 
-        # 6. 特徴量削減（訓練データで学習した基準を両方に適用）
-        X_train_reduced = self.select_features_by_importance(X_train_resampled)
-        X_test_reduced = self.select_features_by_importance(X_test)
+        # テストデータにも同じ特徴量選択器を適用
+        X_test_reduced = self.feature_selector.transform(X_test)
+        X_test_reduced_df = pd.DataFrame(X_test_reduced, columns=self.selected_features, index=X_test.index)
 
-        # 特徴量選択の基準を元の訓練データにも適用（ハイパーパラメータ最適化用）
-        X_train_reduced_orig = self.select_features_by_importance(X_train)
+        # ハイパーパラメータ最適化用に元の訓練データにも特徴量選択を適用
+        X_train_reduced_orig = self.feature_selector.transform(X_train)
+        X_train_reduced_orig_df = pd.DataFrame(X_train_reduced_orig, columns=self.selected_features, index=X_train.index)
 
-        # 7. ハイパーパラメータ最適化（元の訓練データで、各CVフォールドで独立にアンダーサンプリング適用）
+        # 6. ハイパーパラメータ最適化（元の訓練データで、各CVフォールドで独立にアンダーサンプリング適用）
         optimal_params = self.optimize_hyperparameters_with_log_loss(
-            X_train_reduced_orig, y_train, max_iterations=10
+            X_train_reduced_orig_df, y_train, max_iterations=10
         )
 
-        # 8. 最適化モデル学習（アンダーサンプリング適用後の訓練データで）
+        # 7. 最適化モデル学習（アンダーサンプリング適用後の訓練データで）
         optimized_model = self.train_optimized_model(
             X_train_reduced, y_train_resampled, optimal_params
         )
 
-        # 9. 評価（元のテストデータで評価）
+        # 8. 評価（元のテストデータで評価）
         results, y_pred, y_pred_proba = self.comprehensive_evaluation(
-            X_test_reduced, y_test
+            X_test_reduced_df, y_test
         )
 
         return results, optimal_params
@@ -236,13 +236,12 @@ if __name__ == "__main__":
     # CSVファイルパスを指定
     data_path = "method-p.csv"
 
-    # RandomForest版バグハンター（アンダーサンプリング使用）のインスタンス作成
+    # RandomForest版バグハンター（アンダーサンプリング + 相互情報量による特徴量選択使用）のインスタンス作成
     bug_hunter = SimplifiedBugHunter(
-        feature_selection_threshold=0.001,
+        feature_selection_percentile=30.0,
         tfidf_max_features=100,
         java_tokenizer_min_length=3,
         include_package_tokens=False
-        # k_neighborsを削除
     )
 
     # パイプライン実行
@@ -260,8 +259,11 @@ if __name__ == "__main__":
     # アンダーサンプリングサマリーの表示
     bug_hunter.display_sampling_summary()
 
-    # 特徴量重要度テーブルの表示
-    bug_hunter.display_feature_importance_table(top_n=15)
+    # 相互情報量による特徴量選択の結果表示
+    bug_hunter.display_mutual_info_table(top_n=15)
+
+    # 特徴量選択のサマリー表示
+    bug_hunter.display_feature_selection_summary()
 
     # トークナイザーの動作例表示
     bug_hunter.display_tokenizer_analysis(sample_size=3)
@@ -270,6 +272,7 @@ if __name__ == "__main__":
     print(f"\n最適パラメータ: {feature_analysis['best_params']}")
     print(f"選択された特徴量数: {len(feature_analysis['selected_features'])}")
     print(f"全特徴量数: {len(feature_analysis['all_feature_names'])}")
+    print(f"特徴量選択パーセンタイル: {feature_analysis['feature_selection_percentile']}%")
     print(f"TF-IDF最大特徴量数: {feature_analysis['tfidf_max_features']}")
 
     if feature_analysis['sampling_info']:
