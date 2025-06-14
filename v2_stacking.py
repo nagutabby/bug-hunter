@@ -496,7 +496,7 @@ class SimplifiedBugHunter:
         """Random ForestのLog Lossベース ベイジアン最適化"""
         print("--- Random Forestの最適化 ---")
         search_space = [
-            Integer(100, 500, name='n_estimators'),
+            Integer(100, 1000, name='n_estimators'),
             Integer(10, 20, name='max_depth'),
         ]
 
@@ -520,8 +520,8 @@ class SimplifiedBugHunter:
         """XGBoostのLog Lossベース ベイジアン最適化"""
         print("--- XGBoostの最適化 ---")
         search_space = [
-            Integer(100, 500, name='n_estimators'),
-            Integer(5, 20, name='max_depth'),
+            Integer(100, 1000, name='n_estimators'),
+            Integer(10, 20, name='max_depth'),
             Real(0.01, 0.1, name='learning_rate'),
             Real(0.6, 1.0, name='subsample'),
             Real(0.6, 1.0, name='colsample_bytree')
@@ -561,7 +561,7 @@ class SimplifiedBugHunter:
         """LightGBMのLog Lossベース ベイジアン最適化"""
         print("--- LightGBMの最適化 ---")
         search_space = [
-            Integer(100, 500, name='n_estimators'),
+            Integer(100, 1000, name='n_estimators'),
             Integer(5, 20, name='max_depth'),
             Real(0.01, 0.1, name='learning_rate'),
             Real(0.6, 1.0, name='subsample'),
@@ -604,7 +604,7 @@ class SimplifiedBugHunter:
         """CatBoostのLog Lossベース ベイジアン最適化"""
         print("--- CatBoostの最適化 ---")
         search_space = [
-            Integer(100, 500, name='iterations'),
+            Integer(100, 1000, name='iterations'),
             Integer(5, 12, name='depth'),
             Real(0.01, 0.1, name='learning_rate'),
             Real(0.6, 1.0, name='subsample')
@@ -647,7 +647,7 @@ class SimplifiedBugHunter:
         """KNNのLog Lossベース ベイジアン最適化"""
         print("--- KNNの最適化 ---")
         search_space = [
-            Integer(10, 40, name='n_neighbors'),
+            Integer(10, 50, name='n_neighbors'),
             Categorical(['uniform', 'distance'], name='weights'),
             Integer(1, 2, name='p') # p=1 for Manhattan, p=2 for Euclidean
         ]
