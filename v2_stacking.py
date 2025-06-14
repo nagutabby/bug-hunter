@@ -496,7 +496,7 @@ class SimplifiedBugHunter:
         """Random ForestのLog Lossベース ベイジアン最適化"""
         print("--- Random Forestの最適化 ---")
         search_space = [
-            Integer(100, 300, name='n_estimators'),
+            Integer(100, 500, name='n_estimators'),
             Integer(10, 20, name='max_depth'),
         ]
 
@@ -520,9 +520,9 @@ class SimplifiedBugHunter:
         """XGBoostのLog Lossベース ベイジアン最適化"""
         print("--- XGBoostの最適化 ---")
         search_space = [
-            Integer(100, 300, name='n_estimators'),
-            Integer(3, 10, name='max_depth'),
-            Real(0.01, 0.3, name='learning_rate'),
+            Integer(100, 500, name='n_estimators'),
+            Integer(5, 20, name='max_depth'),
+            Real(0.01, 0.1, name='learning_rate'),
             Real(0.6, 1.0, name='subsample'),
             Real(0.6, 1.0, name='colsample_bytree')
         ]
@@ -562,8 +562,8 @@ class SimplifiedBugHunter:
         print("--- LightGBMの最適化 ---")
         search_space = [
             Integer(100, 500, name='n_estimators'),
-            Integer(3, 15, name='max_depth'),
-            Real(0.01, 0.3, name='learning_rate'),
+            Integer(5, 20, name='max_depth'),
+            Real(0.01, 0.1, name='learning_rate'),
             Real(0.6, 1.0, name='subsample'),
             Real(0.6, 1.0, name='colsample_bytree'),
             Integer(10, 100, name='num_leaves')
@@ -605,9 +605,9 @@ class SimplifiedBugHunter:
         print("--- CatBoostの最適化 ---")
         search_space = [
             Integer(100, 500, name='iterations'),
-            Integer(3, 10, name='depth'),
-            Real(0.01, 0.3, name='learning_rate'),
-            Real(0.5, 1.0, name='subsample')
+            Integer(5, 10, name='depth'),
+            Real(0.01, 0.1, name='learning_rate'),
+            Real(0.6, 1.0, name='subsample')
         ]
 
         def objective(params):
@@ -647,7 +647,7 @@ class SimplifiedBugHunter:
         """KNNのLog Lossベース ベイジアン最適化"""
         print("--- KNNの最適化 ---")
         search_space = [
-            Integer(3, 15, name='n_neighbors'),
+            Integer(10, 30, name='n_neighbors'),
             Categorical(['uniform', 'distance'], name='weights'),
             Integer(1, 2, name='p') # p=1 for Manhattan, p=2 for Euclidean
         ]
@@ -674,7 +674,7 @@ class SimplifiedBugHunter:
 
         initial_rf = RandomForestClassifier(
             n_estimators=100,
-            max_depth=10,
+            max_depth=5,
             random_state=GLOBAL_SEED,
             n_jobs=-1
         )
@@ -1388,7 +1388,7 @@ if __name__ == "__main__":
     bug_hunter = StackedBugHunter(
         feature_selection_threshold=0.001,
         tfidf_max_features=1000,
-        java_tokenizer_min_length=2,
+        java_tokenizer_min_length=3,
         include_package_tokens=False,  # パッケージ名を除外して、より重要な部分に集中
         n_splits_stacking=5  # スタッキングのK-Fold数
     )
