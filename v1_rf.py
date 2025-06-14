@@ -23,9 +23,9 @@ class SimplifiedBugHunter(BaseBugHunter):
         super().__init__(feature_selection_threshold, tfidf_max_features,
                         java_tokenizer_min_length, include_package_tokens)
 
-    def evaluate_model_with_cv(self, params: dict, X: pd.DataFrame, y: pd.Series,
+    def evaluate_model_with_cv(self, params: dict, X_original: pd.DataFrame, y_original: pd.Series,
                               k_folds: int = 3) -> float:
-        """交差検証を用いたRandomForestモデル評価"""
+        """交差検証を用いたRandomForestモデル評価（各フォールドで独立にダウンサンプリング）"""
         try:
             # Random Forestモデルの作成
             rf = RandomForestClassifier(
@@ -40,18 +40,30 @@ class SimplifiedBugHunter(BaseBugHunter):
             cv = StratifiedKFold(n_splits=k_folds, shuffle=True, random_state=GLOBAL_SEED)
             total_loss = 0.0
 
-            for train_idx, val_idx in cv.split(X, y):
-                X_train_fold, X_val_fold = X.iloc[train_idx], X.iloc[val_idx]
-                y_train_fold, y_val_fold = y.iloc[train_idx], y.iloc[val_idx]
+            for fold_idx, (train_idx, val_idx) in enumerate(cv.split(X_original, y_original)):
+                # 元データから訓練・検証フォールドを作成
+                X_train_fold_orig = X_original.iloc[train_idx]
+                y_train_fold_orig = y_original.iloc[train_idx]
+                X_val_fold = X_original.iloc[val_idx]
+                y_val_fold = y_original.iloc[val_idx]
 
-                rf.fit(X_train_fold, y_train_fold)
+                # 訓練フォールドのみにダウンサンプリングを適用
+                X_train_fold_ds, y_train_fold_ds = self.apply_downsampling(
+                    X_train_fold_orig, y_train_fold_orig
+                )
 
-                # 予測確率取得
+                # モデル学習（ダウンサンプリング済み訓練データ）
+                rf.fit(X_train_fold_ds, y_train_fold_ds)
+
+                # 検証（元の検証データ）
                 y_pred_proba = rf.predict_proba(X_val_fold)[:, 1]
 
                 # Log Loss計算
                 fold_loss = self.log_loss_function(y_val_fold, y_pred_proba)
                 total_loss += fold_loss
+
+                if fold_idx == 0:  # 最初のフォールドでのみログ出力
+                    print(f"  フォールド例: 訓練 {len(X_train_fold_orig)}→{len(X_train_fold_ds)}行, 検証 {len(X_val_fold)}行")
 
             avg_loss = total_loss / k_folds
             return avg_loss
@@ -60,13 +72,13 @@ class SimplifiedBugHunter(BaseBugHunter):
             print(f"評価エラー: {e}")
             return float('inf')
 
-    def optimize_hyperparameters_with_log_loss(self, X: pd.DataFrame, y: pd.Series,
+    def optimize_hyperparameters_with_log_loss(self, X_original: pd.DataFrame, y_original: pd.Series,
                                                 max_iterations: int = 10) -> dict:
-        """Log Loss損失関数を用いたRandomForest用ベイジアン最適化"""
-        print("\n=== RandomForest Log Lossベース ベイジアン最適化（カスタムJavaトークナイザー使用）===")
+        """Log Loss損失関数を用いたRandomForest用ベイジアン最適化（適切な交差検証）"""
+        print("\n=== RandomForest Log Lossベース ベイジアン最適化（適切な交差検証）===")
         print("最適化手法: Bayesian Optimization (scikit-optimize)")
         print("探索パラメータ: n_estimators, max_depth")
-        print("クラス不均衡対応: ダウンサンプリング (事前に適用済み)")
+        print("クラス不均衡対応: 各CVフォールドで独立にダウンサンプリング適用")
         print("特徴量: 数値 + Java TF-IDF + One-Hot Encoding + 正規化")
 
         self.best_loss = float('inf')
@@ -88,8 +100,8 @@ class SimplifiedBugHunter(BaseBugHunter):
                 'max_depth': int(max_depth),
             }
 
-            # モデル評価
-            loss = self.evaluate_model_with_cv(param_dict, X, y)
+            # モデル評価（元の訓練データで交差検証、各フォールドで独立にダウンサンプリング）
+            loss = self.evaluate_model_with_cv(param_dict, X_original, y_original)
 
             # 履歴記録
             self.optimization_history.append({
@@ -169,8 +181,9 @@ class SimplifiedBugHunter(BaseBugHunter):
         return self.best_model
 
     def run_pipeline(self, data_path: str):
-        """RandomForest用パイプラインの実行"""
-        print("=== RandomForest版ダウンサンプリングバグ予測パイプライン ===")
+        """RandomForest用パイプライン（修正版）"""
+        print("=== RandomForest版ダウンサンプリングバグ予測パイプライン（修正版） ===")
+        print("修正点: テストデータにはアンダーサンプリングを適用しない")
 
         # 1. データ読み込み
         data = self.read_data(data_path)
@@ -178,36 +191,40 @@ class SimplifiedBugHunter(BaseBugHunter):
         # 2. データ準備
         X_full, y_full = self.prepare_data(data, is_training=True)
 
-        # 3. ダウンサンプリング適用
-        X_downsampled, y_downsampled = self.apply_downsampling(X_full, y_full)
-        print(f"ダウンサンプリング後データセットサイズ: {len(X_downsampled)}行")
-
-        # 4. データ分割
-        X_train_ds, X_test_ds, y_train_ds, y_test_ds = train_test_split(
-            X_downsampled, y_downsampled, test_size=0.2, random_state=GLOBAL_SEED, stratify=y_downsampled
+        # 3. データ分割（アンダーサンプリング前に実施）
+        X_train, X_test, y_train, y_test = train_test_split(
+            X_full, y_full, test_size=0.2, random_state=GLOBAL_SEED, stratify=y_full
         )
-        print(f"訓練データ: {len(X_train_ds)}行, テストデータ: {len(X_test_ds)}行")
+        print(f"データ分割: 訓練データ {len(X_train)}行, テストデータ {len(X_test)}行")
 
-        # 5. 特徴量重要度取得のための初期モデル学習
+        # 4. 訓練データのみにダウンサンプリング適用
+        X_train_ds, y_train_ds = self.apply_downsampling(X_train, y_train)
+        print(f"訓練データのアンダーサンプリング: {len(X_train)}行 → {len(X_train_ds)}行")
+        print(f"テストデータ: {len(X_test)}行（アンダーサンプリング適用なし）")
+
+        # 5. 特徴量重要度取得のための初期モデル学習（ダウンサンプリング後の訓練データで）
         self.train_initial_model_for_feature_importance(X_train_ds, y_train_ds)
 
-        # 6. 特徴量削減
+        # 6. 特徴量削減（訓練データで学習した基準を両方に適用）
         X_train_reduced = self.select_features_by_importance(X_train_ds)
-        X_test_reduced = self.select_features_by_importance(X_test_ds)
+        X_test_reduced = self.select_features_by_importance(X_test)
 
-        # 7. ハイパーパラメータ最適化
+        # 特徴量選択の基準を元の訓練データにも適用（ハイパーパラメータ最適化用）
+        X_train_reduced_orig = self.select_features_by_importance(X_train)
+
+        # 7. ハイパーパラメータ最適化（元の訓練データで、各CVフォールドで独立にダウンサンプリング）
         optimal_params = self.optimize_hyperparameters_with_log_loss(
-            X_train_reduced, y_train_ds, max_iterations=20
+            X_train_reduced_orig, y_train, max_iterations=10
         )
 
-        # 8. 最適化モデル学習
+        # 8. 最適化モデル学習（ダウンサンプリング後の訓練データで）
         optimized_model = self.train_optimized_model(
             X_train_reduced, y_train_ds, optimal_params
         )
 
-        # 9. 評価
+        # 9. 評価（元のテストデータで評価）
         results, y_pred, y_pred_proba = self.comprehensive_evaluation(
-            X_test_reduced, y_test_ds
+            X_test_reduced, y_test
         )
 
         return results, optimal_params
