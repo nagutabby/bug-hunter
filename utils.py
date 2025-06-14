@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split, StratifiedKFold
-from sklearn.metrics import log_loss, accuracy_score, f1_score, precision_score, recall_score
+from sklearn.metrics import log_loss, accuracy_score, f1_score, precision_score, recall_score, roc_auc_score # roc_auc_score を追加
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.preprocessing import StandardScaler
 from sklearn.utils import resample
@@ -516,6 +516,7 @@ class BaseBugHunter:
             'Precision': precision_score(y_test, y_pred, zero_division=0),
             'Recall': recall_score(y_test, y_pred),
             'LogLoss': self.log_loss_function(y_test, y_pred_proba),
+            'ROC_AUC': roc_auc_score(y_test, y_pred_proba), # ROC_AUC scoreを追加
             'Threshold': 0.5
         }
 
