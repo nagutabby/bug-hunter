@@ -1,16 +1,14 @@
 import pandas as pd
 import numpy as np
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split, cross_val_score, StratifiedKFold
+from sklearn.model_selection import train_test_split, StratifiedKFold
 from sklearn.metrics import log_loss, accuracy_score, f1_score, precision_score, recall_score
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.preprocessing import StandardScaler
 from sklearn.utils import resample
-from skopt import gp_minimize
-from skopt.space import Integer
 import re
-
+from typing import Set
 import warnings
+
 warnings.filterwarnings('ignore')
 
 # 再現性のためのseed固定
@@ -219,14 +217,10 @@ class JavaCodeTokenizer:
             return self.tokenize_parent(text_str)
 
 
-class SimplifiedBugHunter:
+class BaseBugHunter:
     """
-    カスタムJavaトークナイザー統合版ダウンサンプリング版バグ予測クラス
-
-    主な変更点:
-    - JavaCodeTokenizerを使用したTF-IDF特徴量抽出
-    - LongNameとParentカラムのJava固有の構造を考慮したトークン化
-    - CamelCase、snake_case、パッケージ構造の適切な処理
+    バグ予測の基底クラス
+    RandomForestとk-NNで共通の機能を提供
     """
 
     def __init__(self, feature_selection_threshold: float = 0.001,
@@ -463,125 +457,6 @@ class SimplifiedBugHunter:
         y_pred_proba_clipped = np.clip(y_pred_proba, 1e-15, 1 - 1e-15)
         return log_loss(y_true, y_pred_proba_clipped)
 
-    def evaluate_model_with_cv(self, params: dict, X: pd.DataFrame, y: pd.Series,
-                              k_folds: int = 3) -> float:
-        """交差検証を用いたモデル評価（ダウンサンプリングは外部で適用済み）"""
-        try:
-            # Random Forestモデルの作成（class_weightは削除）
-            rf = RandomForestClassifier(
-                n_estimators=int(params['n_estimators']),
-                max_depth=int(params['max_depth']),
-                random_state=GLOBAL_SEED,
-                n_jobs=-1
-            )
-
-            # 交差検証でLog Lossを評価
-            cv = StratifiedKFold(n_splits=k_folds, shuffle=True, random_state=GLOBAL_SEED)
-            total_loss = 0.0
-
-            for train_idx, val_idx in cv.split(X, y):
-                X_train_fold, X_val_fold = X.iloc[train_idx], X.iloc[val_idx]
-                y_train_fold, y_val_fold = y.iloc[train_idx], y.iloc[val_idx]
-
-                # 各フォールド内でダウンサンプリングは行わない（すでに外で適用済み）
-                # ここではX_train_fold, y_train_fold をそのまま使用
-                rf.fit(X_train_fold, y_train_fold)
-
-                # 予測確率取得
-                y_pred_proba = rf.predict_proba(X_val_fold)[:, 1]
-
-                # Log Loss計算
-                fold_loss = self.log_loss_function(y_val_fold, y_pred_proba)
-                total_loss += fold_loss
-
-            avg_loss = total_loss / k_folds
-            return avg_loss
-
-        except Exception as e:
-            print(f"評価エラー: {e}")
-            return float('inf')
-
-    def optimize_hyperparameters_with_log_loss(self, X: pd.DataFrame, y: pd.Series,
-                                                max_iterations: int = 10) -> dict:
-        """Log Loss損失関数を用いたベイジアン最適化（ダウンサンプリングは外部で適用済み）"""
-        print("\n=== Log Lossベース ベイジアン最適化（カスタムJavaトークナイザー使用）===")
-        print("最適化手法: Bayesian Optimization (scikit-optimize)")
-        print("探索パラメータ: n_estimators, max_depth")
-        print("クラス不均衡対応: ダウンサンプリング (事前に適用済み)")
-        print("特徴量: 数値 + Java TF-IDF + One-Hot Encoding + 正規化")
-
-        self.best_loss = float('inf')
-        self.best_params = None
-        self.optimization_history = []
-
-        # 探索空間の定義
-        search_space = [
-            Integer(100, 1000, name='n_estimators'),
-            Integer(10, 20, name='max_depth'),
-        ]
-
-        # 目的関数
-        def objective(params):
-            n_estimators, max_depth = params
-
-            param_dict = {
-                'n_estimators': int(n_estimators),
-                'max_depth': int(max_depth),
-            }
-
-            # モデル評価 (X, y はすでにダウンサンプリング済み)
-            loss = self.evaluate_model_with_cv(param_dict, X, y)
-
-            # 履歴記録
-            self.optimization_history.append({
-                'params': param_dict.copy(),
-                'loss': loss
-            })
-
-            # 最良パラメータ更新
-            if loss < self.best_loss:
-                self.best_loss = loss
-                self.best_params = param_dict.copy()
-                print(f"新しい最良損失: {loss:.4f}")
-                print(f"パラメータ: {param_dict}")
-
-            return loss
-
-        # Bayesian Optimization実行
-        print("Bayesian Optimization開始...")
-        result = gp_minimize(
-            func=objective,
-            dimensions=search_space,
-            n_calls=max_iterations,
-            random_state=GLOBAL_SEED,
-            acq_func='EI',
-            n_initial_points=5
-        )
-
-        print(f"\nBayesian Optimization完了!")
-        print(f"最良損失: {self.best_loss:.4f}")
-        final_best_params = self.best_params.copy() if self.best_params else {}
-        print(f"最良パラメータ: {final_best_params}")
-        print(f"総評価回数: {len(self.optimization_history)}")
-
-        return final_best_params
-
-    def train_initial_model_for_feature_importance(self, X: pd.DataFrame, y: pd.Series):
-        """特徴量重要度を取得するための初期モデルを学習（ダウンサンプリング済みデータで学習）"""
-        print("\n=== 特徴量重要度取得のための初期モデル学習（カスタムJavaトークナイザー版）===")
-
-        # X, y はすでにダウンサンプリング済みとして受け取る
-        initial_rf = RandomForestClassifier(
-            n_estimators=100,
-            max_depth=5,
-            random_state=GLOBAL_SEED,
-            n_jobs=-1
-        )
-        initial_rf.fit(X, y)
-        self.feature_importance = initial_rf.feature_importances_
-        print("初期モデル学習と特徴量重要度の計算が完了しました。")
-        return initial_rf
-
     def select_features_by_importance(self, X: pd.DataFrame) -> pd.DataFrame:
         """特徴量重要度に基づいて特徴量を選択"""
         if self.feature_importance is None:
@@ -624,35 +499,6 @@ class SimplifiedBugHunter:
 
         return X_selected
 
-    def train_optimized_model(self, X: pd.DataFrame, y: pd.Series, optimal_params: dict):
-        """最適化されたパラメータでモデルを学習（ダウンサンプリング済みデータで学習）"""
-        print("\n=== 最適化モデル学習（カスタムJavaトークナイザー版）===")
-
-        # X, y はすでにダウンサンプリング済みとして受け取る
-        rf_params = {
-            'n_estimators': int(optimal_params['n_estimators']),
-            'max_depth': int(optimal_params['max_depth']),
-            'random_state': GLOBAL_SEED,
-            'n_jobs': -1
-        }
-
-        self.best_model = RandomForestClassifier(**rf_params)
-        self.best_model.fit(X, y)
-
-        print("最適化モデル学習完了")
-        print(f"最終パラメータ: {rf_params}")
-        print(f"学習データ: {len(X)}件")
-
-        # 特徴量重要度の取得
-        if hasattr(self.best_model, 'feature_importances_'):
-            self.feature_importance = self.best_model.feature_importances_
-            print("学習済みモデルから特徴量重要度を計算しました。")
-        else:
-            self.feature_importance = None
-            print("警告: 学習済みモデルは特徴量重要度を提供しません。")
-
-        return self.best_model
-
     def comprehensive_evaluation(self, X_test: pd.DataFrame, y_test: pd.Series) -> dict:
         """包括的評価（デフォルトしきい値0.5のみ使用）"""
         print("\n=== 包括的評価 ===")
@@ -680,52 +526,8 @@ class SimplifiedBugHunter:
 
         return results, y_pred, y_pred_proba
 
-    def run_pipeline(self, data_path: str):
-        """カスタムJavaトークナイザーを組み込んだパイプラインの実行"""
-        print("=== カスタムJavaトークナイザー版ダウンサンプリングバグ予測パイプライン ===")
-
-        # 1. データ読み込み
-        data = self.read_data(data_path)
-
-        # 2. データ準備（カスタムJavaトークナイザー、TF-IDF特徴量、One-Hot Encoding特徴量、正規化を使用）
-        X_full, y_full = self.prepare_data(data, is_training=True)
-
-        # 3. ダウンサンプリングをここで一度だけ適用
-        X_downsampled, y_downsampled = self.apply_downsampling(X_full, y_full)
-        print(f"ダウンサンプリング後データセットサイズ: {len(X_downsampled)}行")
-
-        # 4. データ分割（ダウンサンプリング後のデータに対して）
-        X_train_ds, X_test_ds, y_train_ds, y_test_ds = train_test_split(
-            X_downsampled, y_downsampled, test_size=0.2, random_state=GLOBAL_SEED, stratify=y_downsampled
-        )
-        print(f"訓練データ (ダウンサンプリング後): {len(X_train_ds)}行, テストデータ (ダウンサンプリング後): {len(X_test_ds)}行")
-
-        # 5. 特徴量重要度取得のための初期モデル学習（ダウンサンプリング済み訓練データで学習）
-        self.train_initial_model_for_feature_importance(X_train_ds, y_train_ds)
-
-        # 6. 特徴量削減
-        X_train_reduced = self.select_features_by_importance(X_train_ds)
-        X_test_reduced = self.select_features_by_importance(X_test_ds)
-
-        # 7. Log Lossベースハイパーパラメータ最適化（削減された訓練データで実施）
-        optimal_params = self.optimize_hyperparameters_with_log_loss(
-            X_train_reduced, y_train_ds, max_iterations=15
-        )
-
-        # 8. 最適化モデル学習（削減された訓練データで実施）
-        optimized_model = self.train_optimized_model(
-            X_train_reduced, y_train_ds, optimal_params
-        )
-
-        # 9. 評価（削減されたテストデータで実施）
-        results, y_pred, y_pred_proba = self.comprehensive_evaluation(
-            X_test_reduced, y_test_ds
-        )
-
-        return results, optimal_params
-
     def predict(self, X: pd.DataFrame) -> tuple:
-        """予測（カスタムJavaトークナイザー版）"""
+        """予測（基底クラス用の共通実装）"""
         if self.best_model is None:
             raise ValueError("モデルが学習されていません。まずrun_pipeline()を実行してください。")
         if self.selected_features is None:
@@ -739,7 +541,6 @@ class SimplifiedBugHunter:
 
         # 数値特徴量の準備（学習済みスケーラーを適用）
         numerical_feature_columns = X.select_dtypes(include=[np.number]).columns.tolist()
-        # predict時には "Number of Bugs" カラムが存在しない可能性があるので、存在しない場合は除外しない
         if "Number of Bugs" in numerical_feature_columns:
             numerical_feature_columns.remove("Number of Bugs")
 
@@ -767,14 +568,12 @@ class SimplifiedBugHunter:
         # 学習済みOne-Hot Encodingカラムを使用してOne-Hot Encoding変換を適用
         project_data_pred = X['Project'].fillna("Unknown").astype(str)
         X_project_onehot_pred = pd.get_dummies(project_data_pred, prefix='Project', dtype=int)
-        # 学習時に存在しなかったプロジェクトは全て0として扱うため、reindexを使用
         X_project_onehot_pred = X_project_onehot_pred.reindex(columns=self.project_dummies_columns, fill_value=0)
 
         # 予測用の全特徴量を結合
         X_processed_full = pd.concat([X_numerical_scaled_df, X_longname_tfidf_df_pred, X_parent_tfidf_df_pred, X_project_onehot_pred], axis=1)
 
         # 学習時に選択された特徴量のみを選択
-        # 予測時には、学習時に選択された特徴量のみを使い、存在しない場合は0で埋める
         X_processed = pd.DataFrame(0, index=X_processed_full.index, columns=self.selected_features)
         for col in self.selected_features:
             if col in X_processed_full.columns:
@@ -832,7 +631,7 @@ class SimplifiedBugHunter:
             if self.all_feature_names is not None and len(self.feature_importance) == len(self.all_feature_names):
                 feature_names = self.all_feature_names
             else:
-                print("エラー: 選択された特徴量名と最終モデルの重要度の数が一致しません。")
+                print("エラー: 選択された特徴量名と重要度の数が一致しません。")
                 return
 
         importance_df = pd.DataFrame({
@@ -851,7 +650,7 @@ class SimplifiedBugHunter:
                      else '数値'
         )
 
-        print(f"\n=== 上位{top_n}特徴量重要度 (カスタムJavaトークナイザー版) ===")
+        print(f"\n=== 上位{top_n}特徴量重要度 ===")
         display_df = importance_df_filtered.head(top_n)[['特徴量', 'タイプ', '重要度']].copy()
         print(display_df.to_string(index=False))
 
@@ -927,49 +726,23 @@ class SimplifiedBugHunter:
                 if i < sample_size - 1:
                     print()
 
+    # 抽象メソッド（サブクラスで実装）
+    def evaluate_model_with_cv(self, params: dict, X: pd.DataFrame, y: pd.Series, k_folds: int = 3) -> float:
+        """交差検証を用いたモデル評価（サブクラスで実装）"""
+        raise NotImplementedError("サブクラスで実装してください")
 
-# 使用例
-if __name__ == "__main__":
-    # CSVファイルパスを指定
-    data_path = "method-p.csv"
+    def optimize_hyperparameters_with_log_loss(self, X: pd.DataFrame, y: pd.Series, max_iterations: int = 15) -> dict:
+        """ハイパーパラメータ最適化（サブクラスで実装）"""
+        raise NotImplementedError("サブクラスで実装してください")
 
-    # カスタムJavaトークナイザー統合版バグハンターのインスタンス作成
-    bug_hunter = SimplifiedBugHunter(
-        feature_selection_threshold=0.001,
-        tfidf_max_features=1000,
-        java_tokenizer_min_length=3,
-        include_package_tokens=False  # パッケージ名を除外して、より重要な部分に集中
-    )
+    def train_initial_model_for_feature_importance(self, X: pd.DataFrame, y: pd.Series):
+        """特徴量重要度取得のための初期モデル学習（サブクラスで実装）"""
+        raise NotImplementedError("サブクラスで実装してください")
 
-    # パイプライン実行
-    results, optimal_params = bug_hunter.run_pipeline(data_path)
+    def train_optimized_model(self, X: pd.DataFrame, y: pd.Series, optimal_params: dict):
+        """最適化されたパラメータでモデルを学習（サブクラスで実装）"""
+        raise NotImplementedError("サブクラスで実装してください")
 
-    print("\n" + "="*60)
-    print("カスタムJavaトークナイザー版バグ予測完了!")
-    print("="*60)
-    print(f"F1スコア: {results['F1']:.3f}")
-    print(f"Precision: {results['Precision']:.3f}")
-    print(f"Recall: {results['Recall']:.3f}")
-    print(f"Accuracy: {results['Accuracy']:.3f}")
-
-    # ダウンサンプリングサマリーの表示
-    bug_hunter.display_downsampling_summary()
-
-    # 特徴量重要度テーブルの表示
-    bug_hunter.display_feature_importance_table(top_n=15)
-
-    # トークナイザーの動作例表示
-    bug_hunter.display_tokenizer_analysis(sample_size=3)
-
-    feature_analysis = bug_hunter.get_feature_analysis()
-    print(f"\n最適パラメータ: {feature_analysis['best_params']}")
-    print(f"選択された特徴量数: {len(feature_analysis['selected_features'])}")
-    print(f"全特徴量数 (Java TF-IDF含む): {len(feature_analysis['all_feature_names'])}")
-    print(f"TF-IDF最大特徴量数: {feature_analysis['tfidf_max_features']}")
-    print(f"Javaトークナイザー設定: {feature_analysis['java_tokenizer_settings']}")
-
-    if feature_analysis['downsampling_info']:
-        ds_info = feature_analysis['downsampling_info']
-        print(f"データ削減率: {ds_info['reduction_rate']:.1f}%")
-
-    print("\n" + "="*60)
+    def run_pipeline(self, data_path: str):
+        """パイプラインの実行（サブクラスで実装）"""
+        raise NotImplementedError("サブクラスで実装してください")
