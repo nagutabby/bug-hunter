@@ -516,7 +516,7 @@ class SimplifiedBugHunter:
 
         # 探索空間の定義
         search_space = [
-            Integer(100, 500, name='n_estimators'),
+            Integer(100, 1000, name='n_estimators'),
             Integer(10, 20, name='max_depth'),
         ]
 
