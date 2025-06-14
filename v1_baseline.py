@@ -516,7 +516,7 @@ class SimplifiedBugHunter:
 
         # 探索空間の定義
         search_space = [
-            Integer(100, 300, name='n_estimators'),
+            Integer(100, 500, name='n_estimators'),
             Integer(10, 20, name='max_depth'),
         ]
 
@@ -573,7 +573,7 @@ class SimplifiedBugHunter:
         # X, y はすでにダウンサンプリング済みとして受け取る
         initial_rf = RandomForestClassifier(
             n_estimators=100,
-            max_depth=10,
+            max_depth=5,
             random_state=GLOBAL_SEED,
             n_jobs=-1
         )
@@ -709,7 +709,7 @@ class SimplifiedBugHunter:
 
         # 7. Log Lossベースハイパーパラメータ最適化（削減された訓練データで実施）
         optimal_params = self.optimize_hyperparameters_with_log_loss(
-            X_train_reduced, y_train_ds, max_iterations=10
+            X_train_reduced, y_train_ds, max_iterations=15
         )
 
         # 8. 最適化モデル学習（削減された訓練データで実施）
@@ -937,7 +937,7 @@ if __name__ == "__main__":
     bug_hunter = SimplifiedBugHunter(
         feature_selection_threshold=0.001,
         tfidf_max_features=1000,
-        java_tokenizer_min_length=2,
+        java_tokenizer_min_length=3,
         include_package_tokens=False  # パッケージ名を除外して、より重要な部分に集中
     )
 
