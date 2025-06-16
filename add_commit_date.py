@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 # --- 設定項目 ---
 INPUT_CSV_FILE = 'method-p.csv'
-OUTPUT_CSV_FILE = 'method-p_with_commit_info.csv'
+OUTPUT_CSV_FILE = 'method-p_with_commit_date.csv'
 MAX_WORKERS = 9  # 並列処理のワーカー数（CPUコア数に応じて調整）
 
 # BugHunterデータセットの正確な15プロジェクトのリポジトリURLリスト
