@@ -820,7 +820,7 @@ class BugHunter:
 
 
 if __name__ == "__main__":
-    data_path = "method-p.csv"
+    data_path = "method-p_filtered.csv"
 
     bug_hunter = BugHunter(
         feature_selection_threshold=0.001,
