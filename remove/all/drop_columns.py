@@ -50,8 +50,8 @@ def drop_zero_columns(input_file, output_file):
 
 def main():
     # ファイルパスを指定
-    input_file = "remove/elasticsearch/method-p.csv"
-    output_file = "remove/elasticsearch/method-p_filtered.csv"
+    input_file = "method-p.csv"
+    output_file = "method-p_filtered.csv"
 
     # 処理実行
     result = drop_zero_columns(input_file, output_file)
