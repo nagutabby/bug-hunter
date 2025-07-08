@@ -10,34 +10,50 @@ from lizard import analyze_file
 def extract_class_name(parent_path):
     """
     Parentカラムの値からクラス名を抽出する（匿名内部クラス対応版）
-    例: org.elasticsearch.ExceptionSerializationTests$1UnknownException
-    → ExceptionSerializationTests
+    例: org.elasticsearch.search.aggregations.InternalOrder$CompoundOrder
+    → CompoundOrder (内部クラス名を返す)
     """
     if not parent_path or pd.isna(parent_path):
-        return None
+        return None, None
 
     # 最後のドット以降を取得
     class_part = parent_path.split('.')[-1]
 
-    # $マークがある場合の処理
+    # $マークがある場合の処理（内部クラス）
     if '$' in class_part:
-        # $の前の部分を取得（外部クラス名）
-        outer_class = class_part.split('$')[0]
-        return outer_class
+        # $で分割して外部クラスと内部クラスを取得
+        parts = class_part.split('$')
+        outer_class = parts[0]
+        inner_class = parts[-1]  # 最後の部分が実際のターゲットクラス
 
-    return class_part
+        # 数字で始まる場合（匿名内部クラス）の処理
+        if inner_class and inner_class[0].isdigit():
+            # 数字以降の部分を取得
+            match = re.match(r'^\d+(.+)$', inner_class)
+            if match:
+                actual_class_name = match.group(1)
+                return actual_class_name, outer_class
+            else:
+                # 数字のみの場合は外部クラス名を使用
+                return outer_class, outer_class
+        else:
+            # 通常の内部クラス
+            return inner_class, outer_class
+
+    # 通常のクラス（内部クラスでない）
+    return class_part, None
 
 def extract_method_name(long_name):
     """
-    LongNameカラムからメソッド名を抽出する（改良版 - より正確な内部クラス処理）
+    LongNameカラムからメソッド名とシグネチャを抽出する（改良版 - シグネチャ対応）
     """
     if not long_name or pd.isna(long_name):
-        return None, None
+        return None, None, None
 
     # メソッドシグネチャの括弧の位置を見つける
     paren_index = long_name.find('(')
     if paren_index == -1:
-        return None, None
+        return None, None, None
 
     # 括弧の前の部分を取得
     method_part = long_name[:paren_index]
@@ -45,10 +61,21 @@ def extract_method_name(long_name):
     # 最後のドットの位置を見つける
     last_dot_index = method_part.rfind('.')
     if last_dot_index == -1:
-        return None, None
+        return None, None, None
 
     # メソッド名を抽出
     method_name = method_part[last_dot_index + 1:]
+
+    # メソッドシグネチャを抽出
+    close_paren_index = long_name.find(')', paren_index)
+    if close_paren_index != -1:
+        # 引数部分とreturn typeを含むシグネチャ
+        signature = long_name[paren_index:]
+        # 引数部分のみ
+        args_part = long_name[paren_index + 1:close_paren_index]
+    else:
+        signature = long_name[paren_index:]
+        args_part = ""
 
     # クラス名を抽出（$記号を含む場合の処理）
     class_part = method_part[:last_dot_index]
@@ -76,24 +103,24 @@ def extract_method_name(long_name):
                 actual_class_name = inner_class_part
 
             # 内部クラスのコンストラクタの場合、内部クラス名を返す
-            return actual_class_name, 'constructor'
+            return actual_class_name, 'constructor', signature
         else:
             # 通常のクラスのコンストラクタ
-            return class_name_part, 'constructor'
+            return class_name_part, 'constructor', signature
 
     # <clinit>はスタティックイニシャライザ
     elif method_name == '<clinit>':
-        return 'static_initializer', 'method'
+        return 'static_initializer', 'method', signature
 
     # 通常のメソッド
     else:
-        return method_name, 'method'
+        return method_name, 'method', signature
 
 def extract_package_path(parent_path):
     """
     Parentカラムからパッケージパスを抽出する
-    例: org.elasticsearch.ExceptionSerializationTests$1UnknownException
-    → org/elasticsearch/
+    例: org.elasticsearch.search.aggregations.InternalOrder$CompoundOrder
+    → org/elasticsearch/search/aggregations/
     """
     if not parent_path or pd.isna(parent_path):
         return None
@@ -180,6 +207,54 @@ def find_java_file_in_filesystem(repo_path, class_name, package_path):
         print(f"エラー: ファイルシステム検索中に例外が発生しました: {e}")
         return None
 
+def parse_java_signature_params(args_str):
+    """
+    Javaのメソッドシグネチャから引数数を正確に解析する
+    例:
+    - '' → 0 (引数なし)
+    - 'I' → 1 (int 1個)
+    - 'Ljava/lang/String;I' → 2 (String 1個, int 1個)
+    - '[I' → 1 (int配列 1個)
+    """
+    if not args_str:
+        return 0
+
+    param_count = 0
+    i = 0
+
+    while i < len(args_str):
+        char = args_str[i]
+
+        if char in 'ZBCSIJFD':
+            # プリミティブ型（boolean, byte, char, short, int, long, float, double）
+            param_count += 1
+            i += 1
+        elif char == 'L':
+            # オブジェクト型（Ljava/lang/String; など）
+            param_count += 1
+            # セミコロンまでスキップ
+            while i < len(args_str) and args_str[i] != ';':
+                i += 1
+            i += 1  # セミコロンもスキップ
+        elif char == '[':
+            # 配列型
+            i += 1  # '[' をスキップ
+            # 配列の要素型を処理（再帰的に処理するが、カウントは1つ）
+            if i < len(args_str):
+                if args_str[i] in 'ZBCSIJFD':
+                    param_count += 1
+                    i += 1
+                elif args_str[i] == 'L':
+                    param_count += 1
+                    while i < len(args_str) and args_str[i] != ';':
+                        i += 1
+                    i += 1
+        else:
+            # 未知の文字は無視
+            i += 1
+
+    return param_count
+
 def analyze_java_file_with_lizard(file_path):
     """
     ファイルパスを指定してLizardで分析する
@@ -206,75 +281,121 @@ def analyze_java_file_with_lizard(file_path):
         print(f"エラー: Lizard分析中に例外が発生しました: {e}")
         return []
 
-def filter_methods_by_target(methods, target_method_names):
+def filter_methods_by_target(methods, target_method_name, target_class_name, target_signature=None, outer_class_name=None, method_type='method'):
     """
-    対象のメソッド名でフィルタリングする（改良版 - 過度なマッチングを防ぐ）
+    対象のメソッド名、クラス名、シグネチャでフィルタリングする（改良版 - 重複防止対応）
     """
     filtered_methods = []
 
     for method in methods:
         method_name = method['method_name']
+        matched = False
 
-        # 対象メソッドと一致するかチェック
-        for target_method, method_type in target_method_names:
-            matched = False
+        if method_type == 'constructor':
+            # コンストラクタの場合の厳密なマッチング
+            constructor_patterns = [
+                # 完全一致パターン
+                target_method_name,
+                f"{target_class_name}::{target_method_name}",
+            ]
 
-            if method_type == 'constructor':
-                # コンストラクタの場合は、より厳密なマッチングを行う
-                constructor_patterns = [
-                    # 完全一致パターン
-                    target_method,
-                    f"{target_method}::{target_method}",
-                ]
+            # 内部クラスの場合の追加パターン
+            if outer_class_name:
+                constructor_patterns.extend([
+                    f"{outer_class_name}::{target_method_name}",
+                    f"{outer_class_name}${target_class_name}::{target_method_name}",
+                ])
 
-                # パターンマッチングを厳密に行う
-                for pattern in constructor_patterns:
-                    if method_name == pattern:
-                        matched = True
-                        break
+            # パターンマッチング
+            for pattern in constructor_patterns:
+                if method_name == pattern:
+                    matched = True
+                    break
 
-                # 追加の厳密チェック：コンストラクタは通常クラス名と同じ名前
-                if not matched:
-                    # method_nameが "クラス名::クラス名" の形式の場合のみマッチ
-                    if '::' in method_name:
-                        parts = method_name.split('::')
-                        if len(parts) == 2 and parts[0] == parts[1] and parts[0] == target_method:
+            # 追加の厳密チェック
+            if not matched:
+                # method_nameが "クラス名::クラス名" の形式の場合
+                if '::' in method_name:
+                    parts = method_name.split('::')
+                    if len(parts) == 2:
+                        class_part = parts[0]
+                        method_part = parts[1]
+
+                        # ターゲットクラス名とマッチするかチェック
+                        if (method_part == target_method_name and
+                            (class_part == target_class_name or
+                             class_part.endswith(f"${target_class_name}"))):
                             matched = True
-                    # または単純にクラス名と一致する場合（ただし他のメソッドと区別するため慎重に）
-                    elif method_name == target_method:
-                        matched = True
-
-                # 匿名内部クラスの処理（数字で始まる場合）
-                if not matched and method_name.startswith('(anonymous)::'):
-                    anon_method = method_name.split('::')[-1]
-                    if anon_method == target_method:
-                        matched = True
-                    elif anon_method and anon_method[0].isdigit():
-                        clean_name = re.sub(r'^\d+', '', anon_method)
-                        if clean_name == target_method:
-                            matched = True
-
-            else:
-                # 通常のメソッドの場合は従来通り
-                if (method_name == target_method or
-                    method_name.endswith(f"::{target_method}") or
-                    method_name.split('::')[-1] == target_method):
+                elif method_name == target_method_name:
                     matched = True
 
-                # 内部クラスのメソッドの場合の追加チェック
-                if not matched and method_name.startswith('(anonymous)::'):
-                    anon_method = method_name.split('::')[-1]
-                    if anon_method == target_method:
-                        matched = True
+        else:
+            # 通常のメソッドの場合
+            if method_name == target_method_name:
+                matched = True
+            elif '::' in method_name:
+                parts = method_name.split('::')
+                if len(parts) == 2:
+                    class_part = parts[0]
+                    method_part = parts[1]
 
-            if matched:
-                filtered_methods.append({
-                    **method,
-                    'target_method': target_method,
-                    'method_type': method_type,
-                    'detected_method': method_name
-                })
-                break
+                    # メソッド名が一致する場合
+                    if method_part == target_method_name:
+                        # クラス名も正確にマッチするかチェック
+                        if target_class_name and outer_class_name:
+                            # 内部クラスの場合: クラス名が正確にマッチするかチェック
+                            if (class_part == target_class_name or
+                                class_part.endswith(f"${target_class_name}") or
+                                class_part == f"{outer_class_name}${target_class_name}"):
+                                matched = True
+                        elif target_class_name:
+                            # 通常のクラスの場合
+                            if (class_part == target_class_name or
+                                class_part.endswith(f"${target_class_name}")):
+                                matched = True
+                        else:
+                            # クラス名が指定されていない場合はメソッド名のみでマッチ
+                            matched = True
+
+        # シグネチャでの追加フィルタリング（オーバーロード対応）
+        if matched and target_signature:
+            # 引数部分を抽出
+            paren_end = target_signature.find(')')
+            if paren_end != -1:
+                args_str = target_signature[1:paren_end]  # ()の中身
+                return_type = target_signature[paren_end + 1:] if paren_end + 1 < len(target_signature) else ""
+
+                # 引数数を正確に計算
+                expected_params = parse_java_signature_params(args_str)
+
+                # 引数数が一致しない場合はマッチしない
+                if method['params'] != expected_params:
+                    matched = False
+                    continue
+
+                # 同じ引数数の場合は、既に追加済みかチェックして重複を防ぐ
+                if matched:
+                    # 既に同じターゲットの結果が追加されているかチェック
+                    already_added = any(
+                        fm['target_method'] == target_method_name and
+                        fm['target_class'] == target_class_name and
+                        fm['params'] == method['params'] and
+                        fm.get('target_signature') == target_signature
+                        for fm in filtered_methods
+                    )
+                    if already_added:
+                        matched = False
+
+        if matched:
+            filtered_methods.append({
+                **method,
+                'target_method': target_method_name,
+                'target_class': target_class_name,
+                'target_signature': target_signature,
+                'outer_class': outer_class_name,
+                'method_type': method_type,
+                'detected_method': method_name
+            })
 
     return filtered_methods
 
@@ -324,9 +445,9 @@ def search_method_in_file_content(java_file_path, target_method, method_type='me
         print(f"  ファイル内検索でエラー: {e}")
         return False
 
-def analyze_with_improved_strategy(java_file_path, target_method_names, debug=False):
+def analyze_with_improved_strategy(java_file_path, target_method_name, target_class_name, target_signature=None, outer_class_name=None, method_type='method', debug=False):
     """
-    改良された戦略でメソッドを検索する
+    改良された戦略でメソッドを検索する（シグネチャ対応）
     """
     # 通常のLizard分析
     methods = analyze_java_file_with_lizard(java_file_path)
@@ -334,43 +455,43 @@ def analyze_with_improved_strategy(java_file_path, target_method_names, debug=Fa
     if debug:
         print(f"    Lizardで検出された全メソッド ({len(methods)}個):")
         for i, method in enumerate(methods):
-            print(f"      {i+1:2d}. '{method['method_name']}' (CCN: {method['ccn']})")
+            print(f"      {i+1:2d}. '{method['method_name']}' (CCN: {method['ccn']}, Params: {method['params']})")
 
-    # 改良されたフィルタリング
-    filtered_methods = filter_methods_by_target(methods, target_method_names)
+    # 改良されたフィルタリング（シグネチャ対応）
+    filtered_methods = filter_methods_by_target(
+        methods, target_method_name, target_class_name, target_signature, outer_class_name, method_type
+    )
 
     if debug:
         print(f"    フィルタリング後のメソッド ({len(filtered_methods)}個):")
         for method in filtered_methods:
-            print(f"      - '{method['detected_method']}' -> '{method['target_method']}'")
+            print(f"      - '{method['detected_method']}' -> '{method['target_method']}' (クラス: {method['target_class']}, Params: {method['params']})")
 
     if filtered_methods:
-        return filtered_methods, "改良されたLizard分析"
+        return filtered_methods, "改良されたLizard分析（シグネチャ対応）"
 
     # フォールバック戦略：ファイル内容を直接検索してメソッドの存在を確認
-    target_method = target_method_names[0][0]
-    method_type = target_method_names[0][1]
-
-    if search_method_in_file_content(java_file_path, target_method, method_type):
+    if search_method_in_file_content(java_file_path, target_method_name, method_type):
         if debug:
-            print(f"    ファイル内検索でメソッド '{target_method}' を発見")
+            print(f"    ファイル内検索でメソッド '{target_method_name}' を発見")
         return [{
-            'method_name': f"(fallback)::{target_method}",
+            'method_name': f"(fallback)::{target_method_name}",
             'ccn': 1,
             'length': 1,
             'tokens': 1,
             'params': 0,
             'filename': java_file_path,
             'line_number': 1,
-            'target_method': target_method,
+            'target_method': target_method_name,
+            'target_class': target_class_name,
+            'target_signature': target_signature,
+            'outer_class': outer_class_name,
             'method_type': method_type,
-            'detected_method': f"(fallback)::{target_method}",
+            'detected_method': f"(fallback)::{target_method_name}",
             'fallback_used': True
         }], "ファイル内検索（フォールバック）"
 
     return [], "すべての戦略で失敗"
-
-
 
 def main():
     # 設定
@@ -423,9 +544,9 @@ def main():
                 print(f"  Parent: {parent_path}")
                 print(f"  LongName: {long_name}")
 
-                # クラス名を抽出
-                class_name = extract_class_name(parent_path)
-                if not class_name:
+                # クラス名を抽出（改良版）
+                target_class_name, outer_class_name = extract_class_name(parent_path)
+                if not target_class_name:
                     print("  警告: クラス名を抽出できませんでした")
                     if SKIP_MISSING_METHODS:
                         skipped_count += 1
@@ -433,8 +554,8 @@ def main():
                     else:
                         raise ValueError("クラス名を抽出できませんでした")
 
-                # メソッド名を抽出
-                method_name, method_type = extract_method_name(long_name)
+                # メソッド名を抽出（シグネチャ対応）
+                method_name, method_type, method_signature = extract_method_name(long_name)
                 if not method_name:
                     print("  警告: メソッド名を抽出できませんでした")
                     if SKIP_MISSING_METHODS:
@@ -446,9 +567,15 @@ def main():
                 # パッケージパスを抽出
                 package_path = extract_package_path(parent_path)
 
-                print(f"  抽出されたクラス名: {class_name}")
+                # ファイル検索のためのクラス名（外部クラス名を使用）
+                search_class_name = outer_class_name if outer_class_name else target_class_name
+
+                print(f"  抽出されたターゲットクラス名: {target_class_name}")
+                print(f"  外部クラス名: {outer_class_name}")
                 print(f"  抽出されたメソッド名: {method_name} ({method_type})")
+                print(f"  メソッドシグネチャ: {method_signature}")
                 print(f"  パッケージパス: {package_path}")
+                print(f"  検索用クラス名: {search_class_name}")
 
                 # 指定されたコミットにチェックアウト
                 if repo_path not in original_heads:
@@ -484,22 +611,26 @@ def main():
                             raise
 
                 # ファイルシステムからJavaファイルを検索
-                java_file_path = find_java_file_in_filesystem(repo_path, class_name, package_path)
+                java_file_path = find_java_file_in_filesystem(repo_path, search_class_name, package_path)
 
                 if not java_file_path:
-                    print(f"  警告: クラス '{class_name}' のJavaファイルが見つかりません")
+                    print(f"  警告: クラス '{search_class_name}' のJavaファイルが見つかりません")
                     if SKIP_MISSING_METHODS:
                         skipped_count += 1
                         continue
                     else:
-                        raise ValueError(f"クラス '{class_name}' のJavaファイルが見つかりません")
+                        raise ValueError(f"クラス '{search_class_name}' のJavaファイルが見つかりません")
 
                 print(f"  見つかったJavaファイル: {java_file_path}")
 
-                # Lizardで分析実行
+                # Lizardで分析実行（改良版 - シグネチャ対応）
                 filtered_methods, strategy = analyze_with_improved_strategy(
                     java_file_path,
-                    [(method_name, method_type)],
+                    method_name,
+                    target_class_name,
+                    method_signature,
+                    outer_class_name,
+                    method_type,
                     debug=DEBUG_MODE
                 )
                 print(f"  戦略: {strategy}")
@@ -510,6 +641,9 @@ def main():
                     print("  詳細デバッグ情報:")
                     print(f"    対象メソッド名: {method_name}")
                     print(f"    メソッドタイプ: {method_type}")
+                    print(f"    ターゲットクラス名: {target_class_name}")
+                    print(f"    外部クラス名: {outer_class_name}")
+                    print(f"    メソッドシグネチャ: {method_signature}")
                     print(f"    ファイル: {java_file_path}")
                     print(f"    元のLongName: {long_name}")
 
@@ -517,7 +651,7 @@ def main():
                     methods = analyze_java_file_with_lizard(java_file_path)
                     print(f"    検出された全メソッド ({len(methods)}個):")
                     for i, method in enumerate(methods[:15]):  # 最初の15個を表示
-                        print(f"      {i+1:2d}. '{method['method_name']}' (CCN: {method['ccn']}, Length: {method['length']})")
+                        print(f"      {i+1:2d}. '{method['method_name']}' (CCN: {method['ccn']}, Length: {method['length']}, Params: {method['params']})")
 
                     if SKIP_MISSING_METHODS:
                         print("  → このメソッドをスキップして続行します")
@@ -526,13 +660,40 @@ def main():
                     else:
                         raise ValueError(f"対象メソッド '{method_name}' ({method_type}) がファイル '{java_file_path}' 内で見つかりませんでした")
 
+                # メソッドが複数見つかった場合の処理（常に例外発生）
+                elif len(filtered_methods) > 1:
+                    print("  エラー: 複数のメソッドがマッチしました")
+                    print("  詳細情報:")
+                    print(f"    対象メソッド名: {method_name}")
+                    print(f"    メソッドタイプ: {method_type}")
+                    print(f"    ターゲットクラス名: {target_class_name}")
+                    print(f"    外部クラス名: {outer_class_name}")
+                    print(f"    メソッドシグネチャ: {method_signature}")
+                    print(f"    ファイル: {java_file_path}")
+                    print(f"    元のLongName: {long_name}")
+                    print(f"    マッチしたメソッド数: {len(filtered_methods)}")
+
+                    print("  マッチしたメソッド一覧:")
+                    for i, method in enumerate(filtered_methods):
+                        print(f"    {i+1}. '{method['detected_method']}' (CCN: {method['ccn']}, Length: {method['length']}, Params: {method['params']}, Line: {method['line_number']})")
+
+                    # 通常のLizard分析結果も表示
+                    methods = analyze_java_file_with_lizard(java_file_path)
+                    print(f"  検出された全メソッド ({len(methods)}個):")
+                    for i, method in enumerate(methods[:20]):  # 最初の20個を表示
+                        print(f"    {i+1:2d}. '{method['method_name']}' (CCN: {method['ccn']}, Length: {method['length']}, Params: {method['params']}, Line: {method['line_number']})")
+
+                    raise ValueError(f"複数のメソッドがマッチしました: '{method_name}' ({method_type}) in '{java_file_path}'. マッチ数: {len(filtered_methods)}. 1コミットあたり1メソッドが期待されていますが、フィルタリングロジックが不十分です。")
+
                 # 結果をメトリクスリストに追加
                 for method in filtered_methods:
                     all_method_metrics.append({
                         'commit_hash': commit_hash,
                         'original_parent': parent_path,
                         'original_long_name': long_name,
-                        'class_name': class_name,
+                        'target_class': method['target_class'],
+                        'target_signature': method['target_signature'],
+                        'outer_class': method['outer_class'],
                         'target_method': method['target_method'],
                         'method_type': method['method_type'],
                         'detected_method': method['detected_method'],
