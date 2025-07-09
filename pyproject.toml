@@ -30,4 +30,5 @@ matplotlib = "^3.10.3"
 japanize-matplotlib = "^1.1.3"
 imbalanced-learn = "^0.13.0"
 pydriller = "^2.7"
+lizard = "^1.17.31"
 
