@@ -852,7 +852,7 @@ if __name__ == "__main__":
         test_size=0.2
     )
 
-    cv_results, test_results, final_params = bug_hunter.run_pipeline(data_path, max_rows=100)
+    cv_results, test_results, final_params = bug_hunter.run_pipeline(data_path, max_rows=2000)
 
     print("\n" + "="*60)
     print("BugHunter 10分割交差検証バグ予測完了! (100行限定・欠損値0埋め版)")

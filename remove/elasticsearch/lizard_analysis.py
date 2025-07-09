@@ -161,38 +161,23 @@ def get_commit_sequence(repo_path, start_commit_hash, num_commits=10):
         print(f"エラー: コミット履歴の取得中にエラーが発生しました: {e}")
         return []
 
-def checkout_commit_with_pydriller(repo_path, commit_hash):
+def checkout_commit(repo_path, commit_hash):
     """
-    PyDrillerを使って指定されたコミットにチェックアウトする
+    指定されたコミットにチェックアウトする
     """
     try:
         from git import Repo
         repo = Repo(repo_path)
-
-        # 現在のブランチ/コミットを保存
-        original_head = repo.head.commit.hexsha
 
         # 指定されたコミットにチェックアウト
         repo.git.checkout(commit_hash)
 
         print(f"成功: コミット {commit_hash} にチェックアウトしました")
-        return True, original_head
+        return True
 
     except Exception as e:
-        print(f"エラー: PyDrillerでのチェックアウト中に例外が発生しました: {e}")
-        return False, None
-
-def restore_original_head(repo_path, original_head):
-    """
-    元のコミット/ブランチに戻る
-    """
-    try:
-        from git import Repo
-        repo = Repo(repo_path)
-        repo.git.checkout(original_head)
-        print(f"元のコミット {original_head[:8]} に戻りました")
-    except Exception as e:
-        print(f"警告: 元のコミットに戻る際にエラーが発生しました: {e}")
+        print(f"エラー: チェックアウト中に例外が発生しました: {e}")
+        return False
 
 def find_java_file_in_filesystem(repo_path, class_name, package_path):
     """
@@ -530,14 +515,7 @@ def track_method_complexity_changes(repo_path, start_commit_hash, parent_path, l
     print(f"LongName: {long_name}")
     print(f"追跡コミット数: {num_commits}")
 
-    # 現在のコミットを保存
-    original_head = None
-
     try:
-        from git import Repo
-        repo = Repo(repo_path)
-        original_head = repo.head.commit.hexsha
-
         # コミット履歴を取得
         commit_sequence = get_commit_sequence(repo_path, start_commit_hash, num_commits)
         if not commit_sequence:
@@ -565,7 +543,7 @@ def track_method_complexity_changes(repo_path, start_commit_hash, parent_path, l
             print(f"\n--- コミット {i+1}/{len(commit_sequence)}: {commit_hash} ---")
 
             # コミットにチェックアウト
-            success, _ = checkout_commit_with_pydriller(repo_path, commit_hash)
+            success = checkout_commit(repo_path, commit_hash)
             if not success:
                 print(f"  スキップ: チェックアウトに失敗")
                 continue
@@ -621,11 +599,6 @@ def track_method_complexity_changes(repo_path, start_commit_hash, parent_path, l
         import traceback
         traceback.print_exc()
         return []
-
-    finally:
-        # 元のコミットに戻る
-        if original_head:
-            restore_original_head(repo_path, original_head)
 
 def calculate_complexity_statistics(complexity_data):
     """
@@ -724,12 +697,22 @@ def main():
     csv_file = "method-p_filtered_v2.csv"
     repo_path = "/Users/nagutabby/elasticsearch"
     enhanced_output_csv = "method-p_filtered_v2_enhanced.csv"  # 拡張データ用の新しいファイル名
-    num_commits = 10  # 追跡するコミット数
-    max_records = 100  # 処理する最大レコード数
+    num_commits = 20  # 追跡するコミット数
+    max_records = 2000  # 処理する最大レコード数
 
     # 処理をスキップするかどうかのフラグ
     SKIP_MISSING_METHODS = True  # メソッドが見つからない場合はスキップ
     DEBUG_MODE = False  # デバッグ情報を表示
+
+    print("=== Git Repository Analysis Tool ===")
+    print("注意: このスクリプトはリポジトリの状態を変更します。")
+    print("分析後、リポジトリは最後に処理されたコミットの状態になります。")
+    print("分析前に必要な作業をコミット・保存してください。")
+
+    response = input("\n続行しますか？ (y/N): ")
+    if response.lower() not in ['y', 'yes']:
+        print("処理を中止しました。")
+        sys.exit(0)
 
     # CSVファイルの存在確認
     if not os.path.exists(csv_file):
@@ -756,7 +739,7 @@ def main():
             print("エラー: CSVファイルにデータが含まれていません")
             sys.exit(1)
 
-        # 最初の100レコードのみを処理対象とする
+        # 最初の1000レコードのみを処理対象とする
         if len(df) > max_records:
             print(f"情報: CSVファイルには{len(df)}レコードありますが、最初の{max_records}レコードのみ処理します")
             df_to_process = df.head(max_records)
@@ -907,6 +890,8 @@ def main():
         print(f"\n{'='*80}")
         print("処理が正常に完了しました。")
         print(f"出力ファイル: {enhanced_output_csv}")
+        print("\n注意: リポジトリは最後に処理されたコミットの状態になっています。")
+        print("必要に応じて手動で元のブランチ/コミットに戻してください。")
 
     except Exception as e:
         print(f"エラー: メイン処理中に例外が発生しました: {e}")
