@@ -591,6 +591,7 @@ def track_method_complexity_changes(repo_path, start_commit_hash, parent_path, l
             print(f"  複雑度 (CCN): {method_data['ccn']}")
             print(f"  長さ: {method_data['length']}")
             print(f"  トークン数: {method_data['tokens']}")
+            print(f"  パラメーター数: {method_data['params']}")
 
         return complexity_data
 
@@ -602,21 +603,23 @@ def track_method_complexity_changes(repo_path, start_commit_hash, parent_path, l
 
 def calculate_complexity_statistics(complexity_data):
     """
-    複雑度データから統計情報を計算する
+    複雑度データから統計情報を計算する（パラメーター数を追加）
     """
     if len(complexity_data) < 2:
         print("統計計算には最低2つのデータポイントが必要です")
         return None
 
-    # CCNの変化を計算
+    # 各メトリックの値を抽出
     ccn_values = [data['ccn'] for data in complexity_data]
     length_values = [data['length'] for data in complexity_data]
     tokens_values = [data['tokens'] for data in complexity_data]
+    params_values = [data['params'] for data in complexity_data]
 
     # 変化量を計算
     ccn_changes = [ccn_values[i+1] - ccn_values[i] for i in range(len(ccn_values)-1)]
     length_changes = [length_values[i+1] - length_values[i] for i in range(len(length_values)-1)]
     tokens_changes = [tokens_values[i+1] - tokens_values[i] for i in range(len(tokens_values)-1)]
+    params_changes = [params_values[i+1] - params_values[i] for i in range(len(params_values)-1)]
 
     # 統計情報
     stats = {
@@ -633,19 +636,25 @@ def calculate_complexity_statistics(complexity_data):
         'final_tokens': tokens_values[-1],
         'total_tokens_change': tokens_values[-1] - tokens_values[0],
         'average_tokens_change': sum(tokens_changes) / len(tokens_changes) if tokens_changes else 0,
+        'initial_params': params_values[0],
+        'final_params': params_values[-1],
+        'total_params_change': params_values[-1] - params_values[0],
+        'average_params_change': sum(params_changes) / len(params_changes) if params_changes else 0,
         'ccn_changes': ccn_changes,
         'length_changes': length_changes,
         'tokens_changes': tokens_changes,
+        'params_changes': params_changes,
         'ccn_values': ccn_values,
         'length_values': length_values,
-        'tokens_values': tokens_values
+        'tokens_values': tokens_values,
+        'params_values': params_values
     }
 
     return stats
 
 def prepare_enhanced_csv_output(original_df, complexity_results):
     """
-    元のCSVデータに複雑度統計の新しいカラムを追加したデータフレームを作成する
+    元のCSVデータに複雑度統計の新しいカラムを追加したデータフレームを作成する（パラメーター数対応）
     """
     # 元のDataFrameをコピー
     enhanced_df = original_df.copy()
@@ -665,6 +674,10 @@ def prepare_enhanced_csv_output(original_df, complexity_results):
         'tracking_final_tokens',
         'tracking_total_tokens_change',
         'tracking_average_tokens_change',
+        'tracking_initial_params',
+        'tracking_final_params',
+        'tracking_total_params_change',
+        'tracking_average_params_change',
     ]
 
     for col in new_columns:
@@ -692,6 +705,11 @@ def prepare_enhanced_csv_output(original_df, complexity_results):
             enhanced_df.loc[row_index, 'tracking_final_tokens'] = stats['final_tokens']
             enhanced_df.loc[row_index, 'tracking_total_tokens_change'] = stats['total_tokens_change']
             enhanced_df.loc[row_index, 'tracking_average_tokens_change'] = stats['average_tokens_change']
+
+            enhanced_df.loc[row_index, 'tracking_initial_params'] = stats['initial_params']
+            enhanced_df.loc[row_index, 'tracking_final_params'] = stats['final_params']
+            enhanced_df.loc[row_index, 'tracking_total_params_change'] = stats['total_params_change']
+            enhanced_df.loc[row_index, 'tracking_average_params_change'] = stats['average_params_change']
 
     return enhanced_df
 
@@ -798,13 +816,18 @@ def main():
                 if stats:
                     print(f"\n=== 統計結果 ===")
                     print(f"データポイント数: {stats['data_points']}")
-                    print(f"初期CCN: {stats['initial_ccn']} → 最終CCN: {stats['final_ccn']}")
+
                     print(f"CCN総変化量: {stats['total_ccn_change']}")
                     print(f"CCN平均変化量: {stats['average_ccn_change']:.2f}")
+
                     print(f"長さ総変化量: {stats['total_length_change']}")
                     print(f"長さ平均変化量: {stats['average_length_change']:.2f}")
+
                     print(f"トークン総変化量: {stats['total_tokens_change']}")
                     print(f"トークン平均変化量: {stats['average_tokens_change']:.2f}")
+                    
+                    print(f"パラメーター総変化量: {stats['total_params_change']}")
+                    print(f"パラメーター平均変化量: {stats['average_params_change']:.2f}")
 
                     # 統計結果を保存
                     complexity_results[record_id] = stats
@@ -856,6 +879,7 @@ def main():
                     avg_ccn_changes = [stats['average_ccn_change'] for stats in successful_stats]
                     avg_length_changes = [stats['average_length_change'] for stats in successful_stats]
                     avg_tokens_changes = [stats['average_tokens_change'] for stats in successful_stats]
+                    avg_params_changes = [stats['average_params_change'] for stats in successful_stats]
 
                     import numpy as np
 
@@ -873,6 +897,11 @@ def main():
                     print(f"  平均: {np.mean(avg_tokens_changes):.3f}")
                     print(f"  中央値: {np.median(avg_tokens_changes):.3f}")
                     print(f"  標準偏差: {np.std(avg_tokens_changes):.3f}")
+
+                    print(f"\nパラメーター平均変化量:")
+                    print(f"  平均: {np.mean(avg_params_changes):.3f}")
+                    print(f"  中央値: {np.median(avg_params_changes):.3f}")
+                    print(f"  標準偏差: {np.std(avg_params_changes):.3f}")
 
         else:
             print("\n警告: 処理できたデータがありませんでした")
