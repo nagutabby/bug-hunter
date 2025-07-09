@@ -670,12 +670,62 @@ def calculate_complexity_statistics(complexity_data):
 
     return stats
 
+def prepare_enhanced_csv_output(original_df, complexity_results):
+    """
+    元のCSVデータに複雑度統計の新しいカラムを追加したデータフレームを作成する
+    """
+    # 元のDataFrameをコピー
+    enhanced_df = original_df.copy()
+
+    # 新しいカラムを初期化（NaN値で）
+    new_columns = [
+        'tracking_data_points',
+        'tracking_initial_ccn',
+        'tracking_final_ccn',
+        'tracking_total_ccn_change',
+        'tracking_average_ccn_change',
+        'tracking_initial_length',
+        'tracking_final_length',
+        'tracking_total_length_change',
+        'tracking_average_length_change',
+        'tracking_initial_tokens',
+        'tracking_final_tokens',
+        'tracking_total_tokens_change',
+        'tracking_average_tokens_change',
+    ]
+
+    for col in new_columns:
+        enhanced_df[col] = pd.NA
+
+    # 複雑度結果を元のデータフレームにマージ
+    for record_id, stats in complexity_results.items():
+        row_index = record_id - 1  # record_idは1ベース、DataFrameは0ベース
+
+        if stats is not None:
+            # 処理に成功した場合のみデータを設定
+            enhanced_df.loc[row_index, 'tracking_data_points'] = stats['data_points']
+            enhanced_df.loc[row_index, 'tracking_initial_ccn'] = stats['initial_ccn']
+            enhanced_df.loc[row_index, 'tracking_final_ccn'] = stats['final_ccn']
+            enhanced_df.loc[row_index, 'tracking_total_ccn_change'] = stats['total_ccn_change']
+            enhanced_df.loc[row_index, 'tracking_average_ccn_change'] = stats['average_ccn_change']
+            enhanced_df.loc[row_index, 'tracking_initial_length'] = stats['initial_length']
+            enhanced_df.loc[row_index, 'tracking_final_length'] = stats['final_length']
+            enhanced_df.loc[row_index, 'tracking_total_length_change'] = stats['total_length_change']
+            enhanced_df.loc[row_index, 'tracking_average_length_change'] = stats['average_length_change']
+            enhanced_df.loc[row_index, 'tracking_initial_tokens'] = stats['initial_tokens']
+            enhanced_df.loc[row_index, 'tracking_final_tokens'] = stats['final_tokens']
+            enhanced_df.loc[row_index, 'tracking_total_tokens_change'] = stats['total_tokens_change']
+            enhanced_df.loc[row_index, 'tracking_average_tokens_change'] = stats['average_tokens_change']
+
+    return enhanced_df
+
 def main():
     # 設定
     csv_file = "method-p_filtered_v2.csv"
     repo_path = "/Users/nagutabby/elasticsearch"
-    output_csv = "method_complexity_tracking.csv"
+    enhanced_output_csv = "method-p_filtered_v2_enhanced.csv"  # 拡張データ用の新しいファイル名
     num_commits = 10  # 追跡するコミット数
+    max_records = 100  # 処理する最大レコード数
 
     # 処理をスキップするかどうかのフラグ
     SKIP_MISSING_METHODS = True  # メソッドが見つからない場合はスキップ
@@ -706,18 +756,32 @@ def main():
             print("エラー: CSVファイルにデータが含まれていません")
             sys.exit(1)
 
+        # 最初の100レコードのみを処理対象とする
+        if len(df) > max_records:
+            print(f"情報: CSVファイルには{len(df)}レコードありますが、最初の{max_records}レコードのみ処理します")
+            df_to_process = df.head(max_records)
+        else:
+            print(f"情報: CSVファイルの全{len(df)}レコードを処理します")
+            df_to_process = df
+
         all_tracking_results = []
         processed_count = 0
         skipped_count = 0
+        complexity_results = {}  # record_id -> stats のマッピング
+
+        print(f"\n{'='*80}")
+        print(f"処理開始: {len(df_to_process)}レコードを処理します")
+        print(f"{'='*80}")
 
         # 各レコードを処理
-        for idx, record in df.iterrows():
+        for idx, record in df_to_process.iterrows():
             commit_hash = record['Hash']
             parent_path = record['Parent']
             long_name = record['LongName']
+            record_id = idx + 1
 
             print(f"\n{'='*80}")
-            print(f"処理中のレコード {idx + 1}/{len(df)}:")
+            print(f"処理中のレコード {record_id}/{len(df_to_process)}:")
             print(f"  Hash: {commit_hash}")
             print(f"  Parent: {parent_path}")
             print(f"  LongName: {long_name}")
@@ -735,6 +799,7 @@ def main():
 
                 if len(complexity_data) == 0:
                     print(f"  結果: データが取得できませんでした")
+                    complexity_results[record_id] = None
                     if SKIP_MISSING_METHODS:
                         skipped_count += 1
                         continue
@@ -755,45 +820,21 @@ def main():
                     print(f"トークン総変化量: {stats['total_tokens_change']}")
                     print(f"トークン平均変化量: {stats['average_tokens_change']:.2f}")
 
-                    # 詳細データを保存
-                    for i, data in enumerate(complexity_data):
-                        all_tracking_results.append({
-                            'record_id': idx + 1,
-                            'original_commit_hash': commit_hash,
-                            'original_parent': parent_path,
-                            'original_long_name': long_name,
-                            'commit_order': data['commit_order'],
-                            'tracking_commit_hash': data['commit_hash'],
-                            'ccn': data['ccn'],
-                            'length': data['length'],
-                            'tokens': data['tokens'],
-                            'params': data['params'],
-                            'filename': data['filename'],
-                            'line_number': data['line_number'],
-                            'strategy': data['strategy'],
-                            'fallback_used': data['fallback_used'],
-                            # 統計情報も追加
-                            'total_data_points': stats['data_points'],
-                            'initial_ccn': stats['initial_ccn'],
-                            'final_ccn': stats['final_ccn'],
-                            'total_ccn_change': stats['total_ccn_change'],
-                            'average_ccn_change': stats['average_ccn_change'],
-                            'total_length_change': stats['total_length_change'],
-                            'average_length_change': stats['average_length_change'],
-                            'total_tokens_change': stats['total_tokens_change'],
-                            'average_tokens_change': stats['average_tokens_change']
-                        })
+                    # 統計結果を保存
+                    complexity_results[record_id] = stats
 
                     processed_count += 1
 
                 else:
                     print(f"  結果: 統計情報を計算できませんでした")
+                    complexity_results[record_id] = None
                     if SKIP_MISSING_METHODS:
                         skipped_count += 1
                         continue
 
             except Exception as e:
-                print(f"エラー: レコード {idx + 1} の処理中に例外が発生しました: {e}")
+                print(f"エラー: レコード {record_id} の処理中に例外が発生しました: {e}")
+                complexity_results[record_id] = None
                 if DEBUG_MODE:
                     import traceback
                     traceback.print_exc()
@@ -803,56 +844,69 @@ def main():
                 else:
                     raise
 
-        # 結果をCSVファイルに保存
-        if all_tracking_results:
-            results_df = pd.DataFrame(all_tracking_results)
-            results_df.to_csv(output_csv, index=False, encoding='utf-8')
-            print(f"\n{'='*80}")
-            print(f"結果が '{output_csv}' に保存されました")
-            print(f"処理されたレコード数: {processed_count}")
-            print(f"スキップされたレコード数: {skipped_count}")
-            print(f"総データポイント数: {len(all_tracking_results)}")
+        # 拡張版CSVを作成して保存
+        enhanced_df = prepare_enhanced_csv_output(df, complexity_results)
+        enhanced_df.to_csv(enhanced_output_csv, index=False, encoding='utf-8')
+        print(f"\n{'='*80}")
+        print(f"拡張版データが '{enhanced_output_csv}' に保存されました")
 
-            # 全体の統計情報を表示
+        # 結果サマリーを表示
+        print(f"\n{'='*80}")
+        print(f"=== 処理完了サマリー ===")
+        print(f"対象レコード数: {len(df_to_process)}")
+        print(f"処理されたレコード数: {processed_count}")
+        print(f"スキップされたレコード数: {skipped_count}")
+        print(f"成功率: {processed_count/len(df_to_process)*100:.1f}%")
+
+        # 全体の統計情報を表示
+        if processed_count > 0:
             print(f"\n=== 全体統計 ===")
-            if processed_count > 0:
-                # 各レコードごとの平均変化量の統計
-                unique_records = results_df.groupby('record_id').first()
+            # 各レコードごとの平均変化量の統計
+            if complexity_results:
+                # 成功したレコードの統計データを取得
+                successful_stats = [stats for stats in complexity_results.values() if stats is not None]
 
-                avg_ccn_changes = unique_records['average_ccn_change']
-                avg_length_changes = unique_records['average_length_change']
-                avg_tokens_changes = unique_records['average_tokens_change']
+                if successful_stats:
+                    avg_ccn_changes = [stats['average_ccn_change'] for stats in successful_stats]
+                    avg_length_changes = [stats['average_length_change'] for stats in successful_stats]
+                    avg_tokens_changes = [stats['average_tokens_change'] for stats in successful_stats]
 
-                print(f"CCN平均変化量:")
-                print(f"  平均: {avg_ccn_changes.mean():.3f}")
-                print(f"  中央値: {avg_ccn_changes.median():.3f}")
-                print(f"  標準偏差: {avg_ccn_changes.std():.3f}")
-                print(f"  最小値: {avg_ccn_changes.min():.3f}")
-                print(f"  最大値: {avg_ccn_changes.max():.3f}")
+                    import numpy as np
 
-                print(f"\n長さ平均変化量:")
-                print(f"  平均: {avg_length_changes.mean():.3f}")
-                print(f"  中央値: {avg_length_changes.median():.3f}")
-                print(f"  標準偏差: {avg_length_changes.std():.3f}")
+                    print(f"CCN平均変化量:")
+                    print(f"  平均: {np.mean(avg_ccn_changes):.3f}")
+                    print(f"  中央値: {np.median(avg_ccn_changes):.3f}")
+                    print(f"  標準偏差: {np.std(avg_ccn_changes):.3f}")
+                    print(f"  最小値: {np.min(avg_ccn_changes):.3f}")
+                    print(f"  最大値: {np.max(avg_ccn_changes):.3f}")
 
-                print(f"\nトークン平均変化量:")
-                print(f"  平均: {avg_tokens_changes.mean():.3f}")
-                print(f"  中央値: {avg_tokens_changes.median():.3f}")
-                print(f"  標準偏差: {avg_tokens_changes.std():.3f}")
+                    print(f"\n長さ平均変化量:")
+                    print(f"  平均: {np.mean(avg_length_changes):.3f}")
+                    print(f"  中央値: {np.median(avg_length_changes):.3f}")
+                    print(f"  標準偏差: {np.std(avg_length_changes):.3f}")
 
-                # 変化のパターン分析
-                increasing_ccn = len(unique_records[unique_records['average_ccn_change'] > 0])
-                decreasing_ccn = len(unique_records[unique_records['average_ccn_change'] < 0])
-                stable_ccn = len(unique_records[unique_records['average_ccn_change'] == 0])
+                    print(f"\nトークン平均変化量:")
+                    print(f"  平均: {np.mean(avg_tokens_changes):.3f}")
+                    print(f"  中央値: {np.median(avg_tokens_changes):.3f}")
+                    print(f"  標準偏差: {np.std(avg_tokens_changes):.3f}")
 
-                print(f"\nCCN変化パターン:")
-                print(f"  増加傾向: {increasing_ccn} レコード ({increasing_ccn/processed_count*100:.1f}%)")
-                print(f"  減少傾向: {decreasing_ccn} レコード ({decreasing_ccn/processed_count*100:.1f}%)")
-                print(f"  安定: {stable_ccn} レコード ({stable_ccn/processed_count*100:.1f}%)")
+                    # 変化のパターン分析
+                    increasing_ccn = len([x for x in avg_ccn_changes if x > 0])
+                    decreasing_ccn = len([x for x in avg_ccn_changes if x < 0])
+                    stable_ccn = len([x for x in avg_ccn_changes if x == 0])
+
+                    print(f"\nCCN変化パターン:")
+                    print(f"  増加傾向: {increasing_ccn} レコード ({increasing_ccn/processed_count*100:.1f}%)")
+                    print(f"  減少傾向: {decreasing_ccn} レコード ({decreasing_ccn/processed_count*100:.1f}%)")
+                    print(f"  安定: {stable_ccn} レコード ({stable_ccn/processed_count*100:.1f}%)")
 
         else:
             print("\n警告: 処理できたデータがありませんでした")
             print(f"スキップされたレコード数: {skipped_count}")
+
+        print(f"\n{'='*80}")
+        print("処理が正常に完了しました。")
+        print(f"出力ファイル: {enhanced_output_csv}")
 
     except Exception as e:
         print(f"エラー: メイン処理中に例外が発生しました: {e}")

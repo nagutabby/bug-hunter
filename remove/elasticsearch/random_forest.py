@@ -187,10 +187,16 @@ class BugHunter:
             'n_jobs': -1
         }
 
-    def read_data(self, data_path: str) -> pd.DataFrame:
-        print("\n=== 1) データ読み込み ===")
-        df = pd.read_csv(data_path)
+    def read_data(self, data_path: str, max_rows: int = 100) -> pd.DataFrame:
+        print(f"\n=== 1) データ読み込み（最大{max_rows}行、欠損値0埋め） ===")
+        df = pd.read_csv(data_path, nrows=max_rows)
         print(f"読み込み完了: {len(df)}行, {len(df.columns)}列")
+
+        # 欠損値を0で埋める
+        original_na_count = df.isnull().sum().sum()
+        df = df.fillna(0)
+        print(f"欠損値を0で埋めました: {original_na_count}個の欠損値")
+
         return df
 
     def prepare_data(self, data: pd.DataFrame, is_training: bool = True) -> tuple:
@@ -547,7 +553,7 @@ class BugHunter:
 
         return y_pred, y_pred_proba
 
-    def run_pipeline(self, data_path: str):
+    def run_pipeline(self, data_path: str, max_rows: int = 100):
         print("=== BugHunter 10分割交差検証バグ予測パイプライン (RandomForest Feature Importance版) ===")
         print("特徴:")
         print("- 論文と同じ10分割交差検証を使用")
@@ -555,8 +561,9 @@ class BugHunter:
         print("- RandomForest Feature Importanceによる特徴量選択を使用")
         print("- 標準的なRandomForestパラメータを使用")
         print("- 最終モデルのテストデータでの評価を実施")
+        print(f"- データ制限: 最大{max_rows}行、欠損値0埋め")
 
-        data = self.read_data(data_path)
+        data = self.read_data(data_path, max_rows)
 
         X_full, y_full = self.prepare_data(data, is_training=True)
 
@@ -798,9 +805,44 @@ class BugHunter:
             if i < len(sample_parents) - 1:
                 print()
 
+    def run_simple_pipeline(self, csv_path: str, max_rows: int = 100):
+        """元のrun_pipelineのエイリアス"""
+        return self.run_pipeline(csv_path, max_rows)
 
+    def display_results(self, cv_results: dict, test_results: dict):
+        """結果表示（元のコードとの互換性のため）"""
+        print("\n" + "="*50)
+        print("=== BugHunter 結果サマリー ===")
+        print("="*50)
+
+        print(f"\n=== 交差検証結果 ===")
+        print(f"F1スコア: {cv_results['f1_mean']:.4f} ± {cv_results['f1_std']:.4f}")
+        print(f"Precision: {cv_results['precision_mean']:.4f} ± {cv_results['precision_std']:.4f}")
+        print(f"Recall: {cv_results['recall_mean']:.4f} ± {cv_results['recall_std']:.4f}")
+        print(f"Accuracy: {cv_results['accuracy_mean']:.4f} ± {cv_results['accuracy_std']:.4f}")
+        print(f"ROC-AUC: {cv_results['roc_auc_mean']:.4f} ± {cv_results['roc_auc_std']:.4f}")
+
+        print(f"\n=== テストデータ結果 ===")
+        print(f"F1スコア: {test_results['f1']:.4f}")
+        print(f"Precision: {test_results['precision']:.4f}")
+        print(f"Recall: {test_results['recall']:.4f}")
+        print(f"Accuracy: {test_results['accuracy']:.4f}")
+        print(f"ROC-AUC: {test_results['roc_auc']:.4f}")
+
+        if self.selected_features and self.feature_importance is not None:
+            print(f"\n=== 特徴量情報 ===")
+            print(f"選択された特徴量数: {len(self.selected_features)}")
+            print(f"上位3重要特徴量:")
+            top_indices = np.argsort(self.feature_importance)[-3:][::-1]
+            for i, idx in enumerate(top_indices):
+                feature_name = self.selected_features[idx]
+                importance = self.feature_importance[idx]
+                print(f"  {i+1}. {feature_name}: {importance:.4f}")
+
+
+# 使用例
 if __name__ == "__main__":
-    data_path = "method-p_filtered_v2.csv"
+    data_path = "method-p_filtered_v2_enhanced.csv"
 
     bug_hunter = BugHunter(
         feature_selection_threshold=0.001,
@@ -810,10 +852,10 @@ if __name__ == "__main__":
         test_size=0.2
     )
 
-    cv_results, test_results, final_params = bug_hunter.run_pipeline(data_path)
+    cv_results, test_results, final_params = bug_hunter.run_pipeline(data_path, max_rows=100)
 
     print("\n" + "="*60)
-    print("BugHunter 10分割交差検証バグ予測完了! (RandomForest Feature Importance版)")
+    print("BugHunter 10分割交差検証バグ予測完了! (100行限定・欠損値0埋め版)")
     print("="*60)
 
     print(f"交差検証 平均F1スコア: {cv_results['f1_mean']:.4f} ± {cv_results['f1_std']:.4f}")
@@ -856,6 +898,6 @@ if __name__ == "__main__":
         print(f"  予測クラス 1: {test_summary['prediction_distribution']['predicted_class_1']}件")
 
     print("\n" + "="*60)
-    print("論文に基づく評価完了! (RandomForest Feature Importance版)")
+    print("論文に基づく評価完了! (100行限定・欠損値0埋め版)")
     print("交差検証とテストデータの両方で評価を実施")
     print("="*60)
