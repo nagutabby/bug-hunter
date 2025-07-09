@@ -771,7 +771,7 @@ def main():
     repo_path = "/Users/nagutabby/elasticsearch"
     enhanced_output_csv = "method-p_filtered_v2_enhanced.csv"  # 拡張データ用の新しいファイル名
     num_commits = 20  # 追跡するコミット数
-    max_records = 2000  # 処理する最大レコード数
+    max_records = 3000  # 処理する最大レコード数
 
     # 処理をスキップするかどうかのフラグ
     SKIP_MISSING_METHODS = True  # メソッドが見つからない場合はスキップ

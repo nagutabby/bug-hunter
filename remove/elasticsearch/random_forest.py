@@ -555,12 +555,6 @@ class BugHunter:
 
     def run_pipeline(self, data_path: str, max_rows: int = 100):
         print("=== BugHunter 10分割交差検証バグ予測パイプライン (RandomForest Feature Importance版) ===")
-        print("特徴:")
-        print("- 論文と同じ10分割交差検証を使用")
-        print("- 各フォールドで独立にRandomUnderSamplerを適用")
-        print("- RandomForest Feature Importanceによる特徴量選択を使用")
-        print("- 標準的なRandomForestパラメータを使用")
-        print("- 最終モデルのテストデータでの評価を実施")
         print(f"- データ制限: 最大{max_rows}行、欠損値0埋め")
 
         data = self.read_data(data_path, max_rows)
@@ -712,8 +706,8 @@ class BugHunter:
 
         selected_features_df['タイプ'] = selected_features_df['特徴量'].apply(
             lambda x: 'LongName TF-IDF' if x.startswith('LongName_tfidf_')
-                     else 'Parent TF-IDF' if x.startswith('Parent_tfidf_')
-                     else '数値'
+                      else 'Parent TF-IDF' if x.startswith('Parent_tfidf_')
+                      else '数値'
         )
 
         print(f"\n=== 上位{top_n}特徴量（RandomForest Feature Importance） ===")
@@ -840,64 +834,80 @@ class BugHunter:
                 print(f"  {i+1}. {feature_name}: {importance:.4f}")
 
 
-# 使用例
-if __name__ == "__main__":
-    data_path = "method-p_filtered_v2_enhanced.csv"
-
+def main():
+    """使用例"""
+    # BugHunterインスタンス作成
     bug_hunter = BugHunter(
-        feature_selection_threshold=0.001,
-        tfidf_max_features=100,
-        java_tokenizer_min_length=2,
-        include_package_tokens=False,
-        test_size=0.2
+        feature_selection_threshold=0.001,    # Feature Importance閾値
+        tfidf_max_features=100,               # TF-IDF最大特徴量数
+        java_tokenizer_min_length=2,          # トークンの最小長
+        include_package_tokens=False,         # パッケージトークンを含むか
+        test_size=0.2                        # テストデータの比率
     )
 
-    cv_results, test_results, final_params = bug_hunter.run_pipeline(data_path, max_rows=2000)
+    print("BugHunterインスタンス作成完了")
+    print(f"設定:")
+    print(f"  Feature Importance閾値: {bug_hunter.feature_selection_threshold}")
+    print(f"  TF-IDF最大特徴量数: {bug_hunter.tfidf_max_features}")
+    print(f"  Javaトークナイザー最小長: {bug_hunter.java_tokenizer.min_token_length}")
+    print(f"  パッケージトークン含む: {bug_hunter.java_tokenizer.include_package_tokens}")
+    print(f"  テストサイズ: {bug_hunter.test_size}")
 
-    print("\n" + "="*60)
-    print("BugHunter 10分割交差検証バグ予測完了! (100行限定・欠損値0埋め版)")
-    print("="*60)
+    try:
+        # データファイルのパスを指定
+        data_path = "method-p_filtered_v2.csv"
 
-    print(f"交差検証 平均F1スコア: {cv_results['f1_mean']:.4f} ± {cv_results['f1_std']:.4f}")
-    print(f"テストデータ F1スコア: {test_results['f1']:.4f}")
-    print(f"交差検証 平均ROC-AUC: {cv_results['roc_auc_mean']:.4f} ± {cv_results['roc_auc_std']:.4f}")
-    print(f"テストデータ ROC-AUC: {test_results['roc_auc']:.4f}")
+        # パイプライン実行
+        cv_results, test_results, final_params = bug_hunter.run_pipeline(
+            data_path,
+            max_rows=3000
+        )
 
-    detailed_df = bug_hunter.get_cv_detailed_results(cv_results)
-    print(f"\n=== 各フォールドの詳細結果（交差検証） ===")
-    print(detailed_df.round(4).to_string(index=False))
+        print("="*60)
+        print("BugHunter 10分割交差検証バグ予測完了!")
+        print("="*60)
 
-    comparison_df = bug_hunter.compare_cv_and_test_results(cv_results)
-    print(f"\n=== 交差検証 vs テストデータ結果比較 ===")
-    print(comparison_df.round(4).to_string(index=False))
+        # 詳細分析
+        print(f"交差検証 平均F1スコア: {cv_results['f1_mean']:.4f} ± {cv_results['f1_std']:.4f}")
+        print(f"テストデータ F1スコア: {test_results['f1']:.4f}")
+        print(f"交差検証 平均ROC-AUC: {cv_results['roc_auc_mean']:.4f} ± {cv_results['roc_auc_std']:.4f}")
+        print(f"テストデータ ROC-AUC: {test_results['roc_auc']:.4f}")
 
-    bug_hunter.display_sampling_summary()
-    bug_hunter.display_feature_importance_table(top_n=15)
-    bug_hunter.display_feature_selection_summary()
-    bug_hunter.display_tokenizer_analysis(sample_size=3)
+        # 各フォールドの詳細結果
+        detailed_df = bug_hunter.get_cv_detailed_results(cv_results)
+        print(f"\n=== 各フォールドの詳細結果（交差検証） ===")
+        print(detailed_df.round(4))
 
-    feature_analysis = bug_hunter.get_feature_analysis()
-    print(f"\n使用パラメータ: {feature_analysis['best_params']}")
-    print(f"選択された特徴量数: {len(feature_analysis['selected_features'])}")
-    print(f"全特徴量数: {len(feature_analysis['all_feature_names'])}")
-    print(f"Feature Importance閾値: {feature_analysis['feature_selection_threshold']}")
-    print(f"TF-IDF最大特徴量数: {feature_analysis['tfidf_max_features']}")
+        # 交差検証とテストデータの結果比較
+        comparison_df = bug_hunter.compare_cv_and_test_results(cv_results)
+        print(f"\n=== 交差検証 vs テストデータ結果比較 ===")
+        print(comparison_df.round(4))
 
-    if feature_analysis['sampling_info']:
-        sampling_info = feature_analysis['sampling_info']
-        print(f"データサイズ変化率: {sampling_info['change_rate_percent']:.1f}%")
+        # 特徴量の詳細分析
+        bug_hunter.display_sampling_summary()
+        feature_importance_df = bug_hunter.display_feature_importance_table(top_n=15)
+        bug_hunter.display_feature_selection_summary()
+        bug_hunter.display_tokenizer_analysis(sample_size=3)
 
-    test_summary = bug_hunter.get_test_results_summary()
-    if test_summary:
-        print(f"\n=== テストデータ評価サマリー ===")
-        print(f"テストデータクラス分布:")
-        print(f"  クラス 0: {test_summary['test_class_distribution']['class_0']}件")
-        print(f"  クラス 1: {test_summary['test_class_distribution']['class_1']}件")
-        print(f"予測結果分布:")
-        print(f"  予測クラス 0: {test_summary['prediction_distribution']['predicted_class_0']}件")
-        print(f"  予測クラス 1: {test_summary['prediction_distribution']['predicted_class_1']}件")
+        # 特徴量分析の詳細取得
+        feature_analysis = bug_hunter.get_feature_analysis()
+        print(f"\n=== パラメータ・設定サマリー ===")
+        print(f"使用パラメータ: {feature_analysis['best_params']}")
+        print(f"選択された特徴量数: {len(feature_analysis['selected_features'])}")
+        print(f"全特徴量数: {len(feature_analysis['all_feature_names'])}")
+        print(f"Feature Importance閾値: {feature_analysis['feature_selection_threshold']}")
+        print(f"TF-IDF最大特徴量数: {feature_analysis['tfidf_max_features']}")
 
-    print("\n" + "="*60)
-    print("論文に基づく評価完了! (100行限定・欠損値0埋め版)")
-    print("交差検証とテストデータの両方で評価を実施")
-    print("="*60)
+        if feature_analysis['sampling_info']:
+            sampling_info = feature_analysis['sampling_info']
+            print(f"データサイズ変化率: {sampling_info['change_rate_percent']:.1f}%")
+
+    except FileNotFoundError:
+        print(f"エラー: ファイル '{data_path}' が見つかりません。")
+        print("正しいファイルパスを指定してください。")
+    except Exception as e:
+        print(f"エラーが発生しました: {e}")
+
+
+if __name__ == "__main__":
+    main()
