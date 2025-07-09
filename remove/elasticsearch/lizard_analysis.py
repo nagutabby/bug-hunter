@@ -677,14 +677,17 @@ def prepare_enhanced_csv_output(original_df, complexity_results):
         if stats is not None:
             # 処理に成功した場合のみデータを設定
             enhanced_df.loc[row_index, 'tracking_data_points'] = stats['data_points']
+
             enhanced_df.loc[row_index, 'tracking_initial_ccn'] = stats['initial_ccn']
             enhanced_df.loc[row_index, 'tracking_final_ccn'] = stats['final_ccn']
             enhanced_df.loc[row_index, 'tracking_total_ccn_change'] = stats['total_ccn_change']
             enhanced_df.loc[row_index, 'tracking_average_ccn_change'] = stats['average_ccn_change']
+
             enhanced_df.loc[row_index, 'tracking_initial_length'] = stats['initial_length']
             enhanced_df.loc[row_index, 'tracking_final_length'] = stats['final_length']
             enhanced_df.loc[row_index, 'tracking_total_length_change'] = stats['total_length_change']
             enhanced_df.loc[row_index, 'tracking_average_length_change'] = stats['average_length_change']
+
             enhanced_df.loc[row_index, 'tracking_initial_tokens'] = stats['initial_tokens']
             enhanced_df.loc[row_index, 'tracking_final_tokens'] = stats['final_tokens']
             enhanced_df.loc[row_index, 'tracking_total_tokens_change'] = stats['total_tokens_change']
@@ -860,8 +863,6 @@ def main():
                     print(f"  平均: {np.mean(avg_ccn_changes):.3f}")
                     print(f"  中央値: {np.median(avg_ccn_changes):.3f}")
                     print(f"  標準偏差: {np.std(avg_ccn_changes):.3f}")
-                    print(f"  最小値: {np.min(avg_ccn_changes):.3f}")
-                    print(f"  最大値: {np.max(avg_ccn_changes):.3f}")
 
                     print(f"\n長さ平均変化量:")
                     print(f"  平均: {np.mean(avg_length_changes):.3f}")
@@ -872,16 +873,6 @@ def main():
                     print(f"  平均: {np.mean(avg_tokens_changes):.3f}")
                     print(f"  中央値: {np.median(avg_tokens_changes):.3f}")
                     print(f"  標準偏差: {np.std(avg_tokens_changes):.3f}")
-
-                    # 変化のパターン分析
-                    increasing_ccn = len([x for x in avg_ccn_changes if x > 0])
-                    decreasing_ccn = len([x for x in avg_ccn_changes if x < 0])
-                    stable_ccn = len([x for x in avg_ccn_changes if x == 0])
-
-                    print(f"\nCCN変化パターン:")
-                    print(f"  増加傾向: {increasing_ccn} レコード ({increasing_ccn/processed_count*100:.1f}%)")
-                    print(f"  減少傾向: {decreasing_ccn} レコード ({decreasing_ccn/processed_count*100:.1f}%)")
-                    print(f"  安定: {stable_ccn} レコード ({stable_ccn/processed_count*100:.1f}%)")
 
         else:
             print("\n警告: 処理できたデータがありませんでした")
