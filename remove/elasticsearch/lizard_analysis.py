@@ -134,6 +134,33 @@ def extract_package_path(parent_path):
     package_parts = parts[:-1]
     return '/'.join(package_parts) + '/'
 
+def get_commit_sequence(repo_path, start_commit_hash, num_commits=10):
+    """
+    指定されたコミットから始まって、指定された数のコミットの履歴を取得する
+    """
+    try:
+        from git import Repo
+        repo = Repo(repo_path)
+
+        # 開始コミットを取得
+        start_commit = repo.commit(start_commit_hash)
+
+        # コミット履歴を取得（現在のコミットから遡る）
+        commit_list = list(repo.iter_commits(start_commit, max_count=num_commits))
+
+        # コミットハッシュのリストを返す（時系列順に並び替え）
+        commit_hashes = [commit.hexsha for commit in reversed(commit_list)]
+
+        print(f"取得したコミット履歴 ({len(commit_hashes)}個):")
+        for i, hash_val in enumerate(commit_hashes):
+            print(f"  {i+1:2d}. {hash_val}")
+
+        return commit_hashes
+
+    except Exception as e:
+        print(f"エラー: コミット履歴の取得中にエラーが発生しました: {e}")
+        return []
+
 def checkout_commit_with_pydriller(repo_path, commit_hash):
     """
     PyDrillerを使って指定されたコミットにチェックアウトする
@@ -493,15 +520,166 @@ def analyze_with_improved_strategy(java_file_path, target_method_name, target_cl
 
     return [], "すべての戦略で失敗"
 
+def track_method_complexity_changes(repo_path, start_commit_hash, parent_path, long_name, num_commits=10, debug=False):
+    """
+    指定されたコミットから始まって複数のコミットでメソッドの複雑度変化を追跡する
+    """
+    print(f"\n=== メソッド複雑度変化追跡開始 ===")
+    print(f"開始コミット: {start_commit_hash}")
+    print(f"Parent: {parent_path}")
+    print(f"LongName: {long_name}")
+    print(f"追跡コミット数: {num_commits}")
+
+    # 現在のコミットを保存
+    original_head = None
+
+    try:
+        from git import Repo
+        repo = Repo(repo_path)
+        original_head = repo.head.commit.hexsha
+
+        # コミット履歴を取得
+        commit_sequence = get_commit_sequence(repo_path, start_commit_hash, num_commits)
+        if not commit_sequence:
+            print("エラー: コミット履歴を取得できませんでした")
+            return []
+
+        # メソッド情報を抽出
+        target_class_name, outer_class_name = extract_class_name(parent_path)
+        method_name, method_type, method_signature = extract_method_name(long_name)
+        package_path = extract_package_path(parent_path)
+        search_class_name = outer_class_name if outer_class_name else target_class_name
+
+        print(f"\n対象メソッド情報:")
+        print(f"  ターゲットクラス名: {target_class_name}")
+        print(f"  外部クラス名: {outer_class_name}")
+        print(f"  メソッド名: {method_name} ({method_type})")
+        print(f"  メソッドシグネチャ: {method_signature}")
+        print(f"  パッケージパス: {package_path}")
+        print(f"  検索用クラス名: {search_class_name}")
+
+        complexity_data = []
+
+        # 各コミットで複雑度を測定
+        for i, commit_hash in enumerate(commit_sequence):
+            print(f"\n--- コミット {i+1}/{len(commit_sequence)}: {commit_hash} ---")
+
+            # コミットにチェックアウト
+            success, _ = checkout_commit_with_pydriller(repo_path, commit_hash)
+            if not success:
+                print(f"  スキップ: チェックアウトに失敗")
+                continue
+
+            # Javaファイルを検索
+            java_file_path = find_java_file_in_filesystem(repo_path, search_class_name, package_path)
+            if not java_file_path:
+                print(f"  スキップ: Javaファイルが見つかりません (クラス: {search_class_name})")
+                continue
+
+            print(f"  見つかったファイル: {java_file_path}")
+
+            # メソッドを分析
+            filtered_methods, strategy = analyze_with_improved_strategy(
+                java_file_path,
+                method_name,
+                target_class_name,
+                method_signature,
+                outer_class_name,
+                method_type,
+                debug=debug
+            )
+
+            if len(filtered_methods) == 0:
+                print(f"  スキップ: メソッドが見つかりません")
+                continue
+            elif len(filtered_methods) > 1:
+                print(f"  警告: 複数のメソッドがマッチしました ({len(filtered_methods)}個) - 最初のものを使用")
+
+            # 複雑度データを記録
+            method_data = filtered_methods[0]
+            complexity_data.append({
+                'commit_order': i + 1,
+                'commit_hash': commit_hash,
+                'ccn': method_data['ccn'],
+                'length': method_data['length'],
+                'tokens': method_data['tokens'],
+                'params': method_data['params'],
+                'filename': method_data['filename'],
+                'line_number': method_data['line_number'],
+                'strategy': strategy,
+                'fallback_used': method_data.get('fallback_used', False)
+            })
+
+            print(f"  複雑度 (CCN): {method_data['ccn']}")
+            print(f"  長さ: {method_data['length']}")
+            print(f"  トークン数: {method_data['tokens']}")
+
+        return complexity_data
+
+    except Exception as e:
+        print(f"エラー: 複雑度追跡中に例外が発生しました: {e}")
+        import traceback
+        traceback.print_exc()
+        return []
+
+    finally:
+        # 元のコミットに戻る
+        if original_head:
+            restore_original_head(repo_path, original_head)
+
+def calculate_complexity_statistics(complexity_data):
+    """
+    複雑度データから統計情報を計算する
+    """
+    if len(complexity_data) < 2:
+        print("統計計算には最低2つのデータポイントが必要です")
+        return None
+
+    # CCNの変化を計算
+    ccn_values = [data['ccn'] for data in complexity_data]
+    length_values = [data['length'] for data in complexity_data]
+    tokens_values = [data['tokens'] for data in complexity_data]
+
+    # 変化量を計算
+    ccn_changes = [ccn_values[i+1] - ccn_values[i] for i in range(len(ccn_values)-1)]
+    length_changes = [length_values[i+1] - length_values[i] for i in range(len(length_values)-1)]
+    tokens_changes = [tokens_values[i+1] - tokens_values[i] for i in range(len(tokens_values)-1)]
+
+    # 統計情報
+    stats = {
+        'data_points': len(complexity_data),
+        'initial_ccn': ccn_values[0],
+        'final_ccn': ccn_values[-1],
+        'total_ccn_change': ccn_values[-1] - ccn_values[0],
+        'average_ccn_change': sum(ccn_changes) / len(ccn_changes) if ccn_changes else 0,
+        'initial_length': length_values[0],
+        'final_length': length_values[-1],
+        'total_length_change': length_values[-1] - length_values[0],
+        'average_length_change': sum(length_changes) / len(length_changes) if length_changes else 0,
+        'initial_tokens': tokens_values[0],
+        'final_tokens': tokens_values[-1],
+        'total_tokens_change': tokens_values[-1] - tokens_values[0],
+        'average_tokens_change': sum(tokens_changes) / len(tokens_changes) if tokens_changes else 0,
+        'ccn_changes': ccn_changes,
+        'length_changes': length_changes,
+        'tokens_changes': tokens_changes,
+        'ccn_values': ccn_values,
+        'length_values': length_values,
+        'tokens_values': tokens_values
+    }
+
+    return stats
+
 def main():
     # 設定
     csv_file = "method-p_filtered_v2.csv"
     repo_path = "/Users/nagutabby/elasticsearch"
-    output_csv = "method_metrics.csv"
+    output_csv = "method_complexity_tracking.csv"
+    num_commits = 10  # 追跡するコミット数
 
     # 処理をスキップするかどうかのフラグ
-    SKIP_MISSING_METHODS = False  # Trueにするとメソッドが見つからない場合はスキップ
-    DEBUG_MODE = False  # Trueにするとデバッグ情報を表示
+    SKIP_MISSING_METHODS = True  # メソッドが見つからない場合はスキップ
+    DEBUG_MODE = False  # デバッグ情報を表示
 
     # CSVファイルの存在確認
     if not os.path.exists(csv_file):
@@ -528,229 +706,156 @@ def main():
             print("エラー: CSVファイルにデータが含まれていません")
             sys.exit(1)
 
-        all_method_metrics = []
-        original_heads = {}
+        all_tracking_results = []
+        processed_count = 0
         skipped_count = 0
 
-        try:
-            # 各レコードを処理
-            for idx, record in df.iterrows():
-                commit_hash = record['Hash']
-                parent_path = record['Parent']
-                long_name = record['LongName']
+        # 各レコードを処理
+        for idx, record in df.iterrows():
+            commit_hash = record['Hash']
+            parent_path = record['Parent']
+            long_name = record['LongName']
 
-                print(f"\n処理中のレコード {idx + 1}/{len(df)}:")
-                print(f"  Hash: {commit_hash}")
-                print(f"  Parent: {parent_path}")
-                print(f"  LongName: {long_name}")
+            print(f"\n{'='*80}")
+            print(f"処理中のレコード {idx + 1}/{len(df)}:")
+            print(f"  Hash: {commit_hash}")
+            print(f"  Parent: {parent_path}")
+            print(f"  LongName: {long_name}")
 
-                # クラス名を抽出（改良版）
-                target_class_name, outer_class_name = extract_class_name(parent_path)
-                if not target_class_name:
-                    print("  警告: クラス名を抽出できませんでした")
-                    if SKIP_MISSING_METHODS:
-                        skipped_count += 1
-                        continue
-                    else:
-                        raise ValueError("クラス名を抽出できませんでした")
-
-                # メソッド名を抽出（シグネチャ対応）
-                method_name, method_type, method_signature = extract_method_name(long_name)
-                if not method_name:
-                    print("  警告: メソッド名を抽出できませんでした")
-                    if SKIP_MISSING_METHODS:
-                        skipped_count += 1
-                        continue
-                    else:
-                        raise ValueError("メソッド名を抽出できませんでした")
-
-                # パッケージパスを抽出
-                package_path = extract_package_path(parent_path)
-
-                # ファイル検索のためのクラス名（外部クラス名を使用）
-                search_class_name = outer_class_name if outer_class_name else target_class_name
-
-                print(f"  抽出されたターゲットクラス名: {target_class_name}")
-                print(f"  外部クラス名: {outer_class_name}")
-                print(f"  抽出されたメソッド名: {method_name} ({method_type})")
-                print(f"  メソッドシグネチャ: {method_signature}")
-                print(f"  パッケージパス: {package_path}")
-                print(f"  検索用クラス名: {search_class_name}")
-
-                # 指定されたコミットにチェックアウト
-                if repo_path not in original_heads:
-                    success, original_head = checkout_commit_with_pydriller(repo_path, commit_hash)
-                    if not success:
-                        print("  エラー: コミットのチェックアウトに失敗しました")
-                        if SKIP_MISSING_METHODS:
-                            skipped_count += 1
-                            continue
-                        else:
-                            raise ValueError("コミットのチェックアウトに失敗しました")
-                    original_heads[repo_path] = original_head
-                else:
-                    try:
-                        from git import Repo
-                        repo = Repo(repo_path)
-                        current_commit = repo.head.commit.hexsha
-                        if current_commit != commit_hash:
-                            success, _ = checkout_commit_with_pydriller(repo_path, commit_hash)
-                            if not success:
-                                print("  エラー: コミットのチェックアウトに失敗しました")
-                                if SKIP_MISSING_METHODS:
-                                    skipped_count += 1
-                                    continue
-                                else:
-                                    raise ValueError("コミットのチェックアウトに失敗しました")
-                    except Exception as e:
-                        print(f"  エラー: 現在のコミット確認中にエラー: {e}")
-                        if SKIP_MISSING_METHODS:
-                            skipped_count += 1
-                            continue
-                        else:
-                            raise
-
-                # ファイルシステムからJavaファイルを検索
-                java_file_path = find_java_file_in_filesystem(repo_path, search_class_name, package_path)
-
-                if not java_file_path:
-                    print(f"  警告: クラス '{search_class_name}' のJavaファイルが見つかりません")
-                    if SKIP_MISSING_METHODS:
-                        skipped_count += 1
-                        continue
-                    else:
-                        raise ValueError(f"クラス '{search_class_name}' のJavaファイルが見つかりません")
-
-                print(f"  見つかったJavaファイル: {java_file_path}")
-
-                # Lizardで分析実行（改良版 - シグネチャ対応）
-                filtered_methods, strategy = analyze_with_improved_strategy(
-                    java_file_path,
-                    method_name,
-                    target_class_name,
-                    method_signature,
-                    outer_class_name,
-                    method_type,
+            try:
+                # メソッドの複雑度変化を追跡
+                complexity_data = track_method_complexity_changes(
+                    repo_path,
+                    commit_hash,
+                    parent_path,
+                    long_name,
+                    num_commits,
                     debug=DEBUG_MODE
                 )
-                print(f"  戦略: {strategy}")
 
-                # メソッドが見つからなかった場合の処理（改良版）
-                if len(filtered_methods) == 0:
-                    print("  警告: 対象メソッドが見つかりませんでした")
-                    print("  詳細デバッグ情報:")
-                    print(f"    対象メソッド名: {method_name}")
-                    print(f"    メソッドタイプ: {method_type}")
-                    print(f"    ターゲットクラス名: {target_class_name}")
-                    print(f"    外部クラス名: {outer_class_name}")
-                    print(f"    メソッドシグネチャ: {method_signature}")
-                    print(f"    ファイル: {java_file_path}")
-                    print(f"    元のLongName: {long_name}")
-
-                    # 通常のLizard分析結果を表示
-                    methods = analyze_java_file_with_lizard(java_file_path)
-                    print(f"    検出された全メソッド ({len(methods)}個):")
-                    for i, method in enumerate(methods[:15]):  # 最初の15個を表示
-                        print(f"      {i+1:2d}. '{method['method_name']}' (CCN: {method['ccn']}, Length: {method['length']}, Params: {method['params']})")
-
+                if len(complexity_data) == 0:
+                    print(f"  結果: データが取得できませんでした")
                     if SKIP_MISSING_METHODS:
-                        print("  → このメソッドをスキップして続行します")
                         skipped_count += 1
                         continue
                     else:
-                        raise ValueError(f"対象メソッド '{method_name}' ({method_type}) がファイル '{java_file_path}' 内で見つかりませんでした")
+                        raise ValueError("メソッドの複雑度データを取得できませんでした")
 
-                # メソッドが複数見つかった場合の処理（常に例外発生）
-                elif len(filtered_methods) > 1:
-                    print("  エラー: 複数のメソッドがマッチしました")
-                    print("  詳細情報:")
-                    print(f"    対象メソッド名: {method_name}")
-                    print(f"    メソッドタイプ: {method_type}")
-                    print(f"    ターゲットクラス名: {target_class_name}")
-                    print(f"    外部クラス名: {outer_class_name}")
-                    print(f"    メソッドシグネチャ: {method_signature}")
-                    print(f"    ファイル: {java_file_path}")
-                    print(f"    元のLongName: {long_name}")
-                    print(f"    マッチしたメソッド数: {len(filtered_methods)}")
+                # 統計情報を計算
+                stats = calculate_complexity_statistics(complexity_data)
 
-                    print("  マッチしたメソッド一覧:")
-                    for i, method in enumerate(filtered_methods):
-                        print(f"    {i+1}. '{method['detected_method']}' (CCN: {method['ccn']}, Length: {method['length']}, Params: {method['params']}, Line: {method['line_number']})")
+                if stats:
+                    print(f"\n=== 統計結果 ===")
+                    print(f"データポイント数: {stats['data_points']}")
+                    print(f"初期CCN: {stats['initial_ccn']} → 最終CCN: {stats['final_ccn']}")
+                    print(f"CCN総変化量: {stats['total_ccn_change']}")
+                    print(f"CCN平均変化量: {stats['average_ccn_change']:.2f}")
+                    print(f"長さ総変化量: {stats['total_length_change']}")
+                    print(f"長さ平均変化量: {stats['average_length_change']:.2f}")
+                    print(f"トークン総変化量: {stats['total_tokens_change']}")
+                    print(f"トークン平均変化量: {stats['average_tokens_change']:.2f}")
 
-                    # 通常のLizard分析結果も表示
-                    methods = analyze_java_file_with_lizard(java_file_path)
-                    print(f"  検出された全メソッド ({len(methods)}個):")
-                    for i, method in enumerate(methods[:20]):  # 最初の20個を表示
-                        print(f"    {i+1:2d}. '{method['method_name']}' (CCN: {method['ccn']}, Length: {method['length']}, Params: {method['params']}, Line: {method['line_number']})")
+                    # 詳細データを保存
+                    for i, data in enumerate(complexity_data):
+                        all_tracking_results.append({
+                            'record_id': idx + 1,
+                            'original_commit_hash': commit_hash,
+                            'original_parent': parent_path,
+                            'original_long_name': long_name,
+                            'commit_order': data['commit_order'],
+                            'tracking_commit_hash': data['commit_hash'],
+                            'ccn': data['ccn'],
+                            'length': data['length'],
+                            'tokens': data['tokens'],
+                            'params': data['params'],
+                            'filename': data['filename'],
+                            'line_number': data['line_number'],
+                            'strategy': data['strategy'],
+                            'fallback_used': data['fallback_used'],
+                            # 統計情報も追加
+                            'total_data_points': stats['data_points'],
+                            'initial_ccn': stats['initial_ccn'],
+                            'final_ccn': stats['final_ccn'],
+                            'total_ccn_change': stats['total_ccn_change'],
+                            'average_ccn_change': stats['average_ccn_change'],
+                            'total_length_change': stats['total_length_change'],
+                            'average_length_change': stats['average_length_change'],
+                            'total_tokens_change': stats['total_tokens_change'],
+                            'average_tokens_change': stats['average_tokens_change']
+                        })
 
-                    raise ValueError(f"複数のメソッドがマッチしました: '{method_name}' ({method_type}) in '{java_file_path}'. マッチ数: {len(filtered_methods)}. 1コミットあたり1メソッドが期待されていますが、フィルタリングロジックが不十分です。")
+                    processed_count += 1
 
-                # 結果をメトリクスリストに追加
-                for method in filtered_methods:
-                    all_method_metrics.append({
-                        'commit_hash': commit_hash,
-                        'original_parent': parent_path,
-                        'original_long_name': long_name,
-                        'target_class': method['target_class'],
-                        'target_signature': method['target_signature'],
-                        'outer_class': method['outer_class'],
-                        'target_method': method['target_method'],
-                        'method_type': method['method_type'],
-                        'detected_method': method['detected_method'],
-                        'ccn': method['ccn'],
-                        'length': method['length'],
-                        'tokens': method['tokens'],
-                        'params': method['params'],
-                        'filename': method['filename'],
-                        'line_number': method['line_number'],
-                        'fallback_used': method.get('fallback_used', False)
-                    })
+                else:
+                    print(f"  結果: 統計情報を計算できませんでした")
+                    if SKIP_MISSING_METHODS:
+                        skipped_count += 1
+                        continue
 
-                print(f"  見つかったメソッド数: {len(filtered_methods)}")
-                if filtered_methods:
-                    print(f"  マッチしたメソッド: {', '.join([m['detected_method'] for m in filtered_methods])}")
-
-        finally:
-            # 全ての処理が終了したら元のコミットに戻る
-            for repo_path_key, original_head in original_heads.items():
-                if original_head:
-                    restore_original_head(repo_path_key, original_head)
+            except Exception as e:
+                print(f"エラー: レコード {idx + 1} の処理中に例外が発生しました: {e}")
+                if DEBUG_MODE:
+                    import traceback
+                    traceback.print_exc()
+                if SKIP_MISSING_METHODS:
+                    skipped_count += 1
+                    continue
+                else:
+                    raise
 
         # 結果をCSVファイルに保存
-        if all_method_metrics:
-            metrics_df = pd.DataFrame(all_method_metrics)
-            metrics_df.to_csv(output_csv, index=False, encoding='utf-8')
-            print(f"\n結果が '{output_csv}' に保存されました")
-            print(f"総メトリクス数: {len(all_method_metrics)}")
+        if all_tracking_results:
+            results_df = pd.DataFrame(all_tracking_results)
+            results_df.to_csv(output_csv, index=False, encoding='utf-8')
+            print(f"\n{'='*80}")
+            print(f"結果が '{output_csv}' に保存されました")
+            print(f"処理されたレコード数: {processed_count}")
             print(f"スキップされたレコード数: {skipped_count}")
+            print(f"総データポイント数: {len(all_tracking_results)}")
 
-            # フォールバック使用統計
-            fallback_count = len(metrics_df[metrics_df['fallback_used'] == True])
-            print(f"フォールバック戦略使用数: {fallback_count}")
+            # 全体の統計情報を表示
+            print(f"\n=== 全体統計 ===")
+            if processed_count > 0:
+                # 各レコードごとの平均変化量の統計
+                unique_records = results_df.groupby('record_id').first()
 
-            # 簡単な統計情報を表示
-            print("\n=== 統計情報 ===")
-            print(f"平均CCN: {metrics_df['ccn'].mean():.2f}")
-            print(f"平均Length: {metrics_df['length'].mean():.2f}")
-            print(f"平均Tokens: {metrics_df['tokens'].mean():.2f}")
-            print(f"平均Parameters: {metrics_df['params'].mean():.2f}")
+                avg_ccn_changes = unique_records['average_ccn_change']
+                avg_length_changes = unique_records['average_length_change']
+                avg_tokens_changes = unique_records['average_tokens_change']
 
-            # メソッドタイプ別の統計
-            print("\n=== メソッドタイプ別統計 ===")
-            type_stats = metrics_df.groupby('method_type').agg({
-                'ccn': 'mean',
-                'length': 'mean',
-                'tokens': 'mean',
-                'params': 'mean'
-            }).round(2)
-            print(type_stats)
+                print(f"CCN平均変化量:")
+                print(f"  平均: {avg_ccn_changes.mean():.3f}")
+                print(f"  中央値: {avg_ccn_changes.median():.3f}")
+                print(f"  標準偏差: {avg_ccn_changes.std():.3f}")
+                print(f"  最小値: {avg_ccn_changes.min():.3f}")
+                print(f"  最大値: {avg_ccn_changes.max():.3f}")
+
+                print(f"\n長さ平均変化量:")
+                print(f"  平均: {avg_length_changes.mean():.3f}")
+                print(f"  中央値: {avg_length_changes.median():.3f}")
+                print(f"  標準偏差: {avg_length_changes.std():.3f}")
+
+                print(f"\nトークン平均変化量:")
+                print(f"  平均: {avg_tokens_changes.mean():.3f}")
+                print(f"  中央値: {avg_tokens_changes.median():.3f}")
+                print(f"  標準偏差: {avg_tokens_changes.std():.3f}")
+
+                # 変化のパターン分析
+                increasing_ccn = len(unique_records[unique_records['average_ccn_change'] > 0])
+                decreasing_ccn = len(unique_records[unique_records['average_ccn_change'] < 0])
+                stable_ccn = len(unique_records[unique_records['average_ccn_change'] == 0])
+
+                print(f"\nCCN変化パターン:")
+                print(f"  増加傾向: {increasing_ccn} レコード ({increasing_ccn/processed_count*100:.1f}%)")
+                print(f"  減少傾向: {decreasing_ccn} レコード ({decreasing_ccn/processed_count*100:.1f}%)")
+                print(f"  安定: {stable_ccn} レコード ({stable_ccn/processed_count*100:.1f}%)")
 
         else:
-            print("\n警告: 対象メソッドのメトリクスが見つかりませんでした")
+            print("\n警告: 処理できたデータがありませんでした")
             print(f"スキップされたレコード数: {skipped_count}")
 
     except Exception as e:
-        print(f"エラー: 処理中に例外が発生しました: {e}")
+        print(f"エラー: メイン処理中に例外が発生しました: {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)
