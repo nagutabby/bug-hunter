@@ -459,7 +459,7 @@ def search_method_in_file_content(java_file_path, target_method, method_type='me
 
 def analyze_with_improved_strategy(java_file_path, target_method_name, target_class_name, target_signature=None, outer_class_name=None, method_type='method', debug=False):
     """
-    改良された戦略でメソッドを検索する（シグネチャ対応）
+    改良された戦略でメソッドを検索する（メソッド存在時はフォールバック値を返す）
     """
     # 通常のLizard分析
     methods = analyze_java_file_with_lizard(java_file_path)
@@ -480,20 +480,22 @@ def analyze_with_improved_strategy(java_file_path, target_method_name, target_cl
             print(f"      - '{method['detected_method']}' -> '{method['target_method']}' (クラス: {method['target_class']}, Params: {method['params']})")
 
     if filtered_methods:
-        return filtered_methods, "改良されたLizard分析（シグネチャ対応）"
+        return filtered_methods, "Lizard分析成功"
 
-    # フォールバック戦略：ファイル内容を直接検索してメソッドの存在を確認
+    # ファイル内検索でメソッドの存在を確認
     if search_method_in_file_content(java_file_path, target_method_name, method_type):
         if debug:
-            print(f"    ファイル内検索でメソッド '{target_method_name}' を発見")
+            print(f"    ファイル内検索でメソッド '{target_method_name}' を発見しましたが、Lizardで分析できませんでした")
+
+        # メソッドが存在する場合はフォールバック値を返す（データポイントとして扱う）
         return [{
             'method_name': f"(fallback)::{target_method_name}",
-            'ccn': 1,
-            'length': 1,
-            'tokens': 1,
-            'params': 0,
+            'ccn': None,  # Noneで「測定不可」を示す
+            'length': None,
+            'tokens': None,
+            'params': None,  # パラメーター数も測定不可
             'filename': java_file_path,
-            'line_number': 1,
+            'line_number': 0,
             'target_method': target_method_name,
             'target_class': target_class_name,
             'target_signature': target_signature,
@@ -501,9 +503,11 @@ def analyze_with_improved_strategy(java_file_path, target_method_name, target_cl
             'method_type': method_type,
             'detected_method': f"(fallback)::{target_method_name}",
             'fallback_used': True
-        }], "ファイル内検索（フォールバック）"
-
-    return [], "すべての戦略で失敗"
+        }], "フォールバック（ファイル内検索）"
+    else:
+        if debug:
+            print(f"    ファイル内検索でもメソッド '{target_method_name}' は見つかりませんでした")
+        return [], "メソッドが見つからない"
 
 def track_method_complexity_changes(repo_path, start_commit_hash, parent_path, long_name, num_commits=10, debug=False):
     """
@@ -568,7 +572,7 @@ def track_method_complexity_changes(repo_path, start_commit_hash, parent_path, l
             )
 
             if len(filtered_methods) == 0:
-                print(f"  スキップ: メソッドが見つかりません")
+                print(f"  スキップ: メソッドが見つからない、またはLizardで分析できませんでした ({strategy})")
                 continue
             elif len(filtered_methods) > 1:
                 print(f"  警告: 複数のメソッドがマッチしました ({len(filtered_methods)}個) - 最初のものを使用")
@@ -588,10 +592,29 @@ def track_method_complexity_changes(repo_path, start_commit_hash, parent_path, l
                 'fallback_used': method_data.get('fallback_used', False)
             })
 
-            print(f"  複雑度 (CCN): {method_data['ccn']}")
-            print(f"  長さ: {method_data['length']}")
-            print(f"  トークン数: {method_data['tokens']}")
-            print(f"  パラメーター数: {method_data['params']}")
+            # 結果表示（None値の場合は適切に表示）
+            if method_data['ccn'] is not None:
+                print(f"  複雑度 (CCN): {method_data['ccn']}")
+            else:
+                print(f"  複雑度 (CCN): 測定不可")
+
+            if method_data['length'] is not None:
+                print(f"  長さ: {method_data['length']}")
+            else:
+                print(f"  長さ: 測定不可")
+
+            if method_data['tokens'] is not None:
+                print(f"  トークン数: {method_data['tokens']}")
+            else:
+                print(f"  トークン数: 測定不可")
+
+            if method_data['params'] is not None:
+                print(f"  パラメーター数: {method_data['params']}")
+            else:
+                print(f"  パラメーター数: 測定不可")
+
+            if method_data.get('fallback_used', False):
+                print(f"  注意: フォールバック値を使用（Lizardで測定不可）")
 
         return complexity_data
 
@@ -603,43 +626,72 @@ def track_method_complexity_changes(repo_path, start_commit_hash, parent_path, l
 
 def calculate_complexity_statistics(complexity_data):
     """
-    複雑度データから統計情報を計算する（パラメーター数を追加）
+    複雑度データから統計情報を計算する（None値に対応）
     """
     if len(complexity_data) < 2:
         print("統計計算には最低2つのデータポイントが必要です")
         return None
 
-    # 各メトリックの値を抽出
-    ccn_values = [data['ccn'] for data in complexity_data]
-    length_values = [data['length'] for data in complexity_data]
-    tokens_values = [data['tokens'] for data in complexity_data]
-    params_values = [data['params'] for data in complexity_data]
+    # 各メトリックの値を抽出（None値をフィルタリング）
+    ccn_values = [data['ccn'] for data in complexity_data if data['ccn'] is not None]
+    length_values = [data['length'] for data in complexity_data if data['length'] is not None]
+    tokens_values = [data['tokens'] for data in complexity_data if data['tokens'] is not None]
+    params_values = [data['params'] for data in complexity_data if data['params'] is not None]
 
-    # 変化量を計算
-    ccn_changes = [ccn_values[i+1] - ccn_values[i] for i in range(len(ccn_values)-1)]
-    length_changes = [length_values[i+1] - length_values[i] for i in range(len(length_values)-1)]
-    tokens_changes = [tokens_values[i+1] - tokens_values[i] for i in range(len(tokens_values)-1)]
-    params_changes = [params_values[i+1] - params_values[i] for i in range(len(params_values)-1)]
+    # 有効なデータポイントが不足している場合
+    if len(ccn_values) < 2:
+        print("統計計算には最低2つの有効なCCN値が必要です")
+        return None
+
+    # 変化量を計算（None値をスキップ）
+    ccn_changes = []
+    length_changes = []
+    tokens_changes = []
+    params_changes = []
+
+    for i in range(len(complexity_data) - 1):
+        current = complexity_data[i]
+        next_data = complexity_data[i + 1]
+
+        # CCNの変化量（両方がNoneでない場合のみ）
+        if current['ccn'] is not None and next_data['ccn'] is not None:
+            ccn_changes.append(next_data['ccn'] - current['ccn'])
+
+        # 長さの変化量（両方がNoneでない場合のみ）
+        if current['length'] is not None and next_data['length'] is not None:
+            length_changes.append(next_data['length'] - current['length'])
+
+        # トークンの変化量（両方がNoneでない場合のみ）
+        if current['tokens'] is not None and next_data['tokens'] is not None:
+            tokens_changes.append(next_data['tokens'] - current['tokens'])
+
+        # パラメーターの変化量（両方がNoneでない場合のみ）
+        if current['params'] is not None and next_data['params'] is not None:
+            params_changes.append(next_data['params'] - current['params'])
 
     # 統計情報
     stats = {
         'data_points': len(complexity_data),
-        'initial_ccn': ccn_values[0],
-        'final_ccn': ccn_values[-1],
-        'total_ccn_change': ccn_values[-1] - ccn_values[0],
-        'average_ccn_change': sum(ccn_changes) / len(ccn_changes) if ccn_changes else 0,
-        'initial_length': length_values[0],
-        'final_length': length_values[-1],
-        'total_length_change': length_values[-1] - length_values[0],
-        'average_length_change': sum(length_changes) / len(length_changes) if length_changes else 0,
-        'initial_tokens': tokens_values[0],
-        'final_tokens': tokens_values[-1],
-        'total_tokens_change': tokens_values[-1] - tokens_values[0],
-        'average_tokens_change': sum(tokens_changes) / len(tokens_changes) if tokens_changes else 0,
-        'initial_params': params_values[0],
-        'final_params': params_values[-1],
-        'total_params_change': params_values[-1] - params_values[0],
-        'average_params_change': sum(params_changes) / len(params_changes) if params_changes else 0,
+        'valid_ccn_points': len(ccn_values),
+        'valid_length_points': len(length_values),
+        'valid_tokens_points': len(tokens_values),
+        'valid_params_points': len(params_values),
+        'initial_ccn': ccn_values[0] if ccn_values else None,
+        'final_ccn': ccn_values[-1] if ccn_values else None,
+        'total_ccn_change': ccn_values[-1] - ccn_values[0] if len(ccn_values) >= 2 else None,
+        'average_ccn_change': sum(ccn_changes) / len(ccn_changes) if ccn_changes else None,
+        'initial_length': length_values[0] if length_values else None,
+        'final_length': length_values[-1] if length_values else None,
+        'total_length_change': length_values[-1] - length_values[0] if len(length_values) >= 2 else None,
+        'average_length_change': sum(length_changes) / len(length_changes) if length_changes else None,
+        'initial_tokens': tokens_values[0] if tokens_values else None,
+        'final_tokens': tokens_values[-1] if tokens_values else None,
+        'total_tokens_change': tokens_values[-1] - tokens_values[0] if len(tokens_values) >= 2 else None,
+        'average_tokens_change': sum(tokens_changes) / len(tokens_changes) if tokens_changes else None,
+        'initial_params': params_values[0] if params_values else None,
+        'final_params': params_values[-1] if params_values else None,
+        'total_params_change': params_values[-1] - params_values[0] if len(params_values) >= 2 else None,
+        'average_params_change': sum(params_changes) / len(params_changes) if params_changes else None,
         'ccn_changes': ccn_changes,
         'length_changes': length_changes,
         'tokens_changes': tokens_changes,
@@ -825,7 +877,7 @@ def main():
 
                     print(f"トークン総変化量: {stats['total_tokens_change']}")
                     print(f"トークン平均変化量: {stats['average_tokens_change']:.2f}")
-                    
+
                     print(f"パラメーター総変化量: {stats['total_params_change']}")
                     print(f"パラメーター平均変化量: {stats['average_params_change']:.2f}")
 
