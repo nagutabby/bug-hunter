@@ -411,57 +411,11 @@ def filter_methods_by_target(methods, target_method_name, target_class_name, tar
 
     return filtered_methods
 
-def search_method_in_file_content(java_file_path, target_method, method_type='method'):
+def analyze_with_lizard_only(java_file_path, target_method_name, target_class_name, target_signature=None, outer_class_name=None, method_type='method', debug=False):
     """
-    ファイル内容を直接検索してメソッドの存在を確認（匿名内部クラス対応）
+    Lizardのみでメソッドを検索する（フォールバック処理なし）
     """
-    try:
-        with open(java_file_path, 'r', encoding='utf-8') as f:
-            content = f.read()
-
-        if method_type == 'constructor':
-            # コンストラクタの場合は、クラス定義と組み合わせて検索
-            constructor_patterns = [
-                # 通常のコンストラクタパターン
-                rf'class\s+{re.escape(target_method)}\s*.*\{{',
-                rf'public\s+{re.escape(target_method)}\s*\(',
-                rf'private\s+{re.escape(target_method)}\s*\(',
-                rf'protected\s+{re.escape(target_method)}\s*\(',
-                rf'{re.escape(target_method)}\s*\(',
-                # 匿名内部クラスのパターン
-                rf'new\s+\w+\s*\([^)]*\)\s*\{{[^}}]*class\s+{re.escape(target_method)}',
-                rf'static\s+class\s+{re.escape(target_method)}',
-                # Exception系の特別パターン
-                rf'{re.escape(target_method)}\s+extends\s+\w+Exception',
-                # 内部クラスのパターン
-                rf'class\s+{re.escape(target_method)}\s+extends',
-                rf'class\s+{re.escape(target_method)}\s+implements',
-            ]
-        else:
-            # メソッドの定義パターン
-            constructor_patterns = [
-                rf'(public|private|protected|)\s+\w+\s+{re.escape(target_method)}\s*\(',
-                rf'(public|private|protected|)\s+void\s+{re.escape(target_method)}\s*\(',
-                rf'{re.escape(target_method)}\s*\(',
-                rf'@Override\s+.*{re.escape(target_method)}\s*\(',
-            ]
-
-        for pattern in constructor_patterns:
-            matches = re.findall(pattern, content, re.MULTILINE | re.IGNORECASE | re.DOTALL)
-            if matches:
-                return True
-
-        return False
-
-    except Exception as e:
-        print(f"  ファイル内検索でエラー: {e}")
-        return False
-
-def analyze_with_improved_strategy(java_file_path, target_method_name, target_class_name, target_signature=None, outer_class_name=None, method_type='method', debug=False):
-    """
-    改良された戦略でメソッドを検索する（メソッド存在時はフォールバック値を返す）
-    """
-    # 通常のLizard分析
+    # Lizard分析
     methods = analyze_java_file_with_lizard(java_file_path)
 
     if debug:
@@ -469,7 +423,7 @@ def analyze_with_improved_strategy(java_file_path, target_method_name, target_cl
         for i, method in enumerate(methods):
             print(f"      {i+1:2d}. '{method['method_name']}' (CCN: {method['ccn']}, Params: {method['params']})")
 
-    # 改良されたフィルタリング（シグネチャ対応）
+    # フィルタリング
     filtered_methods = filter_methods_by_target(
         methods, target_method_name, target_class_name, target_signature, outer_class_name, method_type
     )
@@ -481,33 +435,8 @@ def analyze_with_improved_strategy(java_file_path, target_method_name, target_cl
 
     if filtered_methods:
         return filtered_methods, "Lizard分析成功"
-
-    # ファイル内検索でメソッドの存在を確認
-    if search_method_in_file_content(java_file_path, target_method_name, method_type):
-        if debug:
-            print(f"    ファイル内検索でメソッド '{target_method_name}' を発見しましたが、Lizardで分析できませんでした")
-
-        # メソッドが存在する場合はフォールバック値を返す（データポイントとして扱う）
-        return [{
-            'method_name': f"(fallback)::{target_method_name}",
-            'ccn': None,  # Noneで「測定不可」を示す
-            'length': None,
-            'tokens': None,
-            'params': None,  # パラメーター数も測定不可
-            'filename': java_file_path,
-            'line_number': 0,
-            'target_method': target_method_name,
-            'target_class': target_class_name,
-            'target_signature': target_signature,
-            'outer_class': outer_class_name,
-            'method_type': method_type,
-            'detected_method': f"(fallback)::{target_method_name}",
-            'fallback_used': True
-        }], "フォールバック（ファイル内検索）"
     else:
-        if debug:
-            print(f"    ファイル内検索でもメソッド '{target_method_name}' は見つかりませんでした")
-        return [], "メソッドが見つからない"
+        return [], "Lizardでメソッドが見つからない"
 
 def track_method_complexity_changes(repo_path, start_commit_hash, parent_path, long_name, num_commits=10, debug=False):
     """
@@ -560,8 +489,8 @@ def track_method_complexity_changes(repo_path, start_commit_hash, parent_path, l
 
             print(f"  見つかったファイル: {java_file_path}")
 
-            # メソッドを分析
-            filtered_methods, strategy = analyze_with_improved_strategy(
+            # メソッドを分析（Lizardのみ）
+            filtered_methods, strategy = analyze_with_lizard_only(
                 java_file_path,
                 method_name,
                 target_class_name,
@@ -572,7 +501,7 @@ def track_method_complexity_changes(repo_path, start_commit_hash, parent_path, l
             )
 
             if len(filtered_methods) == 0:
-                print(f"  スキップ: メソッドが見つからない、またはLizardで分析できませんでした ({strategy})")
+                print(f"  スキップ: Lizardでメソッドが見つかりませんでした ({strategy})")
                 continue
             elif len(filtered_methods) > 1:
                 print(f"  警告: 複数のメソッドがマッチしました ({len(filtered_methods)}個) - 最初のものを使用")
@@ -588,33 +517,14 @@ def track_method_complexity_changes(repo_path, start_commit_hash, parent_path, l
                 'params': method_data['params'],
                 'filename': method_data['filename'],
                 'line_number': method_data['line_number'],
-                'strategy': strategy,
-                'fallback_used': method_data.get('fallback_used', False)
+                'strategy': strategy
             })
 
-            # 結果表示（None値の場合は適切に表示）
-            if method_data['ccn'] is not None:
-                print(f"  複雑度 (CCN): {method_data['ccn']}")
-            else:
-                print(f"  複雑度 (CCN): 測定不可")
-
-            if method_data['length'] is not None:
-                print(f"  長さ: {method_data['length']}")
-            else:
-                print(f"  長さ: 測定不可")
-
-            if method_data['tokens'] is not None:
-                print(f"  トークン数: {method_data['tokens']}")
-            else:
-                print(f"  トークン数: 測定不可")
-
-            if method_data['params'] is not None:
-                print(f"  パラメーター数: {method_data['params']}")
-            else:
-                print(f"  パラメーター数: 測定不可")
-
-            if method_data.get('fallback_used', False):
-                print(f"  注意: フォールバック値を使用（Lizardで測定不可）")
+            # 結果表示
+            print(f"  複雑度 (CCN): {method_data['ccn']}")
+            print(f"  長さ: {method_data['length']}")
+            print(f"  トークン数: {method_data['tokens']}")
+            print(f"  パラメーター数: {method_data['params']}")
 
         return complexity_data
 
@@ -626,13 +536,13 @@ def track_method_complexity_changes(repo_path, start_commit_hash, parent_path, l
 
 def calculate_complexity_statistics(complexity_data):
     """
-    複雑度データから統計情報を計算する（None値に対応）
+    複雑度データから統計情報を計算する
     """
     if len(complexity_data) < 2:
         print("統計計算には最低2つのデータポイントが必要です")
         return None
 
-    # 各メトリックの値を抽出（None値をフィルタリング）
+    # 各メトリックの値を抽出
     ccn_values = [data['ccn'] for data in complexity_data if data['ccn'] is not None]
     length_values = [data['length'] for data in complexity_data if data['length'] is not None]
     tokens_values = [data['tokens'] for data in complexity_data if data['tokens'] is not None]
@@ -643,31 +553,12 @@ def calculate_complexity_statistics(complexity_data):
         print("統計計算には最低2つの有効なCCN値が必要です")
         return None
 
-    # 変化量を計算（None値をスキップ）
-    ccn_changes = []
-    length_changes = []
-    tokens_changes = []
-    params_changes = []
-
-    for i in range(len(complexity_data) - 1):
-        current = complexity_data[i]
-        next_data = complexity_data[i + 1]
-
-        # CCNの変化量（両方がNoneでない場合のみ）
-        if current['ccn'] is not None and next_data['ccn'] is not None:
-            ccn_changes.append(next_data['ccn'] - current['ccn'])
-
-        # 長さの変化量（両方がNoneでない場合のみ）
-        if current['length'] is not None and next_data['length'] is not None:
-            length_changes.append(next_data['length'] - current['length'])
-
-        # トークンの変化量（両方がNoneでない場合のみ）
-        if current['tokens'] is not None and next_data['tokens'] is not None:
-            tokens_changes.append(next_data['tokens'] - current['tokens'])
-
-        # パラメーターの変化量（両方がNoneでない場合のみ）
-        if current['params'] is not None and next_data['params'] is not None:
-            params_changes.append(next_data['params'] - current['params'])
+    # 標準偏差を計算
+    import numpy as np
+    ccn_std = np.std(ccn_values) if len(ccn_values) >= 2 else None
+    length_std = np.std(length_values) if len(length_values) >= 2 else None
+    tokens_std = np.std(tokens_values) if len(tokens_values) >= 2 else None
+    params_std = np.std(params_values) if len(params_values) >= 2 else None
 
     # 統計情報
     stats = {
@@ -676,26 +567,10 @@ def calculate_complexity_statistics(complexity_data):
         'valid_length_points': len(length_values),
         'valid_tokens_points': len(tokens_values),
         'valid_params_points': len(params_values),
-        'initial_ccn': ccn_values[0] if ccn_values else None,
-        'final_ccn': ccn_values[-1] if ccn_values else None,
-        'total_ccn_change': ccn_values[-1] - ccn_values[0] if len(ccn_values) >= 2 else None,
-        'average_ccn_change': sum(ccn_changes) / len(ccn_changes) if ccn_changes else None,
-        'initial_length': length_values[0] if length_values else None,
-        'final_length': length_values[-1] if length_values else None,
-        'total_length_change': length_values[-1] - length_values[0] if len(length_values) >= 2 else None,
-        'average_length_change': sum(length_changes) / len(length_changes) if length_changes else None,
-        'initial_tokens': tokens_values[0] if tokens_values else None,
-        'final_tokens': tokens_values[-1] if tokens_values else None,
-        'total_tokens_change': tokens_values[-1] - tokens_values[0] if len(tokens_values) >= 2 else None,
-        'average_tokens_change': sum(tokens_changes) / len(tokens_changes) if tokens_changes else None,
-        'initial_params': params_values[0] if params_values else None,
-        'final_params': params_values[-1] if params_values else None,
-        'total_params_change': params_values[-1] - params_values[0] if len(params_values) >= 2 else None,
-        'average_params_change': sum(params_changes) / len(params_changes) if params_changes else None,
-        'ccn_changes': ccn_changes,
-        'length_changes': length_changes,
-        'tokens_changes': tokens_changes,
-        'params_changes': params_changes,
+        'ccn_std': ccn_std,
+        'length_std': length_std,
+        'tokens_std': tokens_std,
+        'params_std': params_std,
         'ccn_values': ccn_values,
         'length_values': length_values,
         'tokens_values': tokens_values,
@@ -706,7 +581,7 @@ def calculate_complexity_statistics(complexity_data):
 
 def prepare_enhanced_csv_output(original_df, complexity_results):
     """
-    元のCSVデータに複雑度統計の新しいカラムを追加したデータフレームを作成する（パラメーター数対応）
+    元のCSVデータに複雑度統計の新しいカラムを追加したデータフレームを作成する
     """
     # 元のDataFrameをコピー
     enhanced_df = original_df.copy()
@@ -714,22 +589,10 @@ def prepare_enhanced_csv_output(original_df, complexity_results):
     # 新しいカラムを初期化（NaN値で）
     new_columns = [
         'tracking_data_points',
-        'tracking_initial_ccn',
-        'tracking_final_ccn',
-        'tracking_total_ccn_change',
-        'tracking_average_ccn_change',
-        'tracking_initial_length',
-        'tracking_final_length',
-        'tracking_total_length_change',
-        'tracking_average_length_change',
-        'tracking_initial_tokens',
-        'tracking_final_tokens',
-        'tracking_total_tokens_change',
-        'tracking_average_tokens_change',
-        'tracking_initial_params',
-        'tracking_final_params',
-        'tracking_total_params_change',
-        'tracking_average_params_change',
+        'tracking_ccn_std',
+        'tracking_length_std',
+        'tracking_tokens_std',
+        'tracking_params_std',
     ]
 
     for col in new_columns:
@@ -742,26 +605,10 @@ def prepare_enhanced_csv_output(original_df, complexity_results):
         if stats is not None:
             # 処理に成功した場合のみデータを設定
             enhanced_df.loc[row_index, 'tracking_data_points'] = stats['data_points']
-
-            enhanced_df.loc[row_index, 'tracking_initial_ccn'] = stats['initial_ccn']
-            enhanced_df.loc[row_index, 'tracking_final_ccn'] = stats['final_ccn']
-            enhanced_df.loc[row_index, 'tracking_total_ccn_change'] = stats['total_ccn_change']
-            enhanced_df.loc[row_index, 'tracking_average_ccn_change'] = stats['average_ccn_change']
-
-            enhanced_df.loc[row_index, 'tracking_initial_length'] = stats['initial_length']
-            enhanced_df.loc[row_index, 'tracking_final_length'] = stats['final_length']
-            enhanced_df.loc[row_index, 'tracking_total_length_change'] = stats['total_length_change']
-            enhanced_df.loc[row_index, 'tracking_average_length_change'] = stats['average_length_change']
-
-            enhanced_df.loc[row_index, 'tracking_initial_tokens'] = stats['initial_tokens']
-            enhanced_df.loc[row_index, 'tracking_final_tokens'] = stats['final_tokens']
-            enhanced_df.loc[row_index, 'tracking_total_tokens_change'] = stats['total_tokens_change']
-            enhanced_df.loc[row_index, 'tracking_average_tokens_change'] = stats['average_tokens_change']
-
-            enhanced_df.loc[row_index, 'tracking_initial_params'] = stats['initial_params']
-            enhanced_df.loc[row_index, 'tracking_final_params'] = stats['final_params']
-            enhanced_df.loc[row_index, 'tracking_total_params_change'] = stats['total_params_change']
-            enhanced_df.loc[row_index, 'tracking_average_params_change'] = stats['average_params_change']
+            enhanced_df.loc[row_index, 'tracking_ccn_std'] = stats['ccn_std']
+            enhanced_df.loc[row_index, 'tracking_length_std'] = stats['length_std']
+            enhanced_df.loc[row_index, 'tracking_tokens_std'] = stats['tokens_std']
+            enhanced_df.loc[row_index, 'tracking_params_std'] = stats['params_std']
 
     return enhanced_df
 
@@ -770,8 +617,8 @@ def main():
     csv_file = "method-p_filtered_v2.csv"
     repo_path = "/Users/nagutabby/elasticsearch"
     enhanced_output_csv = "method-p_filtered_v2_enhanced.csv"  # 拡張データ用の新しいファイル名
-    num_commits = 20  # 追跡するコミット数
-    max_records = 3000  # 処理する最大レコード数
+    num_commits = 30  # 追跡するコミット数
+    max_records = 2000  # 処理する最大レコード数
 
     # 処理をスキップするかどうかのフラグ
     SKIP_MISSING_METHODS = True  # メソッドが見つからない場合はスキップ
@@ -812,7 +659,7 @@ def main():
             print("エラー: CSVファイルにデータが含まれていません")
             sys.exit(1)
 
-        # 最初の1000レコードのみを処理対象とする
+        # 最初の2000レコードのみを処理対象とする
         if len(df) > max_records:
             print(f"情報: CSVファイルには{len(df)}レコードありますが、最初の{max_records}レコードのみ処理します")
             df_to_process = df.head(max_records)
@@ -869,17 +716,10 @@ def main():
                     print(f"\n=== 統計結果 ===")
                     print(f"データポイント数: {stats['data_points']}")
 
-                    print(f"CCN総変化量: {stats['total_ccn_change']}")
-                    print(f"CCN平均変化量: {stats['average_ccn_change']:.2f}")
-
-                    print(f"長さ総変化量: {stats['total_length_change']}")
-                    print(f"長さ平均変化量: {stats['average_length_change']:.2f}")
-
-                    print(f"トークン総変化量: {stats['total_tokens_change']}")
-                    print(f"トークン平均変化量: {stats['average_tokens_change']:.2f}")
-
-                    print(f"パラメーター総変化量: {stats['total_params_change']}")
-                    print(f"パラメーター平均変化量: {stats['average_params_change']:.2f}")
+                    print(f"CCN標準偏差: {stats['ccn_std']:.3f}")
+                    print(f"長さ標準偏差: {stats['length_std']:.3f}")
+                    print(f"トークン標準偏差: {stats['tokens_std']:.3f}")
+                    print(f"パラメーター標準偏差: {stats['params_std']:.3f}")
 
                     # 統計結果を保存
                     complexity_results[record_id] = stats
@@ -922,38 +762,42 @@ def main():
         # 全体の統計情報を表示
         if processed_count > 0:
             print(f"\n=== 全体統計 ===")
-            # 各レコードごとの平均変化量の統計
+            # 各レコードごとの標準偏差の統計
             if complexity_results:
                 # 成功したレコードの統計データを取得
                 successful_stats = [stats for stats in complexity_results.values() if stats is not None]
 
                 if successful_stats:
-                    avg_ccn_changes = [stats['average_ccn_change'] for stats in successful_stats]
-                    avg_length_changes = [stats['average_length_change'] for stats in successful_stats]
-                    avg_tokens_changes = [stats['average_tokens_change'] for stats in successful_stats]
-                    avg_params_changes = [stats['average_params_change'] for stats in successful_stats]
+                    ccn_stds = [stats['ccn_std'] for stats in successful_stats if stats['ccn_std'] is not None]
+                    length_stds = [stats['length_std'] for stats in successful_stats if stats['length_std'] is not None]
+                    tokens_stds = [stats['tokens_std'] for stats in successful_stats if stats['tokens_std'] is not None]
+                    params_stds = [stats['params_std'] for stats in successful_stats if stats['params_std'] is not None]
 
                     import numpy as np
 
-                    print(f"CCN平均変化量:")
-                    print(f"  平均: {np.mean(avg_ccn_changes):.3f}")
-                    print(f"  中央値: {np.median(avg_ccn_changes):.3f}")
-                    print(f"  標準偏差: {np.std(avg_ccn_changes):.3f}")
+                    if ccn_stds:
+                        print(f"CCN標準偏差:")
+                        print(f"  平均: {np.mean(ccn_stds):.3f}")
+                        print(f"  中央値: {np.median(ccn_stds):.3f}")
+                        print(f"  標準偏差: {np.std(ccn_stds):.3f}")
 
-                    print(f"\n長さ平均変化量:")
-                    print(f"  平均: {np.mean(avg_length_changes):.3f}")
-                    print(f"  中央値: {np.median(avg_length_changes):.3f}")
-                    print(f"  標準偏差: {np.std(avg_length_changes):.3f}")
+                    if length_stds:
+                        print(f"\n長さ標準偏差:")
+                        print(f"  平均: {np.mean(length_stds):.3f}")
+                        print(f"  中央値: {np.median(length_stds):.3f}")
+                        print(f"  標準偏差: {np.std(length_stds):.3f}")
 
-                    print(f"\nトークン平均変化量:")
-                    print(f"  平均: {np.mean(avg_tokens_changes):.3f}")
-                    print(f"  中央値: {np.median(avg_tokens_changes):.3f}")
-                    print(f"  標準偏差: {np.std(avg_tokens_changes):.3f}")
+                    if tokens_stds:
+                        print(f"\nトークン標準偏差:")
+                        print(f"  平均: {np.mean(tokens_stds):.3f}")
+                        print(f"  中央値: {np.median(tokens_stds):.3f}")
+                        print(f"  標準偏差: {np.std(tokens_stds):.3f}")
 
-                    print(f"\nパラメーター平均変化量:")
-                    print(f"  平均: {np.mean(avg_params_changes):.3f}")
-                    print(f"  中央値: {np.median(avg_params_changes):.3f}")
-                    print(f"  標準偏差: {np.std(avg_params_changes):.3f}")
+                    if params_stds:
+                        print(f"\nパラメーター標準偏差:")
+                        print(f"  平均: {np.mean(params_stds):.3f}")
+                        print(f"  中央値: {np.median(params_stds):.3f}")
+                        print(f"  標準偏差: {np.std(params_stds):.3f}")
 
         else:
             print("\n警告: 処理できたデータがありませんでした")
