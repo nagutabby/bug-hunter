@@ -168,6 +168,10 @@ class BugHunter:
         self.tfidf_max_features = tfidf_max_features
         self.scaler = None
 
+        # operation_type One-Hotエンコーディング用
+        self.operation_type_columns = None
+        self.has_operation_type = False
+
         self.test_size = test_size
         self.test_results = None
 
@@ -187,28 +191,91 @@ class BugHunter:
         }
 
     def read_data(self, data_path: str, max_rows: int = 100) -> pd.DataFrame:
-        print(f"\n=== 1) データ読み込み（最大{max_rows}行、欠損値0埋め） ===")
+        print(f"\n=== 1) データ読み込み（最大{max_rows}行、欠損値はそのまま保持） ===")
         df = pd.read_csv(data_path, nrows=max_rows)
         print(f"読み込み完了: {len(df)}行, {len(df.columns)}列")
 
-        # 欠損値を0で埋める
-        original_na_count = df.isnull().sum().sum()
-        df = df.fillna(0)
-        print(f"欠損値を0で埋めました: {original_na_count}個の欠損値")
+        # operation_typeカラムの存在確認
+        if 'operation_type' in df.columns:
+            self.has_operation_type = True
+            print(f"operation_typeカラムが検出されました")
+
+            # operation_typeの分布を表示（NaNも含む）
+            operation_counts = df['operation_type'].value_counts(dropna=False)
+            print(f"operation_type分布:")
+            for op_type, count in operation_counts.items():
+                percentage = count / len(df) * 100
+                op_type_str = str(op_type) if pd.notna(op_type) else "NaN"
+                print(f"  {op_type_str}: {count}個 ({percentage:.1f}%)")
+        else:
+            self.has_operation_type = False
+            print(f"operation_typeカラムは見つかりませんでした")
+
+        # 欠損値の状況を表示（ゼロフィルはしない）
+        missing_info = df.isnull().sum()
+        total_missing = missing_info.sum()
+
+        print(f"欠損値の状況: {total_missing}個の欠損値")
+        if total_missing > 0:
+            print("主な欠損値を持つカラム:")
+            for col, missing_count in missing_info[missing_info > 0].items():
+                percentage = missing_count / len(df) * 100
+                print(f"  {col}: {missing_count}個 ({percentage:.1f}%)")
+            print("注意: 欠損値はそのまま保持され、RandomForestで自動的に処理されます")
 
         return df
 
+    def _prepare_operation_type_features(self, data: pd.DataFrame, is_training: bool = True) -> pd.DataFrame:
+        """operation_typeカラムのOne-Hotエンコーディングを行う"""
+        if not self.has_operation_type or 'operation_type' not in data.columns:
+            return pd.DataFrame(index=data.index)
+
+        if is_training:
+            # 訓練時：全カテゴリを記録してOne-Hotエンコーディング
+            # NaNも'NaN'として明示的に処理
+            operation_type_filled = data['operation_type'].fillna('NaN')
+            operation_type_dummies = pd.get_dummies(operation_type_filled, prefix='operation_type')
+            self.operation_type_columns = operation_type_dummies.columns.tolist()
+
+            print(f"operation_type One-Hotエンコーディング:")
+            print(f"  生成されたカラム: {self.operation_type_columns}")
+
+            return operation_type_dummies
+        else:
+            # 予測時：訓練時と同じカラム構成を保持
+            if self.operation_type_columns is None:
+                raise ValueError("operation_typeのカラム情報が学習されていません。まず訓練データでprepare_dataを実行してください。")
+
+            operation_type_filled = data['operation_type'].fillna('NaN')
+            operation_type_dummies = pd.get_dummies(operation_type_filled, prefix='operation_type')
+
+            # 訓練時と同じカラム構成に合わせる
+            operation_type_df = pd.DataFrame(0, index=data.index, columns=self.operation_type_columns)
+
+            # 存在するカラムのみ値を設定
+            for col in operation_type_dummies.columns:
+                if col in operation_type_df.columns:
+                    operation_type_df[col] = operation_type_dummies[col]
+
+            return operation_type_df
+
     def prepare_data(self, data: pd.DataFrame, is_training: bool = True) -> tuple:
-        print("\n=== データ前処理（カスタムJavaトークナイザー + TF-IDF + 正規化使用）===")
+        print("\n=== データ前処理（カスタムJavaトークナイザー + TF-IDF + operation_type One-Hot + 正規化、欠損値保持）===")
 
         y = (data["Number of Bugs"] > 0.5).astype(int) if "Number of Bugs" in data.columns and is_training else None
 
+        # 数値特徴量の処理（operation_typeは除外、欠損値はそのまま保持）
         numerical_feature_columns = data.select_dtypes(include=[np.number]).columns.tolist()
-        numerical_feature_columns = [col for col in numerical_feature_columns if col != "Number of Bugs"]
+        numerical_feature_columns = [col for col in numerical_feature_columns if col not in ["Number of Bugs"]]
         X_numerical = data[numerical_feature_columns].copy()
 
+        # 無限値のみをNaNに変換（元のNaNは保持）
         X_numerical = X_numerical.replace([np.inf, -np.inf], np.nan)
-        X_numerical = X_numerical.fillna(0)
+
+        # RandomForestは欠損値を自動的に処理するため、ここでは欠損値を埋めない
+        missing_count = X_numerical.isnull().sum().sum()
+        if missing_count > 0:
+            print(f"数値特徴量の欠損値: {missing_count}個（RandomForestで自動処理）")
 
         if is_training:
             self.scaler = StandardScaler()
@@ -219,6 +286,10 @@ class BugHunter:
             X_numerical_scaled = self.scaler.transform(X_numerical)
         X_numerical_scaled_df = pd.DataFrame(X_numerical_scaled, columns=numerical_feature_columns, index=X_numerical.index)
 
+        # operation_typeのOne-Hotエンコーディング
+        X_operation_type_df = self._prepare_operation_type_features(data, is_training)
+
+        # LongName TF-IDF処理（欠損値は空文字として処理）
         longname_data = data['LongName'].fillna("").astype(str)
         if is_training:
             self.tfidf_vectorizer_longname = TfidfVectorizer(
@@ -237,6 +308,7 @@ class BugHunter:
                                             columns=[f'LongName_tfidf_{i}' for i in range(X_longname_tfidf.shape[1])],
                                             index=longname_data.index)
 
+        # Parent TF-IDF処理（欠損値は空文字として処理）
         parent_data = data['Parent'].fillna("").astype(str)
         if is_training:
             self.tfidf_vectorizer_parent = TfidfVectorizer(
@@ -255,18 +327,32 @@ class BugHunter:
                                           columns=[f'Parent_tfidf_{i}' for i in range(X_parent_tfidf.shape[1])],
                                           index=parent_data.index)
 
-        X = pd.concat([X_numerical_scaled_df, X_longname_tfidf_df, X_parent_tfidf_df], axis=1)
+        # 全特徴量を結合
+        X_parts = [X_numerical_scaled_df, X_longname_tfidf_df, X_parent_tfidf_df]
+        if len(X_operation_type_df.columns) > 0:
+            X_parts.append(X_operation_type_df)
+
+        X = pd.concat(X_parts, axis=1)
 
         if is_training:
             self.all_feature_names = X.columns.tolist()
             self.initial_X = X
             self.initial_y = y
 
-            print(f"初期使用特徴量数 (数値 + Java TF-IDF): {len(X.columns)}")
+            print(f"初期使用特徴量数 (数値 + Java TF-IDF + operation_type): {len(X.columns)}")
             print(f"  - 数値特徴量: {len(numerical_feature_columns)}")
             print(f"  - LongName TF-IDF: {X_longname_tfidf.shape[1]}")
             print(f"  - Parent TF-IDF: {X_parent_tfidf.shape[1]}")
+            if len(X_operation_type_df.columns) > 0:
+                print(f"  - operation_type One-Hot: {len(X_operation_type_df.columns)}")
+            else:
+                print(f"  - operation_type One-Hot: 0 (カラムなし)")
             print(f"ラベル分布: 0={sum(y==0)}, 1={sum(y==1)}")
+
+            # 最終的な特徴量行列の欠損値状況を確認
+            final_missing = X.isnull().sum().sum()
+            if final_missing > 0:
+                print(f"最終特徴量行列の欠損値: {final_missing}個（主に数値特徴量）")
 
             self.original_class_distribution = {
                 'class_0': sum(y==0),
@@ -289,6 +375,12 @@ class BugHunter:
                 sample_tokens_parent = self.java_tokenizer(sample_parent)
                 print(f"Parent例: {sample_parent}")
                 print(f"→ トークン: {sample_tokens_parent}")
+
+            if self.has_operation_type:
+                sample_op_type = data['operation_type'].iloc[0] if len(data) > 0 else None
+                sample_op_type_str = str(sample_op_type) if pd.notna(sample_op_type) else 'NaN'
+                print(f"\noperation_type例: {sample_op_type_str}")
+                print(f"→ One-Hot: {X_operation_type_df.iloc[0].to_dict() if len(X_operation_type_df) > 0 else 'N/A'}")
         else:
             print(f"予測データの前処理完了: {len(X.columns)}列")
 
@@ -351,11 +443,13 @@ class BugHunter:
 
             longname_count = len([f for f in self.selected_features if f.startswith('LongName_tfidf_')])
             parent_count = len([f for f in self.selected_features if f.startswith('Parent_tfidf_')])
-            numerical_count = len(self.selected_features) - longname_count - parent_count
+            operation_type_count = len([f for f in self.selected_features if f.startswith('operation_type_')])
+            numerical_count = len(self.selected_features) - longname_count - parent_count - operation_type_count
 
             print(f"  - 数値特徴量: {numerical_count}")
             print(f"  - LongName TF-IDF: {longname_count}")
             print(f"  - Parent TF-IDF: {parent_count}")
+            print(f"  - operation_type One-Hot: {operation_type_count}")
 
             print("\nRandomForest Feature Importance 上位5:")
             top_indices = np.argsort(self.feature_importance_scores)[-5:][::-1]
@@ -519,42 +613,53 @@ class BugHunter:
         if self.scaler is None:
             raise ValueError("Scalerが学習されていません。まずrun_pipeline()を実行してください。")
 
+        # 数値特徴量の処理（欠損値はそのまま保持）
         numerical_feature_columns = X.select_dtypes(include=[np.number]).columns.tolist()
         if "Number of Bugs" in numerical_feature_columns:
             numerical_feature_columns.remove("Number of Bugs")
 
         X_numerical = X[numerical_feature_columns].copy()
+        # 無限値のみをNaNに変換（元のNaNは保持）
         X_numerical = X_numerical.replace([np.inf, -np.inf], np.nan)
-        X_numerical = X_numerical.fillna(0)
 
         X_numerical_scaled = self.scaler.transform(X_numerical)
         X_numerical_scaled_df = pd.DataFrame(X_numerical_scaled, columns=numerical_feature_columns, index=X_numerical.index)
 
+        # operation_typeの処理
+        X_operation_type_df = self._prepare_operation_type_features(X, is_training=False)
+
+        # LongName TF-IDF処理
         longname_data_pred = X['LongName'].fillna("").astype(str)
         X_longname_tfidf_pred = self.tfidf_vectorizer_longname.transform(longname_data_pred)
         X_longname_tfidf_df_pred = pd.DataFrame(X_longname_tfidf_pred.toarray(),
                                                   columns=[f'LongName_tfidf_{i}' for i in range(X_longname_tfidf_pred.shape[1])],
                                                   index=X.index)
 
+        # Parent TF-IDF処理
         parent_data_pred = X['Parent'].fillna("").astype(str)
         X_parent_tfidf_pred = self.tfidf_vectorizer_parent.transform(parent_data_pred)
         X_parent_tfidf_df_pred = pd.DataFrame(X_parent_tfidf_pred.toarray(),
                                                 columns=[f'Parent_tfidf_{i}' for i in range(X_parent_tfidf_pred.shape[1])],
                                                 index=X.index)
 
-        X_processed_full = pd.concat([X_numerical_scaled_df, X_longname_tfidf_df_pred, X_parent_tfidf_df_pred], axis=1)
+        # 全特徴量を結合
+        X_parts = [X_numerical_scaled_df, X_longname_tfidf_df_pred, X_parent_tfidf_df_pred]
+        if len(X_operation_type_df.columns) > 0:
+            X_parts.append(X_operation_type_df)
 
+        X_processed_full = pd.concat(X_parts, axis=1)
+
+        # 選択された特徴量のみを使用
         X_processed_df = X_processed_full[self.selected_features]
 
         y_pred_proba = self.best_model.predict_proba(X_processed_df)[:, 1]
-
         y_pred = (y_pred_proba >= 0.5).astype(int)
 
         return y_pred, y_pred_proba
 
     def run_pipeline(self, data_path: str, max_rows: int = 100):
         print("=== BugHunter 10分割交差検証バグ予測パイプライン (RandomForest Feature Importance版) ===")
-        print(f"- データ制限: 最大{max_rows}行、欠損値0埋め")
+        print(f"- データ制限: 最大{max_rows}行、欠損値保持（RandomForestで自動処理）")
 
         data = self.read_data(data_path, max_rows)
 
@@ -677,6 +782,10 @@ class BugHunter:
                 'min_token_length': self.java_tokenizer.min_token_length,
                 'include_package_tokens': self.java_tokenizer.include_package_tokens,
                 'stopwords_count': len(self.java_tokenizer.java_stopwords)
+            },
+            'operation_type_info': {
+                'has_operation_type': self.has_operation_type,
+                'operation_type_columns': self.operation_type_columns
             }
         }
 
@@ -699,6 +808,7 @@ class BugHunter:
         selected_features_df['タイプ'] = selected_features_df['特徴量'].apply(
             lambda x: 'LongName TF-IDF' if x.startswith('LongName_tfidf_')
                       else 'Parent TF-IDF' if x.startswith('Parent_tfidf_')
+                      else 'operation_type' if x.startswith('operation_type_')
                       else '数値'
         )
 
@@ -755,6 +865,35 @@ class BugHunter:
             print(f"  平均値: {np.mean(self.feature_importance_scores):.4f}")
             print(f"  最小値: {np.min(self.feature_importance_scores):.4f}")
             print(f"  閾値以上の特徴量数: {np.sum(self.feature_importance_scores >= self.feature_selection_threshold)}")
+
+    def display_operation_type_analysis(self):
+        """operation_type特徴量の分析結果を表示"""
+        if not self.has_operation_type:
+            print("\noperation_typeカラムは存在しません。")
+            return
+
+        print(f"\n=== operation_type One-Hotエンコーディング分析 ===")
+        if self.operation_type_columns:
+            print(f"生成されたoperation_typeカラム:")
+            for i, col in enumerate(self.operation_type_columns):
+                print(f"  {i+1}. {col}")
+
+            # 選択された特徴量の中でoperation_type関連のものをチェック
+            if self.selected_features:
+                selected_op_features = [f for f in self.selected_features if f.startswith('operation_type_')]
+                print(f"\n選択されたoperation_type特徴量: {len(selected_op_features)}個")
+                for feature in selected_op_features:
+                    if self.feature_importance_scores is not None and self.all_feature_names:
+                        try:
+                            idx = self.all_feature_names.index(feature)
+                            importance = self.feature_importance_scores[idx]
+                            print(f"  {feature}: {importance:.4f}")
+                        except (ValueError, IndexError):
+                            print(f"  {feature}: 重要度不明")
+                    else:
+                        print(f"  {feature}")
+        else:
+            print("operation_typeカラム情報が取得できませんでした。")
 
     def display_tokenizer_analysis(self, sample_size: int = 5):
         print("\n=== Javaトークナイザー動作例 ===")
@@ -846,7 +985,7 @@ def main():
 
     try:
         # データファイルのパスを指定
-        data_path = "method-p_filtered_v2_enhanced.csv"
+        data_path = "method-p_filtered_v2.csv"
 
         # パイプライン実行
         cv_results, test_results, final_params = bug_hunter.run_pipeline(
@@ -878,6 +1017,7 @@ def main():
         bug_hunter.display_sampling_summary()
         feature_importance_df = bug_hunter.display_feature_importance_table(top_n=15)
         bug_hunter.display_feature_selection_summary()
+        bug_hunter.display_operation_type_analysis()  # 新しい分析メソッド
         bug_hunter.display_tokenizer_analysis(sample_size=3)
 
         # 特徴量分析の詳細取得
@@ -888,6 +1028,7 @@ def main():
         print(f"全特徴量数: {len(feature_analysis['all_feature_names'])}")
         print(f"Feature Importance閾値: {feature_analysis['feature_selection_threshold']}")
         print(f"TF-IDF最大特徴量数: {feature_analysis['tfidf_max_features']}")
+        print(f"operation_type使用: {feature_analysis['operation_type_info']['has_operation_type']}")
 
         if feature_analysis['sampling_info']:
             sampling_info = feature_analysis['sampling_info']

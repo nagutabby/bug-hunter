@@ -134,9 +134,9 @@ def extract_package_path(parent_path):
     package_parts = parts[:-1]
     return '/'.join(package_parts) + '/'
 
-def get_commit_sequence(repo_path, start_commit_hash, num_commits=10):
+def get_current_and_previous_commit(repo_path, start_commit_hash):
     """
-    指定されたコミットから始まって、指定された数のコミットの履歴を取得する
+    指定されたコミットとその1つ前のコミットを取得する
     """
     try:
         from git import Repo
@@ -145,21 +145,29 @@ def get_commit_sequence(repo_path, start_commit_hash, num_commits=10):
         # 開始コミットを取得
         start_commit = repo.commit(start_commit_hash)
 
-        # コミット履歴を取得（現在のコミットから遡る）
-        commit_list = list(repo.iter_commits(start_commit, max_count=num_commits))
+        # 現在のコミットとその1つ前のコミットを取得
+        commit_list = list(repo.iter_commits(start_commit, max_count=2))
 
-        # コミットハッシュのリストを返す（時系列順に並び替え）
-        commit_hashes = [commit.hexsha for commit in reversed(commit_list)]
+        if len(commit_list) < 2:
+            print(f"警告: コミット {start_commit_hash} の前のコミットが見つかりません")
+            return [start_commit_hash], ["現在のコミットのみ"]
 
-        print(f"取得したコミット履歴 ({len(commit_hashes)}個):")
-        for i, hash_val in enumerate(commit_hashes):
-            print(f"  {i+1:2d}. {hash_val}")
+        # コミットハッシュのリストを返す（時系列順に並び替え: [前のコミット, 現在のコミット]）
+        current_commit = commit_list[0].hexsha
+        previous_commit = commit_list[1].hexsha
 
-        return commit_hashes
+        commit_hashes = [previous_commit, current_commit]
+        commit_labels = ["前のコミット", "現在のコミット"]
+
+        print(f"取得したコミット:")
+        print(f"  前のコミット: {previous_commit}")
+        print(f"  現在のコミット: {current_commit}")
+
+        return commit_hashes, commit_labels
 
     except Exception as e:
         print(f"エラー: コミット履歴の取得中にエラーが発生しました: {e}")
-        return []
+        return [], []
 
 def checkout_commit(repo_path, commit_hash):
     """
@@ -438,19 +446,19 @@ def analyze_with_lizard_only(java_file_path, target_method_name, target_class_na
     else:
         return [], "Lizardでメソッドが見つからない"
 
-def track_method_complexity_changes(repo_path, start_commit_hash, parent_path, long_name, num_commits=10, debug=False):
+def track_method_complexity_changes(repo_path, start_commit_hash, parent_path, long_name, debug=False):
     """
-    指定されたコミットから始まって複数のコミットでメソッドの複雑度変化を追跡する
+    指定されたコミットとその1つ前のコミットでメソッドの複雑度変化を追跡する
+    各コミットでメソッドが見つからない場合も適切にハンドリングする
     """
     print(f"\n=== メソッド複雑度変化追跡開始 ===")
     print(f"開始コミット: {start_commit_hash}")
     print(f"Parent: {parent_path}")
     print(f"LongName: {long_name}")
-    print(f"追跡コミット数: {num_commits}")
 
     try:
-        # コミット履歴を取得
-        commit_sequence = get_commit_sequence(repo_path, start_commit_hash, num_commits)
+        # 現在のコミットとその1つ前のコミットを取得
+        commit_sequence, commit_labels = get_current_and_previous_commit(repo_path, start_commit_hash)
         if not commit_sequence:
             print("エラー: コミット履歴を取得できませんでした")
             return []
@@ -472,8 +480,8 @@ def track_method_complexity_changes(repo_path, start_commit_hash, parent_path, l
         complexity_data = []
 
         # 各コミットで複雑度を測定
-        for i, commit_hash in enumerate(commit_sequence):
-            print(f"\n--- コミット {i+1}/{len(commit_sequence)}: {commit_hash} ---")
+        for i, (commit_hash, label) in enumerate(zip(commit_sequence, commit_labels)):
+            print(f"\n--- {label}: {commit_hash} ---")
 
             # コミットにチェックアウト
             success = checkout_commit(repo_path, commit_hash)
@@ -501,7 +509,8 @@ def track_method_complexity_changes(repo_path, start_commit_hash, parent_path, l
             )
 
             if len(filtered_methods) == 0:
-                print(f"  スキップ: Lizardでメソッドが見つかりませんでした ({strategy})")
+                print(f"  結果: Lizardでメソッドが見つかりませんでした ({strategy})")
+                # メソッドが見つからない場合でも継続（操作タイプの判定のため）
                 continue
             elif len(filtered_methods) > 1:
                 print(f"  警告: 複数のメソッドがマッチしました ({len(filtered_methods)}個) - 最初のものを使用")
@@ -511,6 +520,7 @@ def track_method_complexity_changes(repo_path, start_commit_hash, parent_path, l
             complexity_data.append({
                 'commit_order': i + 1,
                 'commit_hash': commit_hash,
+                'commit_label': label,
                 'ccn': method_data['ccn'],
                 'length': method_data['length'],
                 'tokens': method_data['tokens'],
@@ -526,6 +536,7 @@ def track_method_complexity_changes(repo_path, start_commit_hash, parent_path, l
             print(f"  トークン数: {method_data['tokens']}")
             print(f"  パラメーター数: {method_data['params']}")
 
+        print(f"\n取得されたデータポイント数: {len(complexity_data)}")
         return complexity_data
 
     except Exception as e:
@@ -534,81 +545,97 @@ def track_method_complexity_changes(repo_path, start_commit_hash, parent_path, l
         traceback.print_exc()
         return []
 
-def calculate_complexity_statistics(complexity_data):
+def calculate_complexity_changes(complexity_data):
     """
-    複雑度データから統計情報を計算する
+    前のコミットと現在のコミットの間の変化量を計算する
+    同時に操作の種類（modified/added/deleted/NaN）も判定する
     """
-    if len(complexity_data) < 2:
-        print("統計計算には最低2つのデータポイントが必要です")
-        return None
+    if len(complexity_data) == 0:
+        # パターン1: 両方のコミットでメソッドが見つからない
+        return {
+            'current_commit': None,
+            'ccn_change': None,
+            'length_change': None,
+            'tokens_change': None,
+            'operation_type': 'NaN'
+        }
+    elif len(complexity_data) == 1:
+        # パターン2 or 3: どちらか一方のコミットでのみメソッドが見つかった
+        single_data = complexity_data[0]
 
-    # 各メトリックの値を抽出
-    ccn_values = [data['ccn'] for data in complexity_data if data['ccn'] is not None]
-    length_values = [data['length'] for data in complexity_data if data['length'] is not None]
-    tokens_values = [data['tokens'] for data in complexity_data if data['tokens'] is not None]
-    params_values = [data['params'] for data in complexity_data if data['params'] is not None]
+        if single_data['commit_order'] == 1:
+            # パターン3: 前のコミットでのみ見つかった → メソッドが削除された
+            return {
+                'current_commit': single_data['commit_hash'],
+                'ccn_change': None,
+                'length_change': None,
+                'tokens_change': None,
+                'operation_type': 'deleted'
+            }
+        else:
+            # パターン2: 現在のコミットでのみ見つかった → メソッドが追加された
+            return {
+                'current_commit': single_data['commit_hash'],
+                'ccn_change': None,
+                'length_change': None,
+                'tokens_change': None,
+                'operation_type': 'added'
+            }
+    elif len(complexity_data) == 2:
+        # パターン4: 両方のコミットでメソッドが見つかった → メソッドが変更された
+        previous_data = complexity_data[0]
+        current_data = complexity_data[1]
 
-    # 有効なデータポイントが不足している場合
-    if len(ccn_values) < 2:
-        print("統計計算には最低2つの有効なCCN値が必要です")
-        return None
+        # 変化量を計算（CCN、長さ、トークンのみ）
+        ccn_change = current_data['ccn'] - previous_data['ccn']
+        length_change = current_data['length'] - previous_data['length']
+        tokens_change = current_data['tokens'] - previous_data['tokens']
 
-    # 標準偏差を計算
-    import numpy as np
-    ccn_std = np.std(ccn_values) if len(ccn_values) >= 2 else None
-    length_std = np.std(length_values) if len(length_values) >= 2 else None
-    tokens_std = np.std(tokens_values) if len(tokens_values) >= 2 else None
-    params_std = np.std(params_values) if len(params_values) >= 2 else None
-
-    # 統計情報
-    stats = {
-        'data_points': len(complexity_data),
-        'valid_ccn_points': len(ccn_values),
-        'valid_length_points': len(length_values),
-        'valid_tokens_points': len(tokens_values),
-        'valid_params_points': len(params_values),
-        'ccn_std': ccn_std,
-        'length_std': length_std,
-        'tokens_std': tokens_std,
-        'params_std': params_std,
-        'ccn_values': ccn_values,
-        'length_values': length_values,
-        'tokens_values': tokens_values,
-        'params_values': params_values
-    }
-
-    return stats
+        return {
+            'current_commit': current_data['commit_hash'],
+            'ccn_change': ccn_change,
+            'length_change': length_change,
+            'tokens_change': tokens_change,
+            'operation_type': 'modified'
+        }
+    else:
+        print(f"予期しないデータ数: {len(complexity_data)}")
+        return {
+            'current_commit': None,
+            'ccn_change': None,
+            'length_change': None,
+            'tokens_change': None,
+            'operation_type': 'NaN'
+        }
 
 def prepare_enhanced_csv_output(original_df, complexity_results):
     """
-    元のCSVデータに複雑度統計の新しいカラムを追加したデータフレームを作成する
+    元のCSVデータに複雑度変化の新しいカラムを追加したデータフレームを作成する
     """
     # 元のDataFrameをコピー
     enhanced_df = original_df.copy()
 
     # 新しいカラムを初期化（NaN値で）
     new_columns = [
-        'tracking_data_points',
-        'tracking_ccn_std',
-        'tracking_length_std',
-        'tracking_tokens_std',
-        'tracking_params_std',
+        'ccn_change',
+        'length_change',
+        'tokens_change',
+        'operation_type'
     ]
 
     for col in new_columns:
         enhanced_df[col] = pd.NA
 
     # 複雑度結果を元のデータフレームにマージ
-    for record_id, stats in complexity_results.items():
+    for record_id, changes in complexity_results.items():
         row_index = record_id - 1  # record_idは1ベース、DataFrameは0ベース
 
-        if stats is not None:
+        if changes is not None:
             # 処理に成功した場合のみデータを設定
-            enhanced_df.loc[row_index, 'tracking_data_points'] = stats['data_points']
-            enhanced_df.loc[row_index, 'tracking_ccn_std'] = stats['ccn_std']
-            enhanced_df.loc[row_index, 'tracking_length_std'] = stats['length_std']
-            enhanced_df.loc[row_index, 'tracking_tokens_std'] = stats['tokens_std']
-            enhanced_df.loc[row_index, 'tracking_params_std'] = stats['params_std']
+            enhanced_df.loc[row_index, 'ccn_change'] = changes['ccn_change']
+            enhanced_df.loc[row_index, 'length_change'] = changes['length_change']
+            enhanced_df.loc[row_index, 'tokens_change'] = changes['tokens_change']
+            enhanced_df.loc[row_index, 'operation_type'] = changes['operation_type']
 
     return enhanced_df
 
@@ -616,18 +643,20 @@ def main():
     # 設定
     csv_file = "method-p_filtered_v2.csv"
     repo_path = "/Users/nagutabby/elasticsearch"
-    enhanced_output_csv = "method-p_filtered_v2_enhanced.csv"  # 拡張データ用の新しいファイル名
-    num_commits = 30  # 追跡するコミット数
+    enhanced_output_csv = "method-p_filtered_v2_changes.csv"  # 変化量データ用の新しいファイル名
     max_records = 2000  # 処理する最大レコード数
 
     # 処理をスキップするかどうかのフラグ
     SKIP_MISSING_METHODS = True  # メソッドが見つからない場合はスキップ
     DEBUG_MODE = False  # デバッグ情報を表示
 
-    print("=== Git Repository Analysis Tool ===")
+    print("=== Git Repository Analysis Tool (変化量追跡版) ===")
     print("注意: このスクリプトはリポジトリの状態を変更します。")
     print("分析後、リポジトリは最後に処理されたコミットの状態になります。")
     print("分析前に必要な作業をコミット・保存してください。")
+    print("\nこのバージョンでは各メソッドについて:")
+    print("- 現在のコミットとその1つ前のコミットを比較")
+    print("- CCN、長さ、トークン数の変化量を計算")
 
     response = input("\n続行しますか？ (y/N): ")
     if response.lower() not in ['y', 'yes']:
@@ -670,7 +699,7 @@ def main():
         all_tracking_results = []
         processed_count = 0
         skipped_count = 0
-        complexity_results = {}  # record_id -> stats のマッピング
+        complexity_results = {}  # record_id -> changes のマッピング
 
         print(f"\n{'='*80}")
         print(f"処理開始: {len(df_to_process)}レコードを処理します")
@@ -696,46 +725,47 @@ def main():
                     commit_hash,
                     parent_path,
                     long_name,
-                    num_commits,
                     debug=DEBUG_MODE
                 )
 
-                if len(complexity_data) == 0:
-                    print(f"  結果: データが取得できませんでした")
-                    complexity_results[record_id] = None
-                    if SKIP_MISSING_METHODS:
-                        skipped_count += 1
-                        continue
-                    else:
-                        raise ValueError("メソッドの複雑度データを取得できませんでした")
-
-                # 統計情報を計算
-                stats = calculate_complexity_statistics(complexity_data)
-
-                if stats:
-                    print(f"\n=== 統計結果 ===")
-                    print(f"データポイント数: {stats['data_points']}")
-
-                    print(f"CCN標準偏差: {stats['ccn_std']:.3f}")
-                    print(f"長さ標準偏差: {stats['length_std']:.3f}")
-                    print(f"トークン標準偏差: {stats['tokens_std']:.3f}")
-                    print(f"パラメーター標準偏差: {stats['params_std']:.3f}")
-
-                    # 統計結果を保存
-                    complexity_results[record_id] = stats
-
-                    processed_count += 1
-
+                if complexity_data:
+                    # データが取得できた場合の処理は前述の通り
+                    pass
                 else:
-                    print(f"  結果: 統計情報を計算できませんでした")
-                    complexity_results[record_id] = None
-                    if SKIP_MISSING_METHODS:
-                        skipped_count += 1
-                        continue
+                    print(f"  結果: メソッドのメトリクスが取得できませんでした")
+                    # データが取得できない場合でも処理を継続（operation_typeを判定するため）
+
+                # 変化量を計算
+                changes = calculate_complexity_changes(complexity_data)
+
+                # 結果を常に表示（operation_typeを含む）
+                print(f"\n=== 分析結果 ===")
+                print(f"操作タイプ: {changes['operation_type']}")
+                if changes['operation_type'] == 'modified':
+                    print(f"CCN変化量: {changes['ccn_change']:+d}")
+                    print(f"長さ変化量: {changes['length_change']:+d}")
+                    print(f"トークン変化量: {changes['tokens_change']:+d}")
+                elif changes['operation_type'] == 'added':
+                    print(f"メソッドが新たに追加されました")
+                elif changes['operation_type'] == 'deleted':
+                    print(f"メソッドが削除されました")
+                elif changes['operation_type'] == 'NaN':
+                    print(f"メソッドの分析に失敗しました")
+
+                # 結果を保存
+                complexity_results[record_id] = changes
+                processed_count += 1
 
             except Exception as e:
                 print(f"エラー: レコード {record_id} の処理中に例外が発生しました: {e}")
-                complexity_results[record_id] = None
+                # 例外が発生した場合もNaNタイプとして記録
+                complexity_results[record_id] = {
+                    'current_commit': None,
+                    'ccn_change': None,
+                    'length_change': None,
+                    'tokens_change': None,
+                    'operation_type': 'NaN'
+                }
                 if DEBUG_MODE:
                     import traceback
                     traceback.print_exc()
@@ -749,7 +779,7 @@ def main():
         enhanced_df = prepare_enhanced_csv_output(df, complexity_results)
         enhanced_df.to_csv(enhanced_output_csv, index=False, encoding='utf-8')
         print(f"\n{'='*80}")
-        print(f"拡張版データが '{enhanced_output_csv}' に保存されました")
+        print(f"変化量データが '{enhanced_output_csv}' に保存されました")
 
         # 結果サマリーを表示
         print(f"\n{'='*80}")
@@ -762,42 +792,87 @@ def main():
         # 全体の統計情報を表示
         if processed_count > 0:
             print(f"\n=== 全体統計 ===")
-            # 各レコードごとの標準偏差の統計
+            # 各レコードごとの変化量の統計
             if complexity_results:
-                # 成功したレコードの統計データを取得
-                successful_stats = [stats for stats in complexity_results.values() if stats is not None]
+                # 成功したレコードの変化量データを取得
+                successful_changes = [changes for changes in complexity_results.values() if changes is not None]
 
-                if successful_stats:
-                    ccn_stds = [stats['ccn_std'] for stats in successful_stats if stats['ccn_std'] is not None]
-                    length_stds = [stats['length_std'] for stats in successful_stats if stats['length_std'] is not None]
-                    tokens_stds = [stats['tokens_std'] for stats in successful_stats if stats['tokens_std'] is not None]
-                    params_stds = [stats['params_std'] for stats in successful_stats if stats['params_std'] is not None]
+                # operation_typeごとの集計
+                operation_counts = {}
+                for changes in successful_changes:
+                    op_type = changes['operation_type']
+                    operation_counts[op_type] = operation_counts.get(op_type, 0) + 1
+
+                print(f"操作タイプ別集計:")
+                for op_type, count in operation_counts.items():
+                    percentage = count / len(successful_changes) * 100
+                    print(f"  {op_type}: {count}個 ({percentage:.1f}%)")
+
+                # modifiedのみの変化量統計
+                modified_only = [changes for changes in successful_changes if changes['operation_type'] == 'modified']
+
+                if modified_only:
+                    print(f"\n=== 変更されたメソッドの統計 (n={len(modified_only)}) ===")
+
+                    ccn_changes = [changes['ccn_change'] for changes in modified_only]
+                    length_changes = [changes['length_change'] for changes in modified_only]
+                    tokens_changes = [changes['tokens_change'] for changes in modified_only]
 
                     import numpy as np
 
-                    if ccn_stds:
-                        print(f"CCN標準偏差:")
-                        print(f"  平均: {np.mean(ccn_stds):.3f}")
-                        print(f"  中央値: {np.median(ccn_stds):.3f}")
-                        print(f"  標準偏差: {np.std(ccn_stds):.3f}")
+                    print(f"\n=== 変更されたメソッドの変化量統計 ===")
 
-                    if length_stds:
-                        print(f"\n長さ標準偏差:")
-                        print(f"  平均: {np.mean(length_stds):.3f}")
-                        print(f"  中央値: {np.median(length_stds):.3f}")
-                        print(f"  標準偏差: {np.std(length_stds):.3f}")
+                    if ccn_changes:
+                        print(f"CCN変化量:")
+                        print(f"  平均: {np.mean(ccn_changes):.3f}")
+                        print(f"  中央値: {np.median(ccn_changes):.3f}")
+                        print(f"  標準偏差: {np.std(ccn_changes):.3f}")
+                        print(f"  最小値: {np.min(ccn_changes)}")
+                        print(f"  最大値: {np.max(ccn_changes)}")
 
-                    if tokens_stds:
-                        print(f"\nトークン標準偏差:")
-                        print(f"  平均: {np.mean(tokens_stds):.3f}")
-                        print(f"  中央値: {np.median(tokens_stds):.3f}")
-                        print(f"  標準偏差: {np.std(tokens_stds):.3f}")
+                    if length_changes:
+                        print(f"\n長さ変化量:")
+                        print(f"  平均: {np.mean(length_changes):.3f}")
+                        print(f"  中央値: {np.median(length_changes):.3f}")
+                        print(f"  標準偏差: {np.std(length_changes):.3f}")
+                        print(f"  最小値: {np.min(length_changes)}")
+                        print(f"  最大値: {np.max(length_changes)}")
 
-                    if params_stds:
-                        print(f"\nパラメーター標準偏差:")
-                        print(f"  平均: {np.mean(params_stds):.3f}")
-                        print(f"  中央値: {np.median(params_stds):.3f}")
-                        print(f"  標準偏差: {np.std(params_stds):.3f}")
+                    if tokens_changes:
+                        print(f"\nトークン変化量:")
+                        print(f"  平均: {np.mean(tokens_changes):.3f}")
+                        print(f"  中央値: {np.median(tokens_changes):.3f}")
+                        print(f"  標準偏差: {np.std(tokens_changes):.3f}")
+                        print(f"  最小値: {np.min(tokens_changes)}")
+                        print(f"  最大値: {np.max(tokens_changes)}")
+
+                    # 変化のタイプ別集計（modifiedのみ）
+                    ccn_increases = sum(1 for change in ccn_changes if change > 0)
+                    ccn_decreases = sum(1 for change in ccn_changes if change < 0)
+                    ccn_no_change = sum(1 for change in ccn_changes if change == 0)
+
+                    length_increases = sum(1 for change in length_changes if change > 0)
+                    length_decreases = sum(1 for change in length_changes if change < 0)
+                    length_no_change = sum(1 for change in length_changes if change == 0)
+
+                    tokens_increases = sum(1 for change in tokens_changes if change > 0)
+                    tokens_decreases = sum(1 for change in tokens_changes if change < 0)
+                    tokens_no_change = sum(1 for change in tokens_changes if change == 0)
+
+                    print(f"\n=== 変更されたメソッドの変化の方向性 ===")
+                    print(f"CCN増加: {ccn_increases}個 ({ccn_increases/len(ccn_changes)*100:.1f}%)")
+                    print(f"CCN減少: {ccn_decreases}個 ({ccn_decreases/len(ccn_changes)*100:.1f}%)")
+                    print(f"CCN変化なし: {ccn_no_change}個 ({ccn_no_change/len(ccn_changes)*100:.1f}%)")
+
+                    print(f"\n長さ増加: {length_increases}個 ({length_increases/len(length_changes)*100:.1f}%)")
+                    print(f"長さ減少: {length_decreases}個 ({length_decreases/len(length_changes)*100:.1f}%)")
+                    print(f"長さ変化なし: {length_no_change}個 ({length_no_change/len(length_changes)*100:.1f}%)")
+
+                    print(f"\nトークン増加: {tokens_increases}個 ({tokens_increases/len(tokens_changes)*100:.1f}%)")
+                    print(f"トークン減少: {tokens_decreases}個 ({tokens_decreases/len(tokens_changes)*100:.1f}%)")
+                    print(f"トークン変化なし: {tokens_no_change}個 ({tokens_no_change/len(tokens_changes)*100:.1f}%)")
+                else:
+                    print("\n変更されたメソッドがありませんでした")
 
         else:
             print("\n警告: 処理できたデータがありませんでした")
