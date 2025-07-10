@@ -15,7 +15,6 @@ warnings.filterwarnings('ignore')
 GLOBAL_SEED = 42
 np.random.seed(GLOBAL_SEED)
 
-
 class JavaCodeTokenizer:
     """Javaのメソッド名やクラス名を適切にトークン化するカスタムトークナイザー"""
 
@@ -593,13 +592,6 @@ class BugHunter:
         print(f"Accuracy: {cv_results['accuracy_mean']:.4f} ± {cv_results['accuracy_std']:.4f}")
         print(f"ROC-AUC: {cv_results['roc_auc_mean']:.4f} ± {cv_results['roc_auc_std']:.4f}")
 
-        print(f"\n=== 最終テストデータ評価結果 ===")
-        print(f"F1スコア: {test_results['f1']:.4f}")
-        print(f"Precision: {test_results['precision']:.4f}")
-        print(f"Recall: {test_results['recall']:.4f}")
-        print(f"Accuracy: {test_results['accuracy']:.4f}")
-        print(f"ROC-AUC: {test_results['roc_auc']:.4f}")
-
         return cv_results, test_results, self.default_rf_params
 
     def get_cv_detailed_results(self, cv_results: dict) -> pd.DataFrame:
@@ -832,7 +824,6 @@ class BugHunter:
                 feature_name = self.selected_features[idx]
                 importance = self.feature_importance[idx]
                 print(f"  {i+1}. {feature_name}: {importance:.4f}")
-
 
 def main():
     """使用例"""
