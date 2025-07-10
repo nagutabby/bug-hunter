@@ -985,7 +985,7 @@ def main():
 
     try:
         # データファイルのパスを指定
-        data_path = "method-p_filtered_v2.csv"
+        data_path = "method-p_filtered_v2_changes.csv"
 
         # パイプライン実行
         cv_results, test_results, final_params = bug_hunter.run_pipeline(
