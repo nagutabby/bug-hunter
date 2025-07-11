@@ -9,6 +9,8 @@ from imblearn.under_sampling import RandomUnderSampler
 import re
 from typing import Set
 import warnings
+import pickle
+import os
 
 warnings.filterwarnings('ignore')
 
@@ -174,6 +176,10 @@ class BugHunter:
 
         self.test_size = test_size
         self.test_results = None
+
+        # 予測結果保存用（新機能）
+        self.predictions_data = None
+        self.test_indices = None
 
         self.java_tokenizer = JavaCodeTokenizer(
             min_token_length=java_tokenizer_min_length,
@@ -569,6 +575,14 @@ class BugHunter:
         print(f"Accuracy: {test_results['accuracy']:.4f}")
         print(f"ROC-AUC: {test_results['roc_auc']:.4f}")
 
+        # 予測結果を保存（新機能）
+        self.predictions_data = {
+            'y_true': y_test.values,
+            'y_pred': y_test_pred,
+            'y_pred_proba': y_test_pred_proba,
+            'test_indices': self.test_indices
+        }
+
         self.test_results = {
             **test_results,
             'test_class_distribution': test_class_distribution,
@@ -673,6 +687,9 @@ class BugHunter:
             stratify=y_full
         )
 
+        # テストデータのインデックスを保存（新機能）
+        self.test_indices = X_test.index.tolist()
+
         print(f"訓練データ: {len(X_train)}件 (クラス0: {sum(y_train==0)}, クラス1: {sum(y_train==1)})")
         print(f"テストデータ: {len(X_test)}件 (クラス0: {sum(y_test==0)}, クラス1: {sum(y_test==1)})")
 
@@ -698,6 +715,24 @@ class BugHunter:
         print(f"ROC-AUC: {cv_results['roc_auc_mean']:.4f} ± {cv_results['roc_auc_std']:.4f}")
 
         return cv_results, test_results, self.default_rf_params
+
+    def save_predictions(self, file_path: str):
+        """予測結果をファイルに保存する（新機能）"""
+        if self.predictions_data is None:
+            raise ValueError("予測データがありません。まずrun_pipeline()を実行してください。")
+
+        with open(file_path, 'wb') as f:
+            pickle.dump(self.predictions_data, f)
+        print(f"予測結果を '{file_path}' に保存しました")
+
+    def load_predictions(self, file_path: str):
+        """予測結果をファイルから読み込む（新機能）"""
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"ファイル '{file_path}' が見つかりません")
+
+        with open(file_path, 'rb') as f:
+            self.predictions_data = pickle.load(f)
+        print(f"予測結果を '{file_path}' から読み込みました")
 
     def get_cv_detailed_results(self, cv_results: dict) -> pd.DataFrame:
         detailed_results = []
@@ -985,7 +1020,7 @@ def main():
 
     try:
         # データファイルのパスを指定
-        data_path = "method-p_filtered_v2_changes_nan.csv"
+        data_path = "method-p_filtered_v2_changes_real_number.csv"
 
         # パイプライン実行
         cv_results, test_results, final_params = bug_hunter.run_pipeline(
@@ -1002,6 +1037,9 @@ def main():
         print(f"テストデータ F1スコア: {test_results['f1']:.4f}")
         print(f"交差検証 平均ROC-AUC: {cv_results['roc_auc_mean']:.4f} ± {cv_results['roc_auc_std']:.4f}")
         print(f"テストデータ ROC-AUC: {test_results['roc_auc']:.4f}")
+
+        # 予測結果の保存（新機能）
+        bug_hunter.save_predictions("predictions_real_number.pkl")
 
         # 各フォールドの詳細結果
         detailed_df = bug_hunter.get_cv_detailed_results(cv_results)
