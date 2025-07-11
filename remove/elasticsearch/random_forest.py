@@ -985,12 +985,12 @@ def main():
 
     try:
         # データファイルのパスを指定
-        data_path = "method-p_filtered_v2_changes.csv"
+        data_path = "method-p_filtered_v2_changes_nan.csv"
 
         # パイプライン実行
         cv_results, test_results, final_params = bug_hunter.run_pipeline(
             data_path,
-            max_rows=2000
+            max_rows=3000
         )
 
         print("="*60)
