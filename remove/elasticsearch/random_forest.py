@@ -584,18 +584,6 @@ class BugHunter:
         print(f"パラメータ: {self.default_rf_params}")
         print(f"学習データ: {len(X_resampled)}件")
 
-        if hasattr(self.best_model, 'feature_importances_'):
-            self.feature_importance = self.best_model.feature_importances_
-            print("特徴量重要度を取得しました。")
-
-            if len(self.feature_importance) > 0 and len(self.selected_features) == len(self.feature_importance):
-                top_indices = self.feature_importance.argsort()[-5:][::-1]
-                print("最終モデル特徴量重要度 上位5:")
-                for i, idx in enumerate(top_indices):
-                    feature_name = self.selected_features[idx]
-                    importance = self.feature_importance[idx]
-                    print(f"  {i+1}. {feature_name}: {importance:.4f}")
-
         return self.best_model
 
     def predict(self, X: pd.DataFrame) -> tuple:
