@@ -5,7 +5,11 @@ from sklearn.model_selection import StratifiedKFold, train_test_split
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, roc_auc_score
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.preprocessing import StandardScaler
+from sklearn.inspection import PartialDependenceDisplay
 from imblearn.under_sampling import RandomUnderSampler
+import matplotlib.pyplot as plt
+import seaborn as sns
+import japanize_matplotlib  # 日本語フォント対応
 import re
 from typing import Set
 import warnings
@@ -180,6 +184,10 @@ class BugHunter:
         # 予測結果保存用（新機能）
         self.predictions_data = None
         self.test_indices = None
+
+        # PDP用のデータ保存
+        self.X_train_for_pdp = None
+        self.y_train_for_pdp = None
 
         self.java_tokenizer = JavaCodeTokenizer(
             min_token_length=java_tokenizer_min_length,
@@ -577,6 +585,10 @@ class BugHunter:
 
         X_resampled, y_resampled = self.apply_undersampling(X, y)
 
+        # PDP用にデータを保存
+        self.X_train_for_pdp = X_resampled.copy()
+        self.y_train_for_pdp = y_resampled.copy()
+
         self.best_model = RandomForestClassifier(**self.default_rf_params)
         self.best_model.fit(X_resampled, y_resampled)
 
@@ -585,6 +597,329 @@ class BugHunter:
         print(f"学習データ: {len(X_resampled)}件")
 
         return self.best_model
+
+    def plot_partial_dependence(self, top_n: int = 20, save_path: str = None):
+        """特徴量上位N個のPartial Dependence Plotを描画"""
+
+        if self.best_model is None:
+            raise ValueError("モデルが学習されていません。まずrun_pipeline()を実行してください。")
+
+        if self.X_train_for_pdp is None or self.feature_importance_scores is None:
+            raise ValueError("PDP用のデータが準備されていません。まずrun_pipeline()を実行してください。")
+
+        if self.selected_features is None:
+            raise ValueError("特徴量選択が実行されていません。まずrun_pipeline()を実行してください。")
+
+        print(f"\n=== 特徴量上位{top_n}個のPartial Dependence Plot描画 ===")
+
+        # 選択された特徴量の中で重要度上位N個を取得
+        selected_features_df = pd.DataFrame({
+            '特徴量': self.all_feature_names,
+            'Feature Importance': self.feature_importance_scores
+        })
+
+        # 選択された特徴量のみをフィルタ
+        selected_features_df = selected_features_df[
+            selected_features_df['特徴量'].isin(self.selected_features)
+        ].sort_values('Feature Importance', ascending=False)
+
+        top_features = selected_features_df.head(top_n)['特徴量'].tolist()
+
+        print(f"PDP対象特徴量（上位{len(top_features)}個）:")
+        for i, feature in enumerate(top_features, 1):
+            importance_idx = self.all_feature_names.index(feature)
+            importance = self.feature_importance_scores[importance_idx]
+            feature_type = self._get_feature_type(feature)
+            unique_values = len(self.X_train_for_pdp[feature].unique())
+            print(f"  {i:2d}. {feature} ({feature_type}) - 重要度: {importance:.4f} (ユニーク値: {unique_values})")
+
+        # PDP用の特徴量インデックスを取得
+        feature_indices = [self.selected_features.index(feature) for feature in top_features]
+
+        try:
+            # seaborn と matplotlib の設定
+            sns.set_style("whitegrid")
+            sns.set_palette("husl")
+
+            # seabornのフォント設定で日本語フォントを指定
+            sns.set(font='IPAexGothic')
+
+            # または、seaborn設定後に japanize を再実行
+            # japanize_matplotlib.japanize()
+
+            plt.rcParams['font.size'] = 10
+            plt.rcParams['axes.titlesize'] = 12
+            plt.rcParams['axes.labelsize'] = 10
+            plt.rcParams['figure.titlesize'] = 16
+
+            # グリッドサイズを計算（5列固定）
+            n_cols = 5
+            n_rows = (len(top_features) + n_cols - 1) // n_cols
+
+            # 図のサイズを調整
+            fig_width = n_cols * 4
+            fig_height = n_rows * 3
+
+            print(f"PDP描画中... ({n_rows}行 × {n_cols}列のグリッド)")
+
+            # Partial Dependence Plotを描画
+            fig, axes = plt.subplots(n_rows, n_cols, figsize=(fig_width, fig_height))
+
+            # axesを1次元配列に変換（単一行の場合の対応）
+            if n_rows == 1:
+                axes = axes.reshape(1, -1)
+            if n_cols == 1:
+                axes = axes.reshape(-1, 1)
+
+            # PDPを一つずつ描画
+            for i, (feature_idx, feature_name) in enumerate(zip(feature_indices, top_features)):
+                row = i // n_cols
+                col = i % n_cols
+                ax = axes[row, col]
+
+                try:
+                    # 特徴量のユニーク値数をチェック
+                    feature_data = self.X_train_for_pdp[feature_name]
+                    unique_values = feature_data.unique()
+                    n_unique = len(unique_values)
+
+                    # 二値特徴量（0,1のみ）やカテゴリ変数の場合は棒グラフで表示
+                    if n_unique <= 2 or feature_name.startswith('operation_type_'):
+                        self._plot_binary_feature_effect(ax, feature_name, feature_data)
+
+                    # 離散値が少ない場合（3-10個）も棒グラフ
+                    elif n_unique <= 10 and all(isinstance(x, (int, np.integer)) for x in unique_values if not pd.isna(x)):
+                        self._plot_discrete_feature_effect(ax, feature_name, feature_data)
+
+                    # 連続値の場合は通常のPDP
+                    else:
+                        display = PartialDependenceDisplay.from_estimator(
+                            self.best_model,
+                            self.X_train_for_pdp,
+                            features=[feature_idx],
+                            ax=ax,
+                            random_state=GLOBAL_SEED,
+                            grid_resolution=min(50, max(10, n_unique))  # グリッド解像度を調整
+                        )
+
+                    # タイトルを設定（特徴量名を短縮）
+                    short_name = self._shorten_feature_name(feature_name)
+                    importance_idx = self.all_feature_names.index(feature_name)
+                    importance = self.feature_importance_scores[importance_idx]
+                    ax.set_title(f'{short_name}\n(重要度: {importance:.3f})', fontsize=10, pad=10)
+
+                    # 軸ラベルのフォントサイズを調整
+                    ax.tick_params(axis='both', which='major', labelsize=8)
+                    if not ax.get_xlabel():
+                        ax.set_xlabel('特徴量の値', fontsize=9)
+                    if not ax.get_ylabel():
+                        ax.set_ylabel('バグ発生への影響', fontsize=9)
+
+                    # 軸の目盛りを小数点第3位まで表示
+                    ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'{x:.3f}'))
+                    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'{x:.3f}'))
+
+                except Exception as e:
+                    print(f"特徴量 '{feature_name}' のPDP描画でエラー: {e}")
+                    # エラーの場合は代替表示
+                    self._plot_error_alternative(ax, feature_name, e)
+
+            # 余った subplot を非表示にする
+            for i in range(len(top_features), n_rows * n_cols):
+                row = i // n_cols
+                col = i % n_cols
+                axes[row, col].set_visible(False)
+
+            # レイアウトを調整
+            plt.tight_layout(pad=2.0)
+
+            # メインタイトルを非表示（コメントアウト）
+            # fig.suptitle(f'部分依存プロット - 特徴量重要度上位{len(top_features)}個',
+            #             fontsize=16, y=0.98)
+
+            # 保存
+            if save_path:
+                plt.savefig(save_path, dpi=300, bbox_inches='tight',
+                           facecolor='white', edgecolor='none')
+                print(f"PDPを '{save_path}' に保存しました")
+
+            plt.show()
+
+            print("部分依存プロット描画完了")
+
+        except Exception as e:
+            print(f"PDP描画中にエラーが発生しました: {e}")
+            print("代替手法: 個別特徴量のヒストグラムを表示します")
+            self._plot_feature_distributions(top_features)
+
+    def _plot_binary_feature_effect(self, ax, feature_name: str, feature_data: pd.Series):
+        """二値特徴量の効果を棒グラフで表示"""
+        unique_values = sorted(feature_data.unique())
+        effects = []
+        counts = []
+
+        # 各値でのバグ発生率を計算
+        for value in unique_values:
+            mask = feature_data == value
+            count = mask.sum()
+            counts.append(count)
+            if count > 0:
+                y_subset = self.y_train_for_pdp[mask]
+                bug_rate = y_subset.mean()
+                effects.append(bug_rate)
+            else:
+                effects.append(0)
+
+        # 棒グラフで表示（色を改善）
+        colors = ['#ff6b6b' if e > 0.5 else '#4ecdc4' for e in effects]
+        bars = ax.bar([str(int(v)) for v in unique_values], effects,
+                     color=colors, alpha=0.8, edgecolor='black', linewidth=1)
+
+        ax.set_ylabel('バグ発生率', fontsize=9)
+        ax.set_xlabel(feature_name.replace('operation_type_', ''), fontsize=9)
+        ax.set_ylim(0, max(1, max(effects) * 1.1))
+
+        # グリッドを追加
+        ax.grid(True, alpha=0.3, linestyle='--', axis='y')
+
+        # 数値ラベルを追加
+        for bar, effect, count in zip(bars, effects, counts):
+            height = bar.get_height()
+            ax.text(bar.get_x() + bar.get_width()/2., height + max(effects) * 0.02,
+                   f'{effect:.3f}\n(n={count})', ha='center', va='bottom', fontsize=8,
+                   bbox=dict(boxstyle="round,pad=0.2", facecolor="white", alpha=0.8))
+
+    def _plot_discrete_feature_effect(self, ax, feature_name: str, feature_data: pd.Series):
+        """離散値特徴量の効果を棒グラフで表示"""
+        unique_values = sorted([x for x in feature_data.unique() if not pd.isna(x)])
+        effects = []
+        counts = []
+
+        # 各値でのバグ発生率を計算
+        for value in unique_values:
+            mask = feature_data == value
+            count = mask.sum()
+            if count > 0:
+                y_subset = self.y_train_for_pdp[mask]
+                bug_rate = y_subset.mean()
+                effects.append(bug_rate)
+                counts.append(count)
+            else:
+                effects.append(0)
+                counts.append(0)
+
+        # カラーマップを使用（viridis）
+        if max(counts) > 0:
+            normalized_counts = [c/max(counts) for c in counts]
+            colors = plt.cm.viridis(normalized_counts)
+        else:
+            colors = ['#cccccc'] * len(unique_values)
+
+        bars = ax.bar([str(v) for v in unique_values], effects,
+                     color=colors, alpha=0.8, edgecolor='black', linewidth=1)
+
+        ax.set_ylabel('バグ発生率', fontsize=9)
+        ax.set_xlabel(feature_name, fontsize=9)
+        ax.set_ylim(0, max(1, max(effects) * 1.1) if effects else 1)
+
+        # グリッドを追加
+        ax.grid(True, alpha=0.3, linestyle='--', axis='y')
+
+        # 数値ラベルを追加
+        for bar, effect, count in zip(bars, effects, counts):
+            height = bar.get_height()
+            ax.text(bar.get_x() + bar.get_width()/2., height + (max(effects) if effects else 0.1) * 0.02,
+                   f'{effect:.2f}\n(n={count})', ha='center', va='bottom', fontsize=7,
+                   bbox=dict(boxstyle="round,pad=0.2", facecolor="white", alpha=0.8))
+
+    def _plot_error_alternative(self, ax, feature_name: str, error):
+        """エラーが発生した場合の代替表示"""
+        ax.text(0.5, 0.5, f'描画エラー:\n{self._shorten_feature_name(feature_name)}\n\n{str(error)[:50]}...',
+               ha='center', va='center', transform=ax.transAxes, fontsize=8,
+               bbox=dict(boxstyle="round,pad=0.3", facecolor="#ffcccc", alpha=0.8, edgecolor='red'))
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, 1)
+        ax.set_xticks([])
+        ax.set_yticks([])
+
+        # 背景色を設定
+        ax.set_facecolor('#f8f8f8')
+
+    def _get_feature_type(self, feature_name: str) -> str:
+        """特徴量の種類を判定"""
+        if feature_name.startswith('LongName_tfidf_'):
+            return 'LongName TF-IDF'
+        elif feature_name.startswith('Parent_tfidf_'):
+            return 'Parent TF-IDF'
+        elif feature_name.startswith('operation_type_'):
+            return 'operation_type'
+        else:
+            return '数値'
+
+    def _shorten_feature_name(self, feature_name: str, max_length: int = 20) -> str:
+        """特徴量名を短縮"""
+        if len(feature_name) <= max_length:
+            return feature_name
+
+        # TF-IDF特徴量の場合は番号のみ表示
+        if feature_name.startswith('LongName_tfidf_'):
+            return f"LN_tf_{feature_name.split('_')[-1]}"
+        elif feature_name.startswith('Parent_tfidf_'):
+            return f"P_tf_{feature_name.split('_')[-1]}"
+        elif feature_name.startswith('operation_type_'):
+            op_type = feature_name.replace('operation_type_', '')
+            return f"op_{op_type[:10]}"
+        else:
+            # 数値特徴量は前後を切り詰め
+            if len(feature_name) > max_length:
+                return feature_name[:max_length-3] + "..."
+            return feature_name
+
+    def _plot_feature_distributions(self, features: list):
+        """PDPが失敗した場合の代替：特徴量分布のヒストグラム"""
+        print("\n代替分析: 特徴量分布を表示")
+
+        # matplotlib設定
+        plt.rcParams['font.size'] = 10
+
+        n_cols = 4
+        n_rows = (len(features) + n_cols - 1) // n_cols
+
+        fig, axes = plt.subplots(n_rows, n_cols, figsize=(16, n_rows * 3))
+
+        if n_rows == 1:
+            axes = axes.reshape(1, -1)
+
+        for i, feature in enumerate(features):
+            row = i // n_cols
+            col = i % n_cols
+            ax = axes[row, col]
+
+            feature_data = self.X_train_for_pdp[feature]
+
+            # ヒストグラムを描画（色とスタイルを改善）
+            ax.hist(feature_data, bins=30, alpha=0.7, color='#4ecdc4',
+                   edgecolor='black', linewidth=0.5)
+            ax.set_title(self._shorten_feature_name(feature), fontsize=10)
+            ax.set_xlabel('値', fontsize=9)
+            ax.set_ylabel('頻度', fontsize=9)
+            ax.tick_params(axis='both', which='major', labelsize=8)
+
+            # 軸の目盛りを小数点第3位まで表示
+            ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'{x:.3f}'))
+            ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'{x:.3f}'))
+            ax.grid(True, alpha=0.3, linestyle='--')
+
+        # 余った subplot を非表示
+        for i in range(len(features), n_rows * n_cols):
+            row = i // n_cols
+            col = i % n_cols
+            axes[row, col].set_visible(False)
+
+        plt.tight_layout()
+        # メインタイトルを非表示（コメントアウト）
+        # plt.suptitle('特徴量分布（代替表示）', fontsize=14, y=0.98)
+        plt.show()
 
     def predict(self, X: pd.DataFrame) -> tuple:
         if self.best_model is None:
@@ -875,7 +1210,17 @@ def main():
         bug_hunter.display_sampling_summary()
         feature_importance_df = bug_hunter.display_feature_importance_table(top_n=20)
         bug_hunter.display_feature_selection_summary()
-        bug_hunter.display_operation_type_analysis()  # 新しい分析メソッド
+        bug_hunter.display_operation_type_analysis()
+
+        # ★ 新機能: Partial Dependence Plot描画
+        print("\n" + "="*60)
+        print("Partial Dependence Plot描画を開始します...")
+        print("="*60)
+
+        bug_hunter.plot_partial_dependence(
+            top_n=20,
+            save_path="partial_dependence_plots.png"
+        )
 
     except FileNotFoundError:
         print(f"エラー: ファイル '{data_path}' が見つかりません。")
