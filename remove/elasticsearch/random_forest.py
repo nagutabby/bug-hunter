@@ -873,7 +873,7 @@ def main():
 
         # 特徴量の詳細分析
         bug_hunter.display_sampling_summary()
-        feature_importance_df = bug_hunter.display_feature_importance_table(top_n=15)
+        feature_importance_df = bug_hunter.display_feature_importance_table(top_n=20)
         bug_hunter.display_feature_selection_summary()
         bug_hunter.display_operation_type_analysis()  # 新しい分析メソッド
 
