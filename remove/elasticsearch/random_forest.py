@@ -730,57 +730,6 @@ class BugHunter:
 
         return pd.DataFrame(detailed_results)
 
-    def get_test_results_summary(self) -> dict:
-        if self.test_results is None:
-            print("テストデータでの評価が実行されていません。")
-            return {}
-
-        return {
-            'test_metrics': {
-                'f1': self.test_results['f1'],
-                'precision': self.test_results['precision'],
-                'recall': self.test_results['recall'],
-                'accuracy': self.test_results['accuracy'],
-                'roc_auc': self.test_results['roc_auc']
-            },
-            'test_class_distribution': self.test_results['test_class_distribution'],
-            'prediction_distribution': self.test_results['pred_class_distribution']
-        }
-
-    def get_feature_analysis(self) -> dict:
-        params_to_return = self.default_rf_params.copy()
-
-        sampling_info = {}
-        if self.original_class_distribution and self.resampled_train_distribution:
-            sampling_info = {
-                'original_class_0': self.original_class_distribution['class_0'],
-                'original_class_1': self.original_class_distribution['class_1'],
-                'original_total': self.original_class_distribution['total'],
-                'resampled_train_class_0': self.resampled_train_distribution['class_0'],
-                'resampled_train_class_1': self.resampled_train_distribution['class_1'],
-                'resampled_train_total': self.resampled_train_distribution['total'],
-                'change_rate_percent': (self.resampled_train_distribution['total'] / self.original_class_distribution['total'] - 1) * 100
-            }
-
-        return {
-            'best_params': params_to_return,
-            'feature_importance_scores': self.feature_importance_scores,
-            'selected_features': self.selected_features,
-            'all_feature_names': self.all_feature_names,
-            'feature_selection_threshold': self.feature_selection_threshold,
-            'tfidf_max_features': self.tfidf_max_features,
-            'sampling_info': sampling_info,
-            'java_tokenizer_settings': {
-                'min_token_length': self.java_tokenizer.min_token_length,
-                'include_package_tokens': self.java_tokenizer.include_package_tokens,
-                'stopwords_count': len(self.java_tokenizer.java_stopwords)
-            },
-            'operation_type_info': {
-                'has_operation_type': self.has_operation_type,
-                'operation_type_columns': self.operation_type_columns
-            }
-        }
-
     def display_feature_importance_table(self, top_n: int = 10):
         if self.feature_importance_scores is None or self.selected_features is None:
             print("Feature Importanceスコアは計算されていません。")
@@ -939,20 +888,6 @@ def main():
         feature_importance_df = bug_hunter.display_feature_importance_table(top_n=15)
         bug_hunter.display_feature_selection_summary()
         bug_hunter.display_operation_type_analysis()  # 新しい分析メソッド
-
-        # 特徴量分析の詳細取得
-        feature_analysis = bug_hunter.get_feature_analysis()
-        print(f"\n=== パラメータ・設定サマリー ===")
-        print(f"使用パラメータ: {feature_analysis['best_params']}")
-        print(f"選択された特徴量数: {len(feature_analysis['selected_features'])}")
-        print(f"全特徴量数: {len(feature_analysis['all_feature_names'])}")
-        print(f"Feature Importance閾値: {feature_analysis['feature_selection_threshold']}")
-        print(f"TF-IDF最大特徴量数: {feature_analysis['tfidf_max_features']}")
-        print(f"operation_type使用: {feature_analysis['operation_type_info']['has_operation_type']}")
-
-        if feature_analysis['sampling_info']:
-            sampling_info = feature_analysis['sampling_info']
-            print(f"データサイズ変化率: {sampling_info['change_rate_percent']:.1f}%")
 
     except FileNotFoundError:
         print(f"エラー: ファイル '{data_path}' が見つかりません。")
