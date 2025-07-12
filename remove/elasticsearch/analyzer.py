@@ -8,6 +8,7 @@ import pickle
 import os
 from typing import Dict, List, Optional
 import warnings
+from scipy import stats  # 正規性検定のために追加
 from trainer import JavaCodeTokenizer
 
 warnings.filterwarnings('ignore')
@@ -188,6 +189,464 @@ class BugHunterAnalyzer:
             detailed_results.append(fold_result)
 
         return pd.DataFrame(detailed_results)
+
+    def plot_feature_histograms(self, data_path: str, top_n: int = 20,
+                               save_path: Optional[str] = None, max_rows: int = 10000):
+        """上位N個の特徴量のヒストグラムを描画し、正規分布との比較も行う"""
+
+        print(f"\n=== 上位{top_n}特徴量のヒストグラム分析 ===")
+
+        # データの読み込み
+        if not os.path.exists(data_path):
+            print(f"データファイル '{data_path}' が見つかりません")
+            return
+
+        print(f"データを読み込み中... (最大{max_rows}行)")
+        try:
+            data = pd.read_csv(data_path, nrows=max_rows)
+            print(f"データ読み込み完了: {len(data)}行")
+        except Exception as e:
+            print(f"データ読み込みエラー: {e}")
+            return
+
+        # 学習済みモデルから特徴量を準備
+        if not self.model_data:
+            print("モデルデータが読み込まれていません")
+            return
+
+        # trainer と同じ方法でデータ前処理
+        try:
+            # trainer.pyのBugHunterTrainerインスタンスを作成
+            from trainer import BugHunterTrainer
+            temp_trainer = BugHunterTrainer()
+
+            # 学習済みコンポーネントを復元
+            temp_trainer.tfidf_vectorizer_longname = self.model_data['tfidf_vectorizer_longname']
+            temp_trainer.tfidf_vectorizer_parent = self.model_data['tfidf_vectorizer_parent']
+            temp_trainer.scaler = self.model_data['scaler']
+            temp_trainer.operation_type_columns = self.model_data['operation_type_columns']
+            temp_trainer.all_feature_names = self.model_data['all_feature_names']
+            temp_trainer.has_operation_type = self.model_data['has_operation_type']
+            temp_trainer.java_tokenizer = self.model_data['java_tokenizer']
+
+            # データ前処理（is_training=Falseで推論モード）
+            X_processed, _ = temp_trainer.prepare_data(data, is_training=False)
+            print(f"前処理完了: {X_processed.shape[1]}個の特徴量")
+
+        except Exception as e:
+            print(f"データ前処理エラー: {e}")
+            return
+
+        # 上位特徴量を取得
+        feature_scores = self.model_data['feature_importance_scores']
+        all_features = self.model_data['all_feature_names']
+        selected_features = self.model_data['selected_features']
+
+        # 選択された特徴量の中で重要度上位N個を取得
+        selected_features_df = pd.DataFrame({
+            '特徴量': all_features,
+            'Feature Importance': feature_scores
+        })
+
+        selected_features_df = selected_features_df[
+            selected_features_df['特徴量'].isin(selected_features)
+        ].sort_values('Feature Importance', ascending=False)
+
+        top_features = selected_features_df.head(top_n)['特徴量'].tolist()
+
+        print(f"ヒストグラム対象特徴量（上位{len(top_features)}個）:")
+        for i, feature in enumerate(top_features, 1):
+            importance_idx = all_features.index(feature)
+            importance = feature_scores[importance_idx]
+            feature_type = self._get_feature_type(feature)
+            print(f"  {i:2d}. {feature} ({feature_type}) - 重要度: {importance:.4f}")
+
+        # ヒストグラム描画の準備
+        sns.set_style("whitegrid")
+        sns.set_palette("husl")
+        sns.set(font='IPAexGothic')
+
+        plt.rcParams['font.size'] = 10
+        plt.rcParams['axes.titlesize'] = 12
+        plt.rcParams['axes.labelsize'] = 10
+        plt.rcParams['figure.titlesize'] = 16
+
+        # グリッドサイズを計算（4列固定）
+        n_cols = 4
+        n_rows = (len(top_features) + n_cols - 1) // n_cols
+
+        # 図のサイズを調整
+        fig_width = n_cols * 5
+        fig_height = n_rows * 4
+
+        print(f"ヒストグラム描画中... ({n_rows}行 × {n_cols}列のグリッド)")
+
+        # ヒストグラムを描画
+        fig, axes = plt.subplots(n_rows, n_cols, figsize=(fig_width, fig_height))
+
+        # axesを1次元配列に変換（単一行の場合の対応）
+        if n_rows == 1:
+            axes = axes.reshape(1, -1)
+        if n_cols == 1:
+            axes = axes.reshape(-1, 1)
+
+        # 各特徴量のヒストグラムを描画
+        for i, feature_name in enumerate(top_features):
+            row = i // n_cols
+            col = i % n_cols
+            ax = axes[row, col]
+
+            try:
+                # 特徴量データを取得
+                if feature_name in X_processed.columns:
+                    feature_data = X_processed[feature_name].dropna()
+
+                    if len(feature_data) == 0:
+                        self._plot_no_data_message(ax, feature_name)
+                        continue
+
+                    # 特徴量タイプに応じた描画
+                    if feature_name.startswith('operation_type_'):
+                        self._plot_binary_histogram(ax, feature_data, feature_name)
+                    else:
+                        self._plot_continuous_histogram(ax, feature_data, feature_name)
+
+                    # タイトルを設定
+                    short_name = self._shorten_feature_name(feature_name, 20)
+                    importance_idx = all_features.index(feature_name)
+                    importance = feature_scores[importance_idx]
+                    ax.set_title(f'{short_name}\n重要度: {importance:.3f}', fontsize=11, pad=10)
+
+                else:
+                    self._plot_no_data_message(ax, feature_name)
+
+            except Exception as e:
+                print(f"特徴量 '{feature_name}' のヒストグラム描画でエラー: {e}")
+                self._plot_error_message(ax, feature_name, str(e))
+
+        # 余った subplot を非表示にする
+        for i in range(len(top_features), n_rows * n_cols):
+            row = i // n_cols
+            col = i % n_cols
+            axes[row, col].set_visible(False)
+
+        # メインタイトルを追加
+        fig.suptitle(f'特徴量分布ヒストグラム (上位{len(top_features)}特徴量)', fontsize=16, y=0.98)
+
+        # レイアウトを調整
+        plt.tight_layout(rect=[0, 0, 1, 0.96])
+
+        # 保存
+        if save_path is None:
+            save_path = "feature_histograms.png"
+
+        plt.savefig(save_path, dpi=300, bbox_inches='tight',
+                   facecolor='white', edgecolor='none')
+        print(f"特徴量ヒストグラムを '{save_path}' に保存しました")
+
+        plt.show()
+        print("特徴量ヒストグラム描画完了")
+
+    def _plot_binary_histogram(self, ax, feature_data: pd.Series, feature_name: str):
+        """バイナリ特徴量（operation_type）のヒストグラム"""
+        unique_values = sorted(feature_data.unique())
+        value_counts = feature_data.value_counts().sort_index()
+
+        # 棒グラフで描画
+        colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4']
+        bars = ax.bar(range(len(unique_values)),
+                     [value_counts.get(val, 0) for val in unique_values],
+                     color=colors[:len(unique_values)], alpha=0.7, edgecolor='navy')
+
+        # X軸の設定
+        ax.set_xticks(range(len(unique_values)))
+        ax.set_xticklabels([f'{val}' for val in unique_values])
+        ax.set_xlabel('値')
+        ax.set_ylabel('頻度')
+
+        # 値をバーの上に表示
+        for bar, count in zip(bars, [value_counts.get(val, 0) for val in unique_values]):
+            height = bar.get_height()
+            ax.text(bar.get_x() + bar.get_width()/2., height + max(value_counts) * 0.01,
+                   f'{count}', ha='center', va='bottom', fontsize=9)
+
+        # 統計情報を追加
+        total_count = len(feature_data)
+        proportions = [value_counts.get(val, 0) / total_count for val in unique_values]
+
+        # テキストボックスで統計情報を表示
+        stats_text = f'N={total_count}\n'
+        for val, prop in zip(unique_values, proportions):
+            stats_text += f'{val}: {prop:.1%}\n'
+
+        ax.text(0.02, 0.98, stats_text.strip(), transform=ax.transAxes,
+               fontsize=8, verticalalignment='top',
+               bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.8))
+
+        ax.grid(True, alpha=0.3, axis='y')
+
+    def _plot_continuous_histogram(self, ax, feature_data: pd.Series, feature_name: str):
+        """連続値特徴量のヒストグラム（正規分布との比較も含む）"""
+
+        # 基本統計量
+        mean_val = feature_data.mean()
+        std_val = feature_data.std()
+        median_val = feature_data.median()
+        skewness = feature_data.skew()
+
+        # ヒストグラム描画
+        n_bins = min(50, max(10, len(feature_data) // 20))  # データ量に応じてbin数を調整
+
+        counts, bins, patches = ax.hist(feature_data, bins=n_bins, density=True,
+                                       alpha=0.7, color='skyblue', edgecolor='navy')
+
+        # 正規分布の理論曲線を重ね描き
+        if std_val > 0:  # 標準偏差が0でない場合のみ
+            x_norm = np.linspace(feature_data.min(), feature_data.max(), 100)
+            y_norm = (1 / (std_val * np.sqrt(2 * np.pi))) * np.exp(-0.5 * ((x_norm - mean_val) / std_val) ** 2)
+            ax.plot(x_norm, y_norm, 'r-', linewidth=2, label='正規分布')
+            ax.legend(fontsize=8)
+
+        # 平均値と中央値の縦線
+        ax.axvline(mean_val, color='red', linestyle='--', alpha=0.8, label=f'平均: {mean_val:.3f}')
+        ax.axvline(median_val, color='green', linestyle='--', alpha=0.8, label=f'中央値: {median_val:.3f}')
+
+        ax.set_xlabel('値')
+        ax.set_ylabel('密度')
+
+        # 統計情報をテキストボックスで表示
+        stats_text = f'N = {len(feature_data)}\n'
+        stats_text += f'平均 = {mean_val:.3f}\n'
+        stats_text += f'標準偏差 = {std_val:.3f}\n'
+        stats_text += f'中央値 = {median_val:.3f}\n'
+        stats_text += f'歪度 = {skewness:.3f}'
+
+        # 歪度の解釈を追加
+        if abs(skewness) < 0.5:
+            skew_interpretation = '(ほぼ対称)'
+        elif abs(skewness) < 1.0:
+            skew_interpretation = '(やや歪み)'
+        else:
+            skew_interpretation = '(強い歪み)'
+
+        stats_text += f'\n{skew_interpretation}'
+
+        ax.text(0.02, 0.98, stats_text, transform=ax.transAxes,
+               fontsize=8, verticalalignment='top',
+               bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.8))
+
+        ax.grid(True, alpha=0.3)
+
+    def _plot_no_data_message(self, ax, feature_name: str):
+        """データが見つからない場合のメッセージ"""
+        ax.text(0.5, 0.5, f'{self._shorten_feature_name(feature_name)}\n\nデータなし',
+               ha='center', va='center', transform=ax.transAxes, fontsize=12,
+               bbox=dict(boxstyle="round,pad=0.3", facecolor="#FFE4B5", alpha=0.8))
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, 1)
+        ax.set_xticks([])
+        ax.set_yticks([])
+
+    def _plot_error_message(self, ax, feature_name: str, error_msg: str):
+        """エラーメッセージの表示"""
+        ax.text(0.5, 0.5, f'エラー:\n{self._shorten_feature_name(feature_name)}\n\n{error_msg[:30]}...',
+               ha='center', va='center', transform=ax.transAxes, fontsize=10,
+               bbox=dict(boxstyle="round,pad=0.3", facecolor="#ffcccc", alpha=0.8))
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, 1)
+        ax.set_xticks([])
+        ax.set_yticks([])
+
+    def analyze_feature_normality(self, data_path: str, top_n: int = 20, max_rows: int = 10000):
+        """特徴量の正規性を統計的に検定する"""
+
+        print(f"\n=== 上位{top_n}特徴量の正規性検定 ===")
+
+        # データの読み込みと前処理（上記のplot_feature_histogramsと同じ）
+        if not os.path.exists(data_path):
+            print(f"データファイル '{data_path}' が見つかりません")
+            return None
+
+        print(f"データを読み込み中... (最大{max_rows}行)")
+        try:
+            data = pd.read_csv(data_path, nrows=max_rows)
+            print(f"データ読み込み完了: {len(data)}行")
+        except Exception as e:
+            print(f"データ読み込みエラー: {e}")
+            return None
+
+        # データ前処理
+        try:
+            from trainer import BugHunterTrainer
+            temp_trainer = BugHunterTrainer()
+
+            temp_trainer.tfidf_vectorizer_longname = self.model_data['tfidf_vectorizer_longname']
+            temp_trainer.tfidf_vectorizer_parent = self.model_data['tfidf_vectorizer_parent']
+            temp_trainer.scaler = self.model_data['scaler']
+            temp_trainer.operation_type_columns = self.model_data['operation_type_columns']
+            temp_trainer.all_feature_names = self.model_data['all_feature_names']
+            temp_trainer.has_operation_type = self.model_data['has_operation_type']
+            temp_trainer.java_tokenizer = self.model_data['java_tokenizer']
+
+            X_processed, _ = temp_trainer.prepare_data(data, is_training=False)
+
+        except Exception as e:
+            print(f"データ前処理エラー: {e}")
+            return None
+
+        # 上位特徴量を取得
+        feature_scores = self.model_data['feature_importance_scores']
+        all_features = self.model_data['all_feature_names']
+        selected_features = self.model_data['selected_features']
+
+        selected_features_df = pd.DataFrame({
+            '特徴量': all_features,
+            'Feature Importance': feature_scores
+        })
+
+        selected_features_df = selected_features_df[
+            selected_features_df['特徴量'].isin(selected_features)
+        ].sort_values('Feature Importance', ascending=False)
+
+        top_features = selected_features_df.head(top_n)['特徴量'].tolist()
+
+        # 正規性検定の実行
+        normality_results = []
+
+        for feature_name in top_features:
+            if feature_name in X_processed.columns:
+                feature_data = X_processed[feature_name].dropna()
+
+                if len(feature_data) < 3:
+                    normality_results.append({
+                        '特徴量': feature_name,
+                        'タイプ': self._get_feature_type(feature_name),
+                        'サンプル数': len(feature_data),
+                        'Shapiro-Wilk p値': 'N/A',
+                        'Kolmogorov-Smirnov p値': 'N/A',
+                        '歪度': 'N/A',
+                        '尖度': 'N/A',
+                        '正規性判定': 'データ不足'
+                    })
+                    continue
+
+                # operation_type特徴量（バイナリ）は正規性検定を行わない
+                if feature_name.startswith('operation_type_'):
+                    normality_results.append({
+                        '特徴量': feature_name,
+                        'タイプ': self._get_feature_type(feature_name),
+                        'サンプル数': len(feature_data),
+                        'Shapiro-Wilk p値': 'N/A',
+                        'Kolmogorov-Smirnov p値': 'N/A',
+                        '歪度': 'N/A',
+                        '尖度': 'N/A',
+                        '正規性判定': 'バイナリ特徴量'
+                    })
+                    continue
+
+                try:
+                    # Shapiro-Wilk検定（サンプルサイズが5000以下の場合）
+                    if len(feature_data) <= 5000:
+                        shapiro_stat, shapiro_p = stats.shapiro(feature_data)
+                    else:
+                        shapiro_p = 'N/A (n>5000)'
+
+                    # Kolmogorov-Smirnov検定
+                    mean_val = feature_data.mean()
+                    std_val = feature_data.std()
+                    if std_val > 0:
+                        ks_stat, ks_p = stats.kstest(feature_data,
+                                                   lambda x: stats.norm.cdf(x, loc=mean_val, scale=std_val))
+                    else:
+                        ks_p = 'N/A (std=0)'
+
+                    # 歪度と尖度
+                    skewness = stats.skew(feature_data)
+                    kurtosis_val = stats.kurtosis(feature_data)
+
+                    # 正規性の総合判定
+                    normality_judgment = self._judge_normality(shapiro_p, ks_p, skewness, kurtosis_val)
+
+                    normality_results.append({
+                        '特徴量': self._shorten_feature_name(feature_name, 30),
+                        'タイプ': self._get_feature_type(feature_name),
+                        'サンプル数': len(feature_data),
+                        'Shapiro-Wilk p値': f'{shapiro_p:.4f}' if isinstance(shapiro_p, float) else shapiro_p,
+                        'Kolmogorov-Smirnov p値': f'{ks_p:.4f}' if isinstance(ks_p, float) else ks_p,
+                        '歪度': f'{skewness:.3f}',
+                        '尖度': f'{kurtosis_val:.3f}',
+                        '正規性判定': normality_judgment
+                    })
+
+                except Exception as e:
+                    normality_results.append({
+                        '特徴量': feature_name,
+                        'タイプ': self._get_feature_type(feature_name),
+                        'サンプル数': len(feature_data),
+                        'Shapiro-Wilk p値': 'エラー',
+                        'Kolmogorov-Smirnov p値': 'エラー',
+                        '歪度': 'エラー',
+                        '尖度': 'エラー',
+                        '正規性判定': f'検定エラー: {str(e)[:20]}'
+                    })
+
+        # 結果をDataFrameにして表示
+        results_df = pd.DataFrame(normality_results)
+
+        print(f"\n{'='*100}")
+        print("特徴量正規性検定結果")
+        print(f"{'='*100}")
+        print(results_df.to_string(index=False))
+
+        # サマリー統計
+        print(f"\n{'='*50}")
+        print("正規性検定サマリー")
+        print(f"{'='*50}")
+
+        judgment_counts = results_df['正規性判定'].value_counts()
+        for judgment, count in judgment_counts.items():
+            percentage = count / len(results_df) * 100
+            print(f"{judgment}: {count}個 ({percentage:.1f}%)")
+
+        return results_df
+
+    def _judge_normality(self, shapiro_p, ks_p, skewness, kurtosis_val):
+        """正規性の総合判定"""
+        alpha = 0.05
+
+        # p値による判定
+        shapiro_normal = isinstance(shapiro_p, float) and shapiro_p > alpha
+        ks_normal = isinstance(ks_p, float) and ks_p > alpha
+
+        # 歪度・尖度による判定（一般的な基準）
+        skew_normal = abs(skewness) < 2.0  # 歪度の絶対値が2未満
+        kurt_normal = abs(kurtosis_val) < 7.0  # 尖度の絶対値が7未満
+
+        # 総合判定
+        if shapiro_p == 'N/A (n>5000)' or ks_p == 'N/A (std=0)':
+            if skew_normal and kurt_normal:
+                return '形状による: ほぼ正規'
+            else:
+                return '形状による: 非正規'
+
+        test_results = []
+        if isinstance(shapiro_p, float):
+            test_results.append(shapiro_normal)
+        if isinstance(ks_p, float):
+            test_results.append(ks_normal)
+
+        if len(test_results) == 0:
+            return 'エラー'
+
+        # 検定結果とモーメント統計の組み合わせ
+        if all(test_results) and skew_normal and kurt_normal:
+            return '正規分布'
+        elif any(test_results) and skew_normal and kurt_normal:
+            return 'ほぼ正規分布'
+        elif any(test_results):
+            return 'やや非正規'
+        else:
+            return '非正規分布'
 
     def plot_partial_dependence(self, top_n: int = 20, save_path: Optional[str] = None):
         """特徴量上位N個のPartial Dependence Plotを描画"""
@@ -646,8 +1105,8 @@ class BugHunterAnalyzer:
                 return feature_name[:max_length-3] + "..."
             return feature_name
 
-    def generate_analysis_report(self):
-        """包括的な分析レポートを生成"""
+    def generate_analysis_report(self, data_path: Optional[str] = None):
+        """包括的な分析レポートを生成（ヒストグラム分析も含む）"""
         print("="*80)
         print("BugHunter モデル分析レポート")
         print("="*80)
@@ -673,6 +1132,38 @@ class BugHunterAnalyzer:
             print("\n=== 各フォールドの詳細結果（交差検証） ===")
             print(cv_df.round(4))
 
+        # 実データがある場合のヒストグラム分析
+        if data_path and os.path.exists(data_path):
+            print(f"\n{'='*80}")
+            print("実データを使用した特徴量分布分析")
+            print(f"{'='*80}")
+
+            # ヒストグラム描画
+            self.plot_feature_histograms(
+                data_path=data_path,
+                top_n=20,
+                save_path="feature_histograms.png",
+                max_rows=10000
+            )
+
+            # 正規性検定
+            normality_df = self.analyze_feature_normality(
+                data_path=data_path,
+                top_n=20,
+                max_rows=10000
+            )
+
+            if normality_df is not None:
+                print(f"\n正規性検定結果をCSVファイルに保存...")
+                normality_df.to_csv("feature_normality_test.csv", index=False, encoding='utf-8-sig')
+                print(f"正規性検定結果を 'feature_normality_test.csv' に保存しました")
+
+        else:
+            if data_path:
+                print(f"\nデータファイル '{data_path}' が見つからないため、ヒストグラム分析をスキップします")
+            else:
+                print(f"\ndata_pathが指定されていないため、ヒストグラム分析をスキップします")
+
         print("\n" + "="*80)
         print("分析レポート完了")
         print("="*80)
@@ -684,16 +1175,25 @@ def main():
         # 学習済みモデルを読み込んで分析
         analyzer = BugHunterAnalyzer("predictions_nan.pkl")
 
-        # 包括的な分析レポートを生成
-        analyzer.generate_analysis_report()
+        # 元データのパスを指定（ヒストグラム分析のため）
+        data_path = "method-p_filtered_v2_changes_nan.csv"
 
-        # 特徴量重要度チャートを描画
+        # 包括的な分析レポートを生成（ヒストグラム分析も含む）
+        analyzer.generate_analysis_report(data_path=data_path)
+
+        # 特徴量重要度チャートとPartial Dependence Plotsを描画
         analyzer.plot_partial_dependence(
             top_n=20,
             save_path="analysis_charts.png"  # feature_importance_chart.png と partial_dependence_plots.png が生成される
         )
 
-        print("\n分析完了！")
+        print("\n" + "="*60)
+        print("分析完了！生成されたファイル:")
+        print("  - feature_histograms.png (特徴量ヒストグラム)")
+        print("  - feature_normality_test.csv (正規性検定結果)")
+        print("  - feature_importance_chart.png (特徴量重要度)")
+        print("  - partial_dependence_plots.png (Partial Dependence Plots)")
+        print("="*60)
 
     except FileNotFoundError as e:
         print(f"エラー: {e}")
