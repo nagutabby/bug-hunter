@@ -766,30 +766,6 @@ class BugHunter:
             'prediction_distribution': self.test_results['pred_class_distribution']
         }
 
-    def compare_cv_and_test_results(self, cv_results: dict) -> pd.DataFrame:
-        if self.test_results is None:
-            print("テストデータでの評価が実行されていません。")
-            return pd.DataFrame()
-
-        comparison_data = []
-
-        for metric in ['f1', 'precision', 'recall', 'accuracy', 'roc_auc']:
-            cv_mean = cv_results[f'{metric}_mean']
-            cv_std = cv_results[f'{metric}_std']
-            test_score = self.test_results[metric]
-            difference = test_score - cv_mean
-
-            comparison_data.append({
-                '評価指標': metric.upper(),
-                'CV平均': cv_mean,
-                'CV標準偏差': cv_std,
-                'テストスコア': test_score,
-                '差分 (テスト - CV平均)': difference,
-                '差分の標準偏差比': abs(difference) / cv_std if cv_std > 0 else 0
-            })
-
-        return pd.DataFrame(comparison_data)
-
     def get_feature_analysis(self) -> dict:
         params_to_return = self.default_rf_params.copy()
 
@@ -1045,11 +1021,6 @@ def main():
         detailed_df = bug_hunter.get_cv_detailed_results(cv_results)
         print(f"\n=== 各フォールドの詳細結果（交差検証） ===")
         print(detailed_df.round(4))
-
-        # 交差検証とテストデータの結果比較
-        comparison_df = bug_hunter.compare_cv_and_test_results(cv_results)
-        print(f"\n=== 交差検証 vs テストデータ結果比較 ===")
-        print(comparison_df.round(4))
 
         # 特徴量の詳細分析
         bug_hunter.display_sampling_summary()
