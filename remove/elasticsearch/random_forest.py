@@ -368,25 +368,6 @@ class BugHunter:
             class_ratio = sum(y==1) / len(y)
             print(f"クラス分布: {class_ratio:.3f} (1の割合)")
 
-            print("\n=== サンプルトークン化結果 ===")
-            sample_longname = longname_data.iloc[0] if len(longname_data) > 0 else ""
-            sample_parent = parent_data.iloc[0] if len(parent_data) > 0 else ""
-
-            if sample_longname:
-                sample_tokens_longname = self.java_tokenizer(sample_longname)
-                print(f"LongName例: {sample_longname}")
-                print(f"→ トークン: {sample_tokens_longname}")
-
-            if sample_parent:
-                sample_tokens_parent = self.java_tokenizer(sample_parent)
-                print(f"Parent例: {sample_parent}")
-                print(f"→ トークン: {sample_tokens_parent}")
-
-            if self.has_operation_type:
-                sample_op_type = data['operation_type'].iloc[0] if len(data) > 0 else None
-                sample_op_type_str = str(sample_op_type) if pd.notna(sample_op_type) else 'NaN'
-                print(f"\noperation_type例: {sample_op_type_str}")
-                print(f"→ One-Hot: {X_operation_type_df.iloc[0].to_dict() if len(X_operation_type_df) > 0 else 'N/A'}")
         else:
             print(f"予測データの前処理完了: {len(X.columns)}列")
 
@@ -906,75 +887,6 @@ class BugHunter:
         else:
             print("operation_typeカラム情報が取得できませんでした。")
 
-    def display_tokenizer_analysis(self, sample_size: int = 5):
-        print("\n=== Javaトークナイザー動作例 ===")
-        print(f"設定:")
-        print(f"  最小トークン長: {self.java_tokenizer.min_token_length}")
-        print(f"  パッケージトークン含む: {self.java_tokenizer.include_package_tokens}")
-        print(f"  ストップワード数: {len(self.java_tokenizer.java_stopwords)}")
-
-        sample_longnames = [
-            "org.elasticsearch.index.fielddata.plain.GeoPointDoubleArrayAtomicFieldData$Empty.<init>()V",
-            "com.example.MyClass.calculateSum(int,int)int",
-            "java.util.ArrayList.add(Object)boolean"
-        ]
-
-        sample_parents = [
-            "org.elasticsearch.index.fielddata.plain.GeoPointDoubleArrayAtomicFieldData$Empty",
-            "com.example.MyClass",
-            "java.util.ArrayList"
-        ]
-
-        print(f"\n=== LongName トークン化例 ===")
-        for i, longname in enumerate(sample_longnames[:sample_size]):
-            tokens = self.java_tokenizer(longname)
-            print(f"{i+1}. {longname}")
-            print(f"   → {tokens}")
-            if i < len(sample_longnames) - 1:
-                print()
-
-        print(f"\n=== Parent トークン化例 ===")
-        for i, parent in enumerate(sample_parents[:sample_size]):
-            tokens = self.java_tokenizer(parent)
-            print(f"{i+1}. {parent}")
-            print(f"   → {tokens}")
-            if i < len(sample_parents) - 1:
-                print()
-
-    def run_simple_pipeline(self, csv_path: str, max_rows: int = 100):
-        """元のrun_pipelineのエイリアス"""
-        return self.run_pipeline(csv_path, max_rows)
-
-    def display_results(self, cv_results: dict, test_results: dict):
-        """結果表示（元のコードとの互換性のため）"""
-        print("\n" + "="*50)
-        print("=== BugHunter 結果サマリー ===")
-        print("="*50)
-
-        print(f"\n=== 交差検証結果 ===")
-        print(f"F1スコア: {cv_results['f1_mean']:.4f} ± {cv_results['f1_std']:.4f}")
-        print(f"Precision: {cv_results['precision_mean']:.4f} ± {cv_results['precision_std']:.4f}")
-        print(f"Recall: {cv_results['recall_mean']:.4f} ± {cv_results['recall_std']:.4f}")
-        print(f"Accuracy: {cv_results['accuracy_mean']:.4f} ± {cv_results['accuracy_std']:.4f}")
-        print(f"ROC-AUC: {cv_results['roc_auc_mean']:.4f} ± {cv_results['roc_auc_std']:.4f}")
-
-        print(f"\n=== テストデータ結果 ===")
-        print(f"F1スコア: {test_results['f1']:.4f}")
-        print(f"Precision: {test_results['precision']:.4f}")
-        print(f"Recall: {test_results['recall']:.4f}")
-        print(f"Accuracy: {test_results['accuracy']:.4f}")
-        print(f"ROC-AUC: {test_results['roc_auc']:.4f}")
-
-        if self.selected_features and self.feature_importance is not None:
-            print(f"\n=== 特徴量情報 ===")
-            print(f"選択された特徴量数: {len(self.selected_features)}")
-            print(f"上位3重要特徴量:")
-            top_indices = np.argsort(self.feature_importance)[-3:][::-1]
-            for i, idx in enumerate(top_indices):
-                feature_name = self.selected_features[idx]
-                importance = self.feature_importance[idx]
-                print(f"  {i+1}. {feature_name}: {importance:.4f}")
-
 def main():
     """使用例"""
     # BugHunterインスタンス作成
@@ -1027,7 +939,6 @@ def main():
         feature_importance_df = bug_hunter.display_feature_importance_table(top_n=15)
         bug_hunter.display_feature_selection_summary()
         bug_hunter.display_operation_type_analysis()  # 新しい分析メソッド
-        bug_hunter.display_tokenizer_analysis(sample_size=3)
 
         # 特徴量分析の詳細取得
         feature_analysis = bug_hunter.get_feature_analysis()
