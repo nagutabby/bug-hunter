@@ -1020,7 +1020,7 @@ def main():
 
     try:
         # データファイルのパスを指定
-        data_path = "method-p_filtered_v2_changes_real_number.csv"
+        data_path = "method-p_filtered_v2_changes_nan.csv"
 
         # パイプライン実行
         cv_results, test_results, final_params = bug_hunter.run_pipeline(
@@ -1039,7 +1039,7 @@ def main():
         print(f"テストデータ ROC-AUC: {test_results['roc_auc']:.4f}")
 
         # 予測結果の保存（新機能）
-        bug_hunter.save_predictions("predictions_real_number.pkl")
+        bug_hunter.save_predictions("predictions_nan.pkl")
 
         # 各フォールドの詳細結果
         detailed_df = bug_hunter.get_cv_detailed_results(cv_results)
