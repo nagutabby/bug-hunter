@@ -646,57 +646,6 @@ class BugHunterAnalyzer:
                 return feature_name[:max_length-3] + "..."
             return feature_name
 
-    def plot_cv_results(self, save_path: Optional[str] = None):
-        """交差検証結果の可視化"""
-        cv_results = self.model_data.get('cv_results')
-        if not cv_results:
-            print("交差検証結果が見つかりません。")
-            return
-
-        # データの準備
-        metrics = ['f1', 'precision', 'recall', 'accuracy', 'roc_auc']
-        metric_names = ['F1スコア', 'Precision', 'Recall', 'Accuracy', 'ROC-AUC']
-
-        fig, axes = plt.subplots(2, 3, figsize=(15, 10))
-        axes = axes.flatten()
-
-        # seaborn設定
-        sns.set_style("whitegrid")
-        sns.set(font='IPAexGothic')
-
-        for i, (metric, metric_name) in enumerate(zip(metrics, metric_names)):
-            ax = axes[i]
-            scores = cv_results[f'{metric}_scores']
-
-            # ボックスプロット
-            bp = ax.boxplot([scores], patch_artist=True, labels=[metric_name])
-            bp['boxes'][0].set_facecolor('#4ECDC4')
-            bp['boxes'][0].set_alpha(0.7)
-
-            # 平均値と標準偏差を表示
-            mean_val = cv_results[f'{metric}_mean']
-            std_val = cv_results[f'{metric}_std']
-
-            ax.text(0.5, 0.95, f'平均: {mean_val:.4f}\n標準偏差: {std_val:.4f}',
-                   transform=ax.transAxes, ha='center', va='top',
-                   bbox=dict(boxstyle="round,pad=0.3", facecolor="lightblue", alpha=0.7))
-
-            ax.set_title(f'{metric_name} (10分割交差検証)', fontsize=12)
-            ax.grid(True, alpha=0.3)
-
-        # 6番目のサブプロットは非表示
-        axes[5].set_visible(False)
-
-        plt.suptitle('交差検証結果サマリー', fontsize=16, y=0.95)
-        plt.tight_layout()
-
-        if save_path:
-            plt.savefig(save_path, dpi=300, bbox_inches='tight',
-                       facecolor='white', edgecolor='none')
-            print(f"交差検証結果チャートを '{save_path}' に保存しました")
-
-        plt.show()
-
     def generate_analysis_report(self):
         """包括的な分析レポートを生成"""
         print("="*80)
@@ -743,9 +692,6 @@ def main():
             top_n=20,
             save_path="analysis_charts.png"  # feature_importance_chart.png と partial_dependence_plots.png が生成される
         )
-
-        # 交差検証結果を可視化
-        analyzer.plot_cv_results(save_path="cv_results_chart.png")
 
         print("\n分析完了！")
 
