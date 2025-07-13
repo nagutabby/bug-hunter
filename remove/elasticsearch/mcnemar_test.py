@@ -24,7 +24,7 @@ import warnings
 from typing import Tuple, Dict, Optional
 import statsmodels.stats.contingency_tables as ct
 from statsmodels.stats.contingency_tables import mcnemar
-
+from trainer import JavaCodeTokenizer
 warnings.filterwarnings('ignore')
 
 class McNemarTestAnalyzer:
@@ -43,6 +43,53 @@ class McNemarTestAnalyzer:
         self.predictions_1 = None
         self.predictions_2 = None
         self.test_results = None
+
+    def _extract_predictions_from_model(self, model_data, model_name: str) -> dict:
+        """
+        保存されたモデルデータから予測結果を抽出
+
+        Parameters:
+        -----------
+        model_data : dict or object
+            pickleファイルから読み込んだデータ
+        model_name : str
+            モデル名（エラーメッセージ用）
+
+        Returns:
+        --------
+        dict
+            予測結果辞書
+        """
+        # trainer.pyで保存される形式に対応
+        if hasattr(model_data, 'predictions_data') and model_data.predictions_data is not None:
+            return model_data.predictions_data
+
+        # 直接predictions_dataが保存されている場合
+        elif isinstance(model_data, dict) and 'predictions_data' in model_data:
+            return model_data['predictions_data']
+
+        # 直接予測結果が保存されている場合
+        elif isinstance(model_data, dict) and all(key in model_data for key in ['y_true', 'y_pred']):
+            return model_data
+
+        # trainer オブジェクト全体が保存されている場合の詳細チェック
+        elif hasattr(model_data, '__dict__'):
+            # オブジェクトの属性を確認
+            attrs = dir(model_data)
+            print(f"  {model_name} オブジェクトの主な属性: {[attr for attr in attrs if not attr.startswith('_')]}")
+
+            # predictions_data属性があるか確認
+            if hasattr(model_data, 'predictions_data'):
+                pred_data = model_data.predictions_data
+                if pred_data is not None:
+                    return pred_data
+                else:
+                    raise ValueError(f"{model_name}: predictions_dataがNoneです。モデルの学習とテスト評価が完了していない可能性があります。")
+            else:
+                raise ValueError(f"{model_name}: predictions_data属性が見つかりません。")
+
+        else:
+            raise ValueError(f"{model_name}: 予測結果の形式が不明です。型: {type(model_data)}")
 
     def load_predictions(self, file_path_1: str, file_path_2: str,
                         model_name_1: str = "Model 1", model_name_2: str = "Model 2"):
@@ -69,14 +116,30 @@ class McNemarTestAnalyzer:
         # 予測結果読み込み
         print(f"=== 予測結果の読み込み ===")
         print(f"{model_name_1}: {file_path_1}")
-        with open(file_path_1, 'rb') as f:
-            self.predictions_1 = pickle.load(f)
-        print(f"  読み込み完了: {len(self.predictions_1['y_true'])}件のテストデータ")
+
+        try:
+            with open(file_path_1, 'rb') as f:
+                model_data_1 = pickle.load(f)
+
+            self.predictions_1 = self._extract_predictions_from_model(model_data_1, model_name_1)
+            print(f"  読み込み完了: {len(self.predictions_1['y_true'])}件のテストデータ")
+
+        except Exception as e:
+            print(f"  エラー詳細: {e}")
+            raise ValueError(f"{model_name_1}の予測結果の読み込みに失敗しました: {e}")
 
         print(f"{model_name_2}: {file_path_2}")
-        with open(file_path_2, 'rb') as f:
-            self.predictions_2 = pickle.load(f)
-        print(f"  読み込み完了: {len(self.predictions_2['y_true'])}件のテストデータ")
+
+        try:
+            with open(file_path_2, 'rb') as f:
+                model_data_2 = pickle.load(f)
+
+            self.predictions_2 = self._extract_predictions_from_model(model_data_2, model_name_2)
+            print(f"  読み込み完了: {len(self.predictions_2['y_true'])}件のテストデータ")
+
+        except Exception as e:
+            print(f"  エラー詳細: {e}")
+            raise ValueError(f"{model_name_2}の予測結果の読み込みに失敗しました: {e}")
 
         # データ整合性確認
         self._validate_predictions(model_name_1, model_name_2)
@@ -89,6 +152,13 @@ class McNemarTestAnalyzer:
 
     def _validate_predictions(self, model_name_1: str, model_name_2: str):
         """予測結果の整合性を確認"""
+
+        # 必要なキーの存在確認
+        required_keys = ['y_true', 'y_pred']
+        for predictions, model_name in [(self.predictions_1, model_name_1), (self.predictions_2, model_name_2)]:
+            for key in required_keys:
+                if key not in predictions:
+                    raise ValueError(f"{model_name}: 必要なキー '{key}' が見つかりません。利用可能なキー: {list(predictions.keys())}")
 
         # データサイズの確認
         if len(self.predictions_1['y_true']) != len(self.predictions_2['y_true']):
@@ -414,12 +484,12 @@ def main():
     # ファイル存在確認
     if not os.path.exists(predictions_nan_path):
         print(f"エラー: ファイル '{predictions_nan_path}' が見つかりません。")
-        print("先にrandom_forest.pyでlizard_analysis_nan.pyの結果を使って学習・予測を実行してください。")
+        print("先にtrainer.pyでlizard_analysis_nan.pyの結果を使って学習・予測を実行してください。")
         return
 
     if not os.path.exists(predictions_real_path):
         print(f"エラー: ファイル '{predictions_real_path}' が見つかりません。")
-        print("先にrandom_forest.pyでlizard_analysis_real_number.pyの結果を使って学習・予測を実行してください。")
+        print("先にtrainer.pyでlizard_analysis_real_number.pyの結果を使って学習・予測を実行してください。")
         return
 
     try:
@@ -482,17 +552,15 @@ def prepare_comparison_data():
    python lizard_analysis_real_number.py
    → 出力: method-p_filtered_v2_changes_real_number.csv
 
-3. random_forest.pyを修正して、各データセットで学習・予測を実行:
+3. trainer.pyを修正して、各データセットで学習・予測を実行:
 
    a) NaN版での実行:
       data_path = "method-p_filtered_v2_changes_nan.csv"
-      bug_hunter.run_pipeline(data_path, max_rows=3000)
-      bug_hunter.save_predictions("predictions_nan.pkl")
+      trainer.run_training_pipeline(data_path, max_rows=3000, model_save_path="predictions_nan.pkl")
 
    b) 実数版での実行:
       data_path = "method-p_filtered_v2_changes_real_number.csv"
-      bug_hunter.run_pipeline(data_path, max_rows=3000)
-      bug_hunter.save_predictions("predictions_real_number.pkl")
+      trainer.run_training_pipeline(data_path, max_rows=3000, model_save_path="predictions_real_number.pkl")
 
 4. マクネマー検定実行:
    python mcnemar_test.py
