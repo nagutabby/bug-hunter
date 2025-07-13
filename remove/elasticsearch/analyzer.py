@@ -472,7 +472,8 @@ class BugHunterAnalyzer:
     def _plot_partial_dependence_plots(self, top_features: List[str], model, selected_features: List[str], save_path: str):
         """実際のPartial Dependence Plotsを描画"""
         try:
-            # 訓練データがない場合の代替データ生成
+            # 実データベースのサンプルデータから特徴量の値範囲を取得する必要があるが、
+            # ここでは-50から50の範囲を使用してサンプルデータを生成
             print("Partial Dependence Plot用のサンプルデータを生成中...")
 
             # 選択された特徴量の代表的な値範囲を作成
@@ -481,14 +482,14 @@ class BugHunterAnalyzer:
 
             for feature in selected_features:
                 if feature.startswith('LongName_tfidf_') or feature.startswith('Parent_tfidf_'):
-                    # TF-IDF特徴量: 0-1の範囲でランダム値
-                    sample_data[feature] = np.random.random(n_samples) * 0.5
+                    # TF-IDF特徴量: -50から50の範囲
+                    sample_data[feature] = np.random.uniform(-50, 50, n_samples)
                 elif feature.startswith('operation_type_'):
-                    # One-Hot特徴量: 0と1の両方の値を確実に含める
+                    # One-Hot特徴量: 0と1のみ
                     sample_data[feature] = np.random.choice([0, 1], n_samples, p=[0.7, 0.3])
                 else:
-                    # 数値特徴量: 標準正規分布
-                    sample_data[feature] = np.random.normal(0, 1, n_samples)
+                    # 数値特徴量: -50から50の範囲
+                    sample_data[feature] = np.random.uniform(-50, 50, n_samples)
 
             # DataFrameを作成
             X_sample = pd.DataFrame(sample_data)
@@ -536,18 +537,26 @@ class BugHunterAnalyzer:
                     if feature_name.startswith('operation_type_'):
                         self._plot_operation_type_pdp(ax, feature_name, feature_idx, X_sample, model)
                     else:
-                        # 通常のPDP描画
+                        # 通常のPDP描画 - -50から50の範囲でPDPを計算
                         try:
-                            display = PartialDependenceDisplay.from_estimator(
-                                model,
-                                X_sample,
-                                features=[feature_idx],
-                                ax=ax,
-                                random_state=42,
-                                grid_resolution=20
-                            )
+                            # -50から50の範囲でグリッドを作成
+                            grid_values = np.linspace(-50, 50, 30)
+
+                            # 手動でPDPを計算
+                            pdp_values = []
+                            for grid_val in grid_values:
+                                X_temp = X_sample.copy()
+                                X_temp.iloc[:, feature_idx] = grid_val
+                                predictions = model.predict_proba(X_temp)[:, 1]
+                                pdp_values.append(np.mean(predictions))
+
+                            # 線グラフで描画
+                            ax.plot(grid_values, pdp_values, 'o-', color='blue', linewidth=2, markersize=3)
+                            ax.set_xlabel('特徴量の値', fontsize=9)
+                            ax.set_xlim(-50, 50)  # X軸の範囲を明示的に設定
+
                         except Exception as pdp_error:
-                            print(f"PDP標準機能でエラー: {pdp_error}")
+                            print(f"PDP手動計算でエラー: {pdp_error}")
                             self._plot_manual_pdp_simple(ax, feature_name, feature_idx, X_sample, model)
 
                     # タイトルを設定（特徴量名を短縮）
@@ -560,11 +569,10 @@ class BugHunterAnalyzer:
 
                     # 軸ラベルのフォントサイズを調整
                     ax.tick_params(axis='both', which='major', labelsize=8)
-                    ax.set_xlabel('特徴量の値', fontsize=9)
                     ax.set_ylabel('Partial Dependence', fontsize=9)
 
-                    # 軸の目盛りを小数点第3位まで表示
-                    ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'{x:.3f}'))
+                    # 軸の目盛りを適切にフォーマット
+                    ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'{x:.0f}'))
                     ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'{x:.3f}'))
 
                 except Exception as e:
@@ -579,7 +587,7 @@ class BugHunterAnalyzer:
                 axes[row, col].set_visible(False)
 
             # メインタイトルを追加
-            fig.suptitle(f'Partial Dependence Plots (上位{len(top_features)}特徴量)', fontsize=16, y=0.98)
+            fig.suptitle(f'Partial Dependence Plots (上位{len(top_features)}特徴量) \n特徴量範囲: -50 ～ 50', fontsize=16, y=0.98)
 
             # レイアウトを調整
             plt.tight_layout(rect=[0, 0, 1, 0.96])
