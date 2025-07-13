@@ -8,7 +8,6 @@ import pickle
 import os
 from typing import Dict, List, Optional
 import warnings
-from scipy import stats  # 正規性検定のために追加
 from trainer import JavaCodeTokenizer
 
 warnings.filterwarnings('ignore')
@@ -192,7 +191,7 @@ class BugHunterAnalyzer:
 
     def plot_feature_histograms(self, data_path: str, top_n: int = 20,
                                save_path: Optional[str] = None, max_rows: int = 10000):
-        """上位N個の特徴量のヒストグラムを描画し、正規分布との比較も行う"""
+        """上位N個の特徴量のヒストグラムを描画"""
 
         print(f"\n=== 上位{top_n}特徴量のヒストグラム分析 ===")
 
@@ -386,7 +385,7 @@ class BugHunterAnalyzer:
         ax.grid(True, alpha=0.3, axis='y')
 
     def _plot_continuous_histogram(self, ax, feature_data: pd.Series, feature_name: str):
-        """連続値特徴量のヒストグラム（正規分布との比較も含む）"""
+        """連続値特徴量のヒストグラム（基本統計量表示）"""
 
         # 基本統計量
         mean_val = feature_data.mean()
@@ -399,13 +398,6 @@ class BugHunterAnalyzer:
 
         counts, bins, patches = ax.hist(feature_data, bins=n_bins, density=True,
                                        alpha=0.7, color='skyblue', edgecolor='navy')
-
-        # 正規分布の理論曲線を重ね描き
-        if std_val > 0:  # 標準偏差が0でない場合のみ
-            x_norm = np.linspace(feature_data.min(), feature_data.max(), 100)
-            y_norm = (1 / (std_val * np.sqrt(2 * np.pi))) * np.exp(-0.5 * ((x_norm - mean_val) / std_val) ** 2)
-            ax.plot(x_norm, y_norm, 'r-', linewidth=2, label='正規分布')
-            ax.legend(fontsize=8)
 
         # 平均値と中央値の縦線
         ax.axvline(mean_val, color='red', linestyle='--', alpha=0.8, label=f'平均: {mean_val:.3f}')
@@ -456,197 +448,6 @@ class BugHunterAnalyzer:
         ax.set_ylim(0, 1)
         ax.set_xticks([])
         ax.set_yticks([])
-
-    def analyze_feature_normality(self, data_path: str, top_n: int = 20, max_rows: int = 10000):
-        """特徴量の正規性を統計的に検定する"""
-
-        print(f"\n=== 上位{top_n}特徴量の正規性検定 ===")
-
-        # データの読み込みと前処理（上記のplot_feature_histogramsと同じ）
-        if not os.path.exists(data_path):
-            print(f"データファイル '{data_path}' が見つかりません")
-            return None
-
-        print(f"データを読み込み中... (最大{max_rows}行)")
-        try:
-            data = pd.read_csv(data_path, nrows=max_rows)
-            print(f"データ読み込み完了: {len(data)}行")
-        except Exception as e:
-            print(f"データ読み込みエラー: {e}")
-            return None
-
-        # データ前処理
-        try:
-            from trainer import BugHunterTrainer
-            temp_trainer = BugHunterTrainer()
-
-            temp_trainer.tfidf_vectorizer_longname = self.model_data['tfidf_vectorizer_longname']
-            temp_trainer.tfidf_vectorizer_parent = self.model_data['tfidf_vectorizer_parent']
-            temp_trainer.scaler = self.model_data['scaler']
-            temp_trainer.operation_type_columns = self.model_data['operation_type_columns']
-            temp_trainer.all_feature_names = self.model_data['all_feature_names']
-            temp_trainer.has_operation_type = self.model_data['has_operation_type']
-            temp_trainer.java_tokenizer = self.model_data['java_tokenizer']
-
-            X_processed, _ = temp_trainer.prepare_data(data, is_training=False)
-
-        except Exception as e:
-            print(f"データ前処理エラー: {e}")
-            return None
-
-        # 上位特徴量を取得
-        feature_scores = self.model_data['feature_importance_scores']
-        all_features = self.model_data['all_feature_names']
-        selected_features = self.model_data['selected_features']
-
-        selected_features_df = pd.DataFrame({
-            '特徴量': all_features,
-            'Feature Importance': feature_scores
-        })
-
-        selected_features_df = selected_features_df[
-            selected_features_df['特徴量'].isin(selected_features)
-        ].sort_values('Feature Importance', ascending=False)
-
-        top_features = selected_features_df.head(top_n)['特徴量'].tolist()
-
-        # 正規性検定の実行
-        normality_results = []
-
-        for feature_name in top_features:
-            if feature_name in X_processed.columns:
-                feature_data = X_processed[feature_name].dropna()
-
-                if len(feature_data) < 3:
-                    normality_results.append({
-                        '特徴量': feature_name,
-                        'タイプ': self._get_feature_type(feature_name),
-                        'サンプル数': len(feature_data),
-                        'Shapiro-Wilk p値': 'N/A',
-                        'Kolmogorov-Smirnov p値': 'N/A',
-                        '歪度': 'N/A',
-                        '尖度': 'N/A',
-                        '正規性判定': 'データ不足'
-                    })
-                    continue
-
-                # operation_type特徴量（バイナリ）は正規性検定を行わない
-                if feature_name.startswith('operation_type_'):
-                    normality_results.append({
-                        '特徴量': feature_name,
-                        'タイプ': self._get_feature_type(feature_name),
-                        'サンプル数': len(feature_data),
-                        'Shapiro-Wilk p値': 'N/A',
-                        'Kolmogorov-Smirnov p値': 'N/A',
-                        '歪度': 'N/A',
-                        '尖度': 'N/A',
-                        '正規性判定': 'バイナリ特徴量'
-                    })
-                    continue
-
-                try:
-                    # Shapiro-Wilk検定（サンプルサイズが5000以下の場合）
-                    if len(feature_data) <= 5000:
-                        shapiro_stat, shapiro_p = stats.shapiro(feature_data)
-                    else:
-                        shapiro_p = 'N/A (n>5000)'
-
-                    # Kolmogorov-Smirnov検定
-                    mean_val = feature_data.mean()
-                    std_val = feature_data.std()
-                    if std_val > 0:
-                        ks_stat, ks_p = stats.kstest(feature_data,
-                                                   lambda x: stats.norm.cdf(x, loc=mean_val, scale=std_val))
-                    else:
-                        ks_p = 'N/A (std=0)'
-
-                    # 歪度と尖度
-                    skewness = stats.skew(feature_data)
-                    kurtosis_val = stats.kurtosis(feature_data)
-
-                    # 正規性の総合判定
-                    normality_judgment = self._judge_normality(shapiro_p, ks_p, skewness, kurtosis_val)
-
-                    normality_results.append({
-                        '特徴量': self._shorten_feature_name(feature_name, 30),
-                        'タイプ': self._get_feature_type(feature_name),
-                        'サンプル数': len(feature_data),
-                        'Shapiro-Wilk p値': f'{shapiro_p:.4f}' if isinstance(shapiro_p, float) else shapiro_p,
-                        'Kolmogorov-Smirnov p値': f'{ks_p:.4f}' if isinstance(ks_p, float) else ks_p,
-                        '歪度': f'{skewness:.3f}',
-                        '尖度': f'{kurtosis_val:.3f}',
-                        '正規性判定': normality_judgment
-                    })
-
-                except Exception as e:
-                    normality_results.append({
-                        '特徴量': feature_name,
-                        'タイプ': self._get_feature_type(feature_name),
-                        'サンプル数': len(feature_data),
-                        'Shapiro-Wilk p値': 'エラー',
-                        'Kolmogorov-Smirnov p値': 'エラー',
-                        '歪度': 'エラー',
-                        '尖度': 'エラー',
-                        '正規性判定': f'検定エラー: {str(e)[:20]}'
-                    })
-
-        # 結果をDataFrameにして表示
-        results_df = pd.DataFrame(normality_results)
-
-        print(f"\n{'='*100}")
-        print("特徴量正規性検定結果")
-        print(f"{'='*100}")
-        print(results_df.to_string(index=False))
-
-        # サマリー統計
-        print(f"\n{'='*50}")
-        print("正規性検定サマリー")
-        print(f"{'='*50}")
-
-        judgment_counts = results_df['正規性判定'].value_counts()
-        for judgment, count in judgment_counts.items():
-            percentage = count / len(results_df) * 100
-            print(f"{judgment}: {count}個 ({percentage:.1f}%)")
-
-        return results_df
-
-    def _judge_normality(self, shapiro_p, ks_p, skewness, kurtosis_val):
-        """正規性の総合判定"""
-        alpha = 0.05
-
-        # p値による判定
-        shapiro_normal = isinstance(shapiro_p, float) and shapiro_p > alpha
-        ks_normal = isinstance(ks_p, float) and ks_p > alpha
-
-        # 歪度・尖度による判定（一般的な基準）
-        skew_normal = abs(skewness) < 2.0  # 歪度の絶対値が2未満
-        kurt_normal = abs(kurtosis_val) < 7.0  # 尖度の絶対値が7未満
-
-        # 総合判定
-        if shapiro_p == 'N/A (n>5000)' or ks_p == 'N/A (std=0)':
-            if skew_normal and kurt_normal:
-                return '形状による: ほぼ正規'
-            else:
-                return '形状による: 非正規'
-
-        test_results = []
-        if isinstance(shapiro_p, float):
-            test_results.append(shapiro_normal)
-        if isinstance(ks_p, float):
-            test_results.append(ks_normal)
-
-        if len(test_results) == 0:
-            return 'エラー'
-
-        # 検定結果とモーメント統計の組み合わせ
-        if all(test_results) and skew_normal and kurt_normal:
-            return '正規分布'
-        elif any(test_results) and skew_normal and kurt_normal:
-            return 'ほぼ正規分布'
-        elif any(test_results):
-            return 'やや非正規'
-        else:
-            return '非正規分布'
 
     def plot_partial_dependence(self, top_n: int = 20, save_path: Optional[str] = None):
         """特徴量上位N個のPartial Dependence Plotを描画"""
@@ -1146,18 +947,6 @@ class BugHunterAnalyzer:
                 max_rows=10000
             )
 
-            # 正規性検定
-            normality_df = self.analyze_feature_normality(
-                data_path=data_path,
-                top_n=20,
-                max_rows=10000
-            )
-
-            if normality_df is not None:
-                print(f"\n正規性検定結果をCSVファイルに保存...")
-                normality_df.to_csv("feature_normality_test.csv", index=False, encoding='utf-8-sig')
-                print(f"正規性検定結果を 'feature_normality_test.csv' に保存しました")
-
         else:
             if data_path:
                 print(f"\nデータファイル '{data_path}' が見つからないため、ヒストグラム分析をスキップします")
@@ -1190,7 +979,6 @@ def main():
         print("\n" + "="*60)
         print("分析完了！生成されたファイル:")
         print("  - feature_histograms.png (特徴量ヒストグラム)")
-        print("  - feature_normality_test.csv (正規性検定結果)")
         print("  - feature_importance_chart.png (特徴量重要度)")
         print("  - partial_dependence_plots.png (Partial Dependence Plots)")
         print("="*60)
