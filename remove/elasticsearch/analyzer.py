@@ -389,9 +389,7 @@ class BugHunterAnalyzer:
 
         # 基本統計量
         mean_val = feature_data.mean()
-        std_val = feature_data.std()
         median_val = feature_data.median()
-        skewness = feature_data.skew()
 
         # ヒストグラム描画
         n_bins = min(50, max(10, len(feature_data) // 20))  # データ量に応じてbin数を調整
@@ -400,33 +398,11 @@ class BugHunterAnalyzer:
                                        alpha=0.7, color='skyblue', edgecolor='navy')
 
         # 平均値と中央値の縦線
-        ax.axvline(mean_val, color='red', linestyle='--', alpha=0.8, label=f'平均: {mean_val:.3f}')
-        ax.axvline(median_val, color='green', linestyle='--', alpha=0.8, label=f'中央値: {median_val:.3f}')
+        ax.axvline(mean_val, color='red', linestyle='--', alpha=0.8)
+        ax.axvline(median_val, color='green', linestyle='--', alpha=0.8)
 
         ax.set_xlabel('値')
         ax.set_ylabel('密度')
-
-        # 統計情報をテキストボックスで表示
-        stats_text = f'N = {len(feature_data)}\n'
-        stats_text += f'平均 = {mean_val:.3f}\n'
-        stats_text += f'標準偏差 = {std_val:.3f}\n'
-        stats_text += f'中央値 = {median_val:.3f}\n'
-        stats_text += f'歪度 = {skewness:.3f}'
-
-        # 歪度の解釈を追加
-        if abs(skewness) < 0.5:
-            skew_interpretation = '(ほぼ対称)'
-        elif abs(skewness) < 1.0:
-            skew_interpretation = '(やや歪み)'
-        else:
-            skew_interpretation = '(強い歪み)'
-
-        stats_text += f'\n{skew_interpretation}'
-
-        ax.text(0.02, 0.98, stats_text, transform=ax.transAxes,
-               fontsize=8, verticalalignment='top',
-               bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.8))
-
         ax.grid(True, alpha=0.3)
 
     def _plot_no_data_message(self, ax, feature_name: str):
@@ -618,8 +594,7 @@ class BugHunterAnalyzer:
 
         except Exception as e:
             print(f"PDP描画中にエラーが発生しました: {e}")
-            print("代替手法: 特徴量分布ヒストグラムを表示します")
-            self._plot_feature_distributions_alternative(top_features, save_path)
+            print("PDPの描画に失敗しました。")
 
     def _plot_operation_type_pdp(self, ax, feature_name: str, feature_idx: int, X_sample: pd.DataFrame, model):
         """operation_type特徴量専用のPDP描画"""
@@ -755,49 +730,6 @@ class BugHunterAnalyzer:
         ax.set_yticks([])
         ax.set_ylabel('Partial Dependence', fontsize=9)
         ax.set_facecolor('#f8f8f8')
-
-    def _plot_feature_distributions_alternative(self, top_features: List[str], save_path: str):
-        """PDPが失敗した場合の代替：特徴量重要度の別形式表示"""
-        print("代替表示: 特徴量重要度のレーダーチャートを作成します")
-
-        try:
-            all_features = self.model_data['all_feature_names']
-            feature_scores = self.model_data['feature_importance_scores']
-
-            # 重要度データを取得
-            importances = []
-            for feature in top_features[:10]:  # 上位10個に限定
-                idx = all_features.index(feature)
-                importances.append(feature_scores[idx])
-
-            # レーダーチャートの準備
-            features_short = [self._shorten_feature_name(f, 15) for f in top_features[:10]]
-
-            # 角度の計算
-            angles = np.linspace(0, 2 * np.pi, len(features_short), endpoint=False).tolist()
-            importances += importances[:1]  # 閉じるために最初の値を最後に追加
-            angles += angles[:1]
-
-            # プロット作成
-            fig, ax = plt.subplots(figsize=(10, 10), subplot_kw=dict(projection='polar'))
-
-            # レーダーチャート描画
-            ax.plot(angles, importances, 'o-', linewidth=2, color='#4ECDC4')
-            ax.fill(angles, importances, alpha=0.25, color='#4ECDC4')
-
-            # ラベル設定
-            ax.set_xticks(angles[:-1])
-            ax.set_xticklabels(features_short)
-            ax.set_ylim(0, max(importances) * 1.1)
-            ax.set_title('特徴量重要度 (上位10特徴量)', size=16, pad=20)
-
-            plt.tight_layout()
-            plt.savefig(save_path, dpi=300, bbox_inches='tight')
-            print(f"代替チャートを '{save_path}' に保存しました")
-            plt.show()
-
-        except Exception as e:
-            print(f"代替表示でもエラーが発生しました: {e}")
 
     def _get_feature_type(self, feature_name: str) -> str:
         """特徴量の種類を判定"""
