@@ -58,18 +58,15 @@ class BugHunterAnalyzer:
             print("Feature Importanceスコアが見つかりません。")
             return None
 
-        # 全特徴量のDataFrame作成
         all_features_df = pd.DataFrame({
             '特徴量': self.model_data['all_feature_names'],
             'Feature Importance': self.model_data['feature_importance_scores']
         }).sort_values('Feature Importance', ascending=False)
 
-        # 選択された特徴量のみフィルタ
         selected_features_df = all_features_df[
             all_features_df['特徴量'].isin(self.model_data['selected_features'])
         ]
 
-        # 特徴量タイプを追加
         selected_features_df['タイプ'] = selected_features_df['特徴量'].apply(
             lambda x: 'LongName TF-IDF' if x.startswith('LongName_tfidf_')
                       else 'Parent TF-IDF' if x.startswith('Parent_tfidf_')
@@ -149,7 +146,6 @@ class BugHunterAnalyzer:
             for i, col in enumerate(operation_type_columns):
                 print(f"  {i+1}. {col}")
 
-            # 選択された特徴量の中でoperation_type関連のものをチェック
             selected_features = self.model_data.get('selected_features', [])
             selected_op_features = [f for f in selected_features if f.startswith('operation_type_')]
             print(f"\n選択されたoperation_type特徴量: {len(selected_op_features)}個")
@@ -195,7 +191,6 @@ class BugHunterAnalyzer:
 
         print(f"\n=== 上位{top_n}特徴量のヒストグラム分析 ===")
 
-        # データの読み込み
         if not os.path.exists(data_path):
             print(f"データファイル '{data_path}' が見つかりません")
             return
@@ -208,14 +203,12 @@ class BugHunterAnalyzer:
             print(f"データ読み込みエラー: {e}")
             return
 
-        # 学習済みモデルから特徴量を準備
         if not self.model_data:
             print("モデルデータが読み込まれていません")
             return
 
         # trainer と同じ方法でデータ前処理
         try:
-            # trainer.pyのBugHunterTrainerインスタンスを作成
             from trainer import BugHunterTrainer
             temp_trainer = BugHunterTrainer()
 
@@ -236,12 +229,10 @@ class BugHunterAnalyzer:
             print(f"データ前処理エラー: {e}")
             return
 
-        # 上位特徴量を取得
         feature_scores = self.model_data['feature_importance_scores']
         all_features = self.model_data['all_feature_names']
         selected_features = self.model_data['selected_features']
 
-        # 選択された特徴量の中で重要度上位N個を取得
         selected_features_df = pd.DataFrame({
             '特徴量': all_features,
             'Feature Importance': feature_scores
@@ -260,7 +251,6 @@ class BugHunterAnalyzer:
             feature_type = self._get_feature_type(feature)
             print(f"  {i:2d}. {feature} ({feature_type}) - 重要度: {importance:.4f}")
 
-        # ヒストグラム描画の準備
         sns.set_style("whitegrid")
         sns.set_palette("husl")
         sns.set(font='IPAexGothic')
@@ -274,13 +264,11 @@ class BugHunterAnalyzer:
         n_cols = 4
         n_rows = (len(top_features) + n_cols - 1) // n_cols
 
-        # 図のサイズを調整
         fig_width = n_cols * 5
         fig_height = n_rows * 4
 
         print(f"ヒストグラム描画中... ({n_rows}行 × {n_cols}列のグリッド)")
 
-        # ヒストグラムを描画
         fig, axes = plt.subplots(n_rows, n_cols, figsize=(fig_width, fig_height))
 
         # axesを1次元配列に変換（単一行の場合の対応）
@@ -289,14 +277,12 @@ class BugHunterAnalyzer:
         if n_cols == 1:
             axes = axes.reshape(-1, 1)
 
-        # 各特徴量のヒストグラムを描画
         for i, feature_name in enumerate(top_features):
             row = i // n_cols
             col = i % n_cols
             ax = axes[row, col]
 
             try:
-                # 特徴量データを取得
                 if feature_name in X_processed.columns:
                     feature_data = X_processed[feature_name].dropna()
 
@@ -304,13 +290,11 @@ class BugHunterAnalyzer:
                         self._plot_no_data_message(ax, feature_name)
                         continue
 
-                    # 特徴量タイプに応じた描画
                     if feature_name.startswith('operation_type_'):
                         self._plot_binary_histogram(ax, feature_data, feature_name)
                     else:
                         self._plot_continuous_histogram(ax, feature_data, feature_name)
 
-                    # タイトルを設定
                     short_name = self._shorten_feature_name(feature_name, 20)
                     importance_idx = all_features.index(feature_name)
                     importance = feature_scores[importance_idx]
@@ -329,13 +313,10 @@ class BugHunterAnalyzer:
             col = i % n_cols
             axes[row, col].set_visible(False)
 
-        # メインタイトルを追加
         fig.suptitle(f'特徴量分布ヒストグラム (上位{len(top_features)}特徴量)', fontsize=16, y=0.98)
 
-        # レイアウトを調整
         plt.tight_layout(rect=[0, 0, 1, 0.96])
 
-        # 保存
         if save_path is None:
             save_path = "feature_histograms.png"
 
@@ -351,13 +332,11 @@ class BugHunterAnalyzer:
         unique_values = sorted(feature_data.unique())
         value_counts = feature_data.value_counts().sort_index()
 
-        # 棒グラフで描画
         colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4']
         bars = ax.bar(range(len(unique_values)),
                      [value_counts.get(val, 0) for val in unique_values],
                      color=colors[:len(unique_values)], alpha=0.7, edgecolor='navy')
 
-        # X軸の設定
         ax.set_xticks(range(len(unique_values)))
         ax.set_xticklabels([f'{val}' for val in unique_values])
         ax.set_xlabel('値')
@@ -369,7 +348,6 @@ class BugHunterAnalyzer:
             ax.text(bar.get_x() + bar.get_width()/2., height + max(value_counts) * 0.01,
                    f'{count}', ha='center', va='bottom', fontsize=9)
 
-        # 統計情報を追加
         total_count = len(feature_data)
         proportions = [value_counts.get(val, 0) / total_count for val in unique_values]
 
@@ -386,13 +364,11 @@ class BugHunterAnalyzer:
 
     def _plot_continuous_histogram(self, ax, feature_data: pd.Series, feature_name: str):
         """連続値特徴量のヒストグラム（基本統計量表示）"""
-
-        # 基本統計量
         mean_val = feature_data.mean()
         median_val = feature_data.median()
 
-        # ヒストグラム描画
-        n_bins = min(50, max(10, len(feature_data) // 20))  # データ量に応じてbin数を調整
+        # データ量に応じてbin数を調整
+        n_bins = min(50, max(10, len(feature_data) // 20))
 
         counts, bins, patches = ax.hist(feature_data, bins=n_bins, density=True,
                                        alpha=0.7, color='skyblue', edgecolor='navy')
@@ -439,13 +415,11 @@ class BugHunterAnalyzer:
 
         print(f"\n=== 特徴量上位{top_n}個の分析と可視化 ===")
 
-        # 選択された特徴量の中で重要度上位N個を取得
         selected_features_df = pd.DataFrame({
             '特徴量': all_features,
             'Feature Importance': feature_scores
         })
 
-        # 選択された特徴量のみをフィルタ
         selected_features_df = selected_features_df[
             selected_features_df['特徴量'].isin(selected_features)
         ].sort_values('Feature Importance', ascending=False)
@@ -476,7 +450,6 @@ class BugHunterAnalyzer:
             # ここでは-50から50の範囲を使用してサンプルデータを生成
             print("Partial Dependence Plot用のサンプルデータを生成中...")
 
-            # 選択された特徴量の代表的な値範囲を作成
             n_samples = 1000
             sample_data = {}
 
@@ -491,10 +464,8 @@ class BugHunterAnalyzer:
                     # 数値特徴量: -50から50の範囲
                     sample_data[feature] = np.random.uniform(-50, 50, n_samples)
 
-            # DataFrameを作成
             X_sample = pd.DataFrame(sample_data)
 
-            # seaborn と matplotlib の設定
             sns.set_style("whitegrid")
             sns.set_palette("husl")
             sns.set(font='IPAexGothic')
@@ -508,13 +479,11 @@ class BugHunterAnalyzer:
             n_cols = 5
             n_rows = (len(top_features) + n_cols - 1) // n_cols
 
-            # 図のサイズを調整
             fig_width = n_cols * 4
             fig_height = n_rows * 3
 
             print(f"PDP描画中... ({n_rows}行 × {n_cols}列のグリッド)")
 
-            # Partial Dependence Plotを描画
             fig, axes = plt.subplots(n_rows, n_cols, figsize=(fig_width, fig_height))
 
             # axesを1次元配列に変換（単一行の場合の対応）
@@ -523,14 +492,12 @@ class BugHunterAnalyzer:
             if n_cols == 1:
                 axes = axes.reshape(-1, 1)
 
-            # PDPを一つずつ描画
             for i, feature_name in enumerate(top_features):
                 row = i // n_cols
                 col = i % n_cols
                 ax = axes[row, col]
 
                 try:
-                    # 特徴量のインデックスを取得
                     feature_idx = selected_features.index(feature_name)
 
                     # operation_type特徴量の特別処理
@@ -539,7 +506,6 @@ class BugHunterAnalyzer:
                     else:
                         # 通常のPDP描画 - -50から50の範囲でPDPを計算
                         try:
-                            # -50から50の範囲でグリッドを作成
                             grid_values = np.linspace(-50, 50, 30)
 
                             # 手動でPDPを計算
@@ -550,10 +516,10 @@ class BugHunterAnalyzer:
                                 predictions = model.predict_proba(X_temp)[:, 1]
                                 pdp_values.append(np.mean(predictions))
 
-                            # 線グラフで描画
                             ax.plot(grid_values, pdp_values, 'o-', color='blue', linewidth=2, markersize=3)
                             ax.set_xlabel('特徴量の値', fontsize=9)
-                            ax.set_xlim(-50, 50)  # X軸の範囲を明示的に設定
+                            # X軸の範囲を明示的に設定
+                            ax.set_xlim(-50, 50)
 
                         except Exception as pdp_error:
                             print(f"PDP手動計算でエラー: {pdp_error}")
@@ -567,7 +533,6 @@ class BugHunterAnalyzer:
                     importance = feature_scores[importance_idx]
                     ax.set_title(f'{short_name}\n(重要度: {importance:.3f})', fontsize=10, pad=10)
 
-                    # 軸ラベルのフォントサイズを調整
                     ax.tick_params(axis='both', which='major', labelsize=8)
                     ax.set_ylabel('Partial Dependence', fontsize=9)
 
@@ -586,13 +551,10 @@ class BugHunterAnalyzer:
                 col = i % n_cols
                 axes[row, col].set_visible(False)
 
-            # メインタイトルを追加
             fig.suptitle(f'Partial Dependence Plots (上位{len(top_features)}特徴量) \n特徴量範囲: -50 ～ 50', fontsize=16, y=0.98)
 
-            # レイアウトを調整
             plt.tight_layout(rect=[0, 0, 1, 0.96])
 
-            # 保存
             plt.savefig(save_path, dpi=300, bbox_inches='tight',
                        facecolor='white', edgecolor='none')
             print(f"Partial Dependence Plotsを '{save_path}' に保存しました")
@@ -607,7 +569,6 @@ class BugHunterAnalyzer:
     def _plot_operation_type_pdp(self, ax, feature_name: str, feature_idx: int, X_sample: pd.DataFrame, model):
         """operation_type特徴量専用のPDP描画"""
         try:
-            # operation_type特徴量のユニーク値を確認
             feature_data = X_sample.iloc[:, feature_idx]
             unique_values = sorted(feature_data.unique())
 
@@ -642,12 +603,10 @@ class BugHunterAnalyzer:
                 pdp_value = np.mean(predictions)
                 pdp_values.append(pdp_value)
 
-            # 棒グラフで描画
             colors = ['#FF6B6B' if val == 0 else '#4ECDC4' for val in unique_values]
             bars = ax.bar(range(len(unique_values)), pdp_values,
                          color=colors, alpha=0.7, edgecolor='navy', linewidth=1)
 
-            # X軸の設定
             ax.set_xticks(range(len(unique_values)))
             ax.set_xticklabels([f'{val}' for val in unique_values])
 
@@ -657,7 +616,6 @@ class BugHunterAnalyzer:
                 ax.text(bar.get_x() + bar.get_width()/2., height + max(pdp_values) * 0.01,
                        f'{pdp_val:.3f}', ha='center', va='bottom', fontsize=8)
 
-            # グリッドを追加
             ax.grid(True, alpha=0.3, linestyle='--', axis='y')
 
             print(f"  {feature_name} PDP値: {dict(zip(unique_values, pdp_values))}")
@@ -672,7 +630,6 @@ class BugHunterAnalyzer:
         try:
             feature_data = X_sample.iloc[:, feature_idx]
 
-            # 値の範囲を取得
             min_val, max_val = feature_data.min(), feature_data.max()
 
             # 値の範囲が極端に小さい場合の処理
@@ -695,7 +652,6 @@ class BugHunterAnalyzer:
                 predictions = model.predict_proba(X_temp)[:, 1]
                 pdp_values.append(np.mean(predictions))
 
-            # プロット描画
             if len(test_values) <= 10:
                 # 離散値: 棒グラフ
                 ax.bar(range(len(test_values)), pdp_values, alpha=0.7, color='skyblue', edgecolor='navy')
@@ -713,7 +669,6 @@ class BugHunterAnalyzer:
 
     def _plot_simple_bar_alternative(self, ax, feature_name: str):
         """最も単純な代替表示"""
-        # 単純な情報表示
         ax.text(0.5, 0.5, f'{self._shorten_feature_name(feature_name)}\n\nPDP計算困難\n(単一値または\nデータ不足)',
                ha='center', va='center', transform=ax.transAxes, fontsize=10,
                bbox=dict(boxstyle="round,pad=0.3", facecolor="#E8F4FD", alpha=0.8, edgecolor='blue'))
@@ -753,7 +708,6 @@ class BugHunterAnalyzer:
     def _plot_feature_importance_chart(self, top_features: List[str], feature_scores: np.ndarray,
                                      all_features: List[str], save_path: Optional[str] = None):
         """特徴量重要度のチャートを描画"""
-        # seaborn と matplotlib の設定
         sns.set_style("whitegrid")
         sns.set_palette("husl")
         sns.set(font='IPAexGothic')
@@ -763,7 +717,6 @@ class BugHunterAnalyzer:
         plt.rcParams['axes.labelsize'] = 10
         plt.rcParams['figure.titlesize'] = 16
 
-        # 特徴量重要度の値を取得
         importances = []
         feature_types = []
         short_names = []
@@ -784,14 +737,12 @@ class BugHunterAnalyzer:
 
         colors = [type_colors.get(ft, '#95A5A6') for ft in feature_types]
 
-        # 横棒グラフを作成
         fig, ax = plt.subplots(figsize=(12, max(8, len(top_features) * 0.4)))
 
         # 特徴量を重要度の降順で並べる（上から重要度が高い順）
         y_pos = np.arange(len(top_features))
         bars = ax.barh(y_pos, importances, color=colors, alpha=0.8, edgecolor='black', linewidth=0.5)
 
-        # ラベル設定
         ax.set_yticks(y_pos)
         ax.set_yticklabels(short_names)
         ax.set_xlabel('Feature Importance', fontsize=12)
@@ -812,13 +763,10 @@ class BugHunterAnalyzer:
         # Y軸を反転（重要度が高い順に上から表示）
         ax.invert_yaxis()
 
-        # グリッドの調整
         ax.grid(True, alpha=0.3, linestyle='--', axis='x')
 
-        # レイアウト調整
         plt.tight_layout()
 
-        # 保存
         if save_path:
             plt.savefig(save_path, dpi=300, bbox_inches='tight',
                        facecolor='white', edgecolor='none')
@@ -852,34 +800,22 @@ class BugHunterAnalyzer:
         print("BugHunter モデル分析レポート")
         print("="*80)
 
-        # モデル基本情報
         self._display_model_info()
-
-        # サンプリング情報
         self.display_sampling_summary()
-
-        # 特徴量選択情報
         self.display_feature_selection_summary()
-
-        # operation_type分析
         self.display_operation_type_analysis()
-
-        # 特徴量重要度
         feature_df = self.display_feature_importance_table(top_n=20)
 
-        # 交差検証詳細結果
         cv_df = self.get_cv_detailed_results()
         if cv_df is not None:
             print("\n=== 各フォールドの詳細結果（交差検証） ===")
             print(cv_df.round(4))
 
-        # 実データがある場合のヒストグラム分析
         if data_path and os.path.exists(data_path):
             print(f"\n{'='*80}")
             print("実データを使用した特徴量分布分析")
             print(f"{'='*80}")
 
-            # ヒストグラム描画
             self.plot_feature_histograms(
                 data_path=data_path,
                 top_n=20,
@@ -901,7 +837,6 @@ class BugHunterAnalyzer:
 def main():
     """分析の実行例"""
     try:
-        # 学習済みモデルを読み込んで分析
         analyzer = BugHunterAnalyzer("predictions_nan.pkl")
 
         # 元データのパスを指定（ヒストグラム分析のため）
