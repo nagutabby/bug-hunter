@@ -820,7 +820,7 @@ class BugHunterAnalyzer:
                 data_path=data_path,
                 top_n=20,
                 save_path="feature_histograms.png",
-                max_rows=10000
+                max_rows=3000
             )
 
         else:
@@ -837,10 +837,10 @@ class BugHunterAnalyzer:
 def main():
     """分析の実行例"""
     try:
-        analyzer = BugHunterAnalyzer("predictions_nan.pkl")
+        analyzer = BugHunterAnalyzer("predictions_changes.pkl")
 
         # 元データのパスを指定（ヒストグラム分析のため）
-        data_path = "method-p_filtered_v2_changes_nan.csv"
+        data_path = "method-p_filtered_v2_changes.csv"
 
         # 包括的な分析レポートを生成（ヒストグラム分析も含む）
         analyzer.generate_analysis_report(data_path=data_path)

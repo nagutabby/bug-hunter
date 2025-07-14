@@ -603,13 +603,13 @@ def main():
 
     try:
         # データファイルのパスを指定
-        data_path = "method-p_filtered_v2_changes_nan.csv"
-        model_save_path = "predictions_nan.pkl"
+        data_path = "method-p_filtered_v2_changes.csv"
+        model_save_path = "predictions_changes.pkl"
 
         # 訓練パイプライン実行
         cv_results, test_results = trainer.run_training_pipeline(
             data_path=data_path,
-            max_rows=10000,
+            max_rows=3000,
             model_save_path=model_save_path
         )
 
