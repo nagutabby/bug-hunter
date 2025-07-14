@@ -8,6 +8,8 @@ import os
 import pandas as pd
 from statsmodels.stats.contingency_tables import mcnemar
 import warnings
+from trainer import JavaCodeTokenizer
+
 warnings.filterwarnings('ignore')
 
 
