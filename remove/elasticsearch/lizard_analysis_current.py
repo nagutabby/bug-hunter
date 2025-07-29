@@ -7,9 +7,6 @@ from pathlib import Path
 from lizard import analyze_file
 
 def extract_class_name(parent_path):
-    """
-    Parentカラムの値からクラス名を抽出する（匿名内部クラス対応版）
-    """
     if not parent_path or pd.isna(parent_path):
         return None, None
 
@@ -33,9 +30,6 @@ def extract_class_name(parent_path):
     return class_part, None
 
 def extract_method_name(long_name):
-    """
-    LongNameカラムからメソッド名とシグネチャを抽出する
-    """
     if not long_name or pd.isna(long_name):
         return None, None, None
 
@@ -83,9 +77,6 @@ def extract_method_name(long_name):
         return method_name, 'method', signature
 
 def extract_package_path(parent_path):
-    """
-    Parentカラムからパッケージパスを抽出する
-    """
     if not parent_path or pd.isna(parent_path):
         return None
 
@@ -97,9 +88,6 @@ def extract_package_path(parent_path):
     return '/'.join(package_parts) + '/'
 
 def get_current_commit(repo_path, commit_hash):
-    """
-    指定されたコミットを取得する（現在状態記録版）
-    """
     try:
         from git import Repo
         repo = Repo(repo_path)
@@ -111,9 +99,6 @@ def get_current_commit(repo_path, commit_hash):
         return [], []
 
 def checkout_commit(repo_path, commit_hash):
-    """
-    指定されたコミットにチェックアウトする
-    """
     try:
         from git import Repo
         repo = Repo(repo_path)
@@ -125,9 +110,6 @@ def checkout_commit(repo_path, commit_hash):
         return False
 
 def find_java_file_in_filesystem(repo_path, class_name, package_path):
-    """
-    ファイルシステムから対象のJavaファイルを検索する
-    """
     try:
         search_patterns = []
 
@@ -153,9 +135,6 @@ def find_java_file_in_filesystem(repo_path, class_name, package_path):
         return None
 
 def parse_java_signature_params(args_str):
-    """
-    Javaのメソッドシグネチャから引数数を正確に解析する
-    """
     if not args_str:
         return 0
 
@@ -190,9 +169,6 @@ def parse_java_signature_params(args_str):
     return param_count
 
 def analyze_java_file_with_lizard(file_path):
-    """
-    ファイルパスを指定してLizardで分析する
-    """
     try:
         analysis_result = analyze_file(file_path)
 

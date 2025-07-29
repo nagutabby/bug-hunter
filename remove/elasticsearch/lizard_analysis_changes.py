@@ -7,151 +7,104 @@ from pathlib import Path
 from lizard import analyze_file
 
 def extract_class_name(parent_path):
-    """
-    Parentカラムの値からクラス名を抽出する（匿名内部クラス対応版）
-    例: org.elasticsearch.search.aggregations.InternalOrder$CompoundOrder
-    → CompoundOrder (内部クラス名を返す)
-    """
     if not parent_path or pd.isna(parent_path):
         return None, None
 
-    # 最後のドット以降を取得
     class_part = parent_path.split('.')[-1]
 
-    # $マークがある場合の処理（内部クラス）
     if '$' in class_part:
-        # $で分割して外部クラスと内部クラスを取得
         parts = class_part.split('$')
         outer_class = parts[0]
-        inner_class = parts[-1]  # 最後の部分が実際のターゲットクラス
+        inner_class = parts[-1]
 
-        # 数字で始まる場合（匿名内部クラス）の処理
         if inner_class and inner_class[0].isdigit():
-            # 数字以降の部分を取得
             match = re.match(r'^\d+(.+)$', inner_class)
             if match:
                 actual_class_name = match.group(1)
                 return actual_class_name, outer_class
             else:
-                # 数字のみの場合は外部クラス名を使用
                 return outer_class, outer_class
         else:
-            # 通常の内部クラス
             return inner_class, outer_class
 
-    # 通常のクラス（内部クラスでない）
     return class_part, None
 
 def extract_method_name(long_name):
-    """
-    LongNameカラムからメソッド名とシグネチャを抽出する（改良版 - シグネチャ対応）
-    """
     if not long_name or pd.isna(long_name):
         return None, None, None
 
-    # メソッドシグネチャの括弧の位置を見つける
     paren_index = long_name.find('(')
     if paren_index == -1:
         return None, None, None
 
-    # 括弧の前の部分を取得
     method_part = long_name[:paren_index]
 
-    # 最後のドットの位置を見つける
     last_dot_index = method_part.rfind('.')
     if last_dot_index == -1:
         return None, None, None
 
-    # メソッド名を抽出
     method_name = method_part[last_dot_index + 1:]
 
-    # メソッドシグネチャを抽出
     close_paren_index = long_name.find(')', paren_index)
     if close_paren_index != -1:
-        # 引数部分とreturn typeを含むシグネチャ
         signature = long_name[paren_index:]
-        # 引数部分のみ
         args_part = long_name[paren_index + 1:close_paren_index]
     else:
         signature = long_name[paren_index:]
         args_part = ""
 
-    # クラス名を抽出（$記号を含む場合の処理）
     class_part = method_part[:last_dot_index]
     class_name_part = class_part.split('.')[-1] if '.' in class_part else class_part
 
-    # <init>はコンストラクタ
     if method_name == '<init>':
         if '$' in class_name_part:
-            # 内部クラスの場合
             class_parts = class_name_part.split('$')
 
-            # 最後の部分を取得（内部クラス名）
             inner_class_part = class_parts[-1]
 
-            # 数字で始まる場合（匿名内部クラス）の処理
             if inner_class_part and inner_class_part[0].isdigit():
-                # 数字以降の部分を取得
                 match = re.match(r'^\d+(.+)$', inner_class_part)
                 if match:
                     actual_class_name = match.group(1)
                 else:
-                    # 数字のみの場合は外部クラス名を使用
                     actual_class_name = class_parts[0] if len(class_parts) > 1 else inner_class_part
             else:
                 actual_class_name = inner_class_part
 
-            # 内部クラスのコンストラクタの場合、内部クラス名を返す
             return actual_class_name, 'constructor', signature
         else:
-            # 通常のクラスのコンストラクタ
             return class_name_part, 'constructor', signature
 
-    # <clinit>はスタティックイニシャライザ
     elif method_name == '<clinit>':
         return 'static_initializer', 'method', signature
 
-    # 通常のメソッド
     else:
         return method_name, 'method', signature
 
 def extract_package_path(parent_path):
-    """
-    Parentカラムからパッケージパスを抽出する
-    例: org.elasticsearch.search.aggregations.InternalOrder$CompoundOrder
-    → org/elasticsearch/search/aggregations/
-    """
     if not parent_path or pd.isna(parent_path):
         return None
 
-    # 最後のドット以前がパッケージパス
     parts = parent_path.split('.')
     if len(parts) <= 1:
         return None
 
-    # 最後の部分（クラス名）を除いてパッケージパスを構築
     package_parts = parts[:-1]
     return '/'.join(package_parts) + '/'
 
 def get_current_and_previous_commit(repo_path, start_commit_hash):
-    """
-    指定されたコミットとその1つ前のコミットを取得する
-    """
     try:
         from git import Repo
         repo = Repo(repo_path)
 
-        # 開始コミットを取得
         start_commit = repo.commit(start_commit_hash)
 
-        # 現在のコミットとその1つ前のコミットを取得
         commit_list = list(repo.iter_commits(start_commit, max_count=2))
 
         if len(commit_list) < 2:
             print(f"警告: コミット {start_commit_hash} の前のコミットが見つかりません")
             return [start_commit_hash], ["現在のコミットのみ"]
 
-        # コミットハッシュのリストを返す（時系列順に並び替え: [前のコミット, 現在のコミット]）
         current_commit = commit_list[0].hexsha
         previous_commit = commit_list[1].hexsha
 
@@ -169,14 +122,10 @@ def get_current_and_previous_commit(repo_path, start_commit_hash):
         return [], []
 
 def checkout_commit(repo_path, commit_hash):
-    """
-    指定されたコミットにチェックアウトする
-    """
     try:
         from git import Repo
         repo = Repo(repo_path)
 
-        # 指定されたコミットにチェックアウト
         repo.git.checkout(commit_hash)
 
         print(f"成功: コミット {commit_hash} にチェックアウトしました")
@@ -187,37 +136,26 @@ def checkout_commit(repo_path, commit_hash):
         return False
 
 def find_java_file_in_filesystem(repo_path, class_name, package_path):
-    """
-    ファイルシステムから対象のJavaファイルを検索する（チェックアウト後）
-    """
-    import glob
 
     try:
         search_patterns = []
 
-        # パッケージパスがある場合の検索パターン
         if package_path:
-            # パッケージパス + クラス名.java
             pattern1 = os.path.join(repo_path, "**", package_path, f"{class_name}.java")
             search_patterns.append(pattern1)
 
-            # src/main/java/ + パッケージパス + クラス名.java（Maven構造）
             pattern2 = os.path.join(repo_path, "**", "src", "main", "java", package_path, f"{class_name}.java")
             search_patterns.append(pattern2)
 
-            # src/test/java/ + パッケージパス + クラス名.java（テストファイル）
             pattern3 = os.path.join(repo_path, "**", "src", "test", "java", package_path, f"{class_name}.java")
             search_patterns.append(pattern3)
 
-        # クラス名のみでの検索パターン
         pattern4 = os.path.join(repo_path, "**", f"{class_name}.java")
         search_patterns.append(pattern4)
 
-        # 各パターンで検索
         for pattern in search_patterns:
             matches = glob.glob(pattern, recursive=True)
             if matches:
-                # 最初に見つかったファイルを返す
                 return matches[0]
 
         return None
@@ -227,14 +165,6 @@ def find_java_file_in_filesystem(repo_path, class_name, package_path):
         return None
 
 def parse_java_signature_params(args_str):
-    """
-    Javaのメソッドシグネチャから引数数を正確に解析する
-    例:
-    - '' → 0 (引数なし)
-    - 'I' → 1 (int 1個)
-    - 'Ljava/lang/String;I' → 2 (String 1個, int 1個)
-    - '[I' → 1 (int配列 1個)
-    """
     if not args_str:
         return 0
 
@@ -245,20 +175,15 @@ def parse_java_signature_params(args_str):
         char = args_str[i]
 
         if char in 'ZBCSIJFD':
-            # プリミティブ型（boolean, byte, char, short, int, long, float, double）
             param_count += 1
             i += 1
         elif char == 'L':
-            # オブジェクト型（Ljava/lang/String; など）
             param_count += 1
-            # セミコロンまでスキップ
             while i < len(args_str) and args_str[i] != ';':
                 i += 1
-            i += 1  # セミコロンもスキップ
+            i += 1
         elif char == '[':
-            # 配列型
-            i += 1  # '[' をスキップ
-            # 配列の要素型を処理（再帰的に処理するが、カウントは1つ）
+            i += 1
             if i < len(args_str):
                 if args_str[i] in 'ZBCSIJFD':
                     param_count += 1
@@ -269,17 +194,12 @@ def parse_java_signature_params(args_str):
                         i += 1
                     i += 1
         else:
-            # 未知の文字は無視
             i += 1
 
     return param_count
 
 def analyze_java_file_with_lizard(file_path):
-    """
-    ファイルパスを指定してLizardで分析する
-    """
     try:
-        # Lizardで直接ファイルを分析
         analysis_result = analyze_file(file_path)
 
         methods = []
