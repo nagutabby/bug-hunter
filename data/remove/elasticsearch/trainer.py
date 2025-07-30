@@ -18,8 +18,6 @@ GLOBAL_SEED = 42
 np.random.seed(GLOBAL_SEED)
 
 class JavaCodeTokenizer:
-    """Javaのメソッド名やクラス名を適切にトークン化するカスタムトークナイザー"""
-
     def __init__(self, min_token_length: int = 3, include_package_tokens: bool = True):
         self.min_token_length = min_token_length
         self.include_package_tokens = include_package_tokens
@@ -147,8 +145,6 @@ class JavaCodeTokenizer:
 
 
 class BugHunterTrainer:
-    """BugHunterモデルの訓練を行うクラス"""
-
     def __init__(self, feature_selection_threshold: float = 0.001,
                  tfidf_max_features: int = 100,
                  java_tokenizer_min_length: int = 2,
@@ -159,19 +155,16 @@ class BugHunterTrainer:
         self.tfidf_max_features = tfidf_max_features
         self.test_size = test_size
 
-        # 学習済みコンポーネント
         self.best_model = None
         self.tfidf_vectorizer_longname = None
         self.tfidf_vectorizer_parent = None
         self.scaler = None
         self.operation_type_columns = None
 
-        # 特徴量選択関連
         self.all_feature_names = None
         self.selected_features = None
         self.feature_importance_scores = None
 
-        # データ分布情報
         self.original_class_distribution = None
         self.resampled_train_distribution = None
         self.has_operation_type = False
@@ -188,7 +181,6 @@ class BugHunterTrainer:
             'n_jobs': -1
         }
 
-        # 結果保存用
         self.cv_results = None
         self.test_results = None
         self.test_indices = None
@@ -199,7 +191,6 @@ class BugHunterTrainer:
         df = pd.read_csv(data_path, nrows=max_rows)
         print(f"読み込み完了: {len(df)}行, {len(df.columns)}列")
 
-        # operation_typeカラムの存在確認
         if 'operation_type' in df.columns:
             self.has_operation_type = True
             print(f"operation_typeカラムが検出されました")
@@ -214,7 +205,6 @@ class BugHunterTrainer:
             self.has_operation_type = False
             print(f"operation_typeカラムは見つかりませんでした")
 
-        # 欠損値の状況を表示
         missing_info = df.isnull().sum()
         total_missing = missing_info.sum()
         print(f"欠損値の状況: {total_missing}個の欠損値")
@@ -227,7 +217,6 @@ class BugHunterTrainer:
         return df
 
     def _prepare_operation_type_features(self, data: pd.DataFrame, is_training: bool = True) -> pd.DataFrame:
-        """operation_typeカラムのOne-Hotエンコーディングを行う"""
         if not self.has_operation_type or 'operation_type' not in data.columns:
             return pd.DataFrame(index=data.index)
 
@@ -258,7 +247,6 @@ class BugHunterTrainer:
 
         y = (data["Number of Bugs"] > 0.5).astype(int) if "Number of Bugs" in data.columns and is_training else None
 
-        # 数値特徴量の処理
         numerical_feature_columns = data.select_dtypes(include=[np.number]).columns.tolist()
         numerical_feature_columns = [col for col in numerical_feature_columns if col not in ["Number of Bugs"]]
         X_numerical = data[numerical_feature_columns].copy()
@@ -278,10 +266,8 @@ class BugHunterTrainer:
 
         X_numerical_scaled_df = pd.DataFrame(X_numerical_scaled, columns=numerical_feature_columns, index=X_numerical.index)
 
-        # operation_typeのOne-Hotエンコーディング
         X_operation_type_df = self._prepare_operation_type_features(data, is_training)
 
-        # LongName TF-IDF処理
         longname_data = data['LongName'].fillna("").astype(str)
         if is_training:
             self.tfidf_vectorizer_longname = TfidfVectorizer(
@@ -301,7 +287,6 @@ class BugHunterTrainer:
                                           columns=[f'LongName_tfidf_{i}' for i in range(X_longname_tfidf.shape[1])],
                                           index=longname_data.index)
 
-        # Parent TF-IDF処理
         parent_data = data['Parent'].fillna("").astype(str)
         if is_training:
             self.tfidf_vectorizer_parent = TfidfVectorizer(
@@ -321,7 +306,6 @@ class BugHunterTrainer:
                                         columns=[f'Parent_tfidf_{i}' for i in range(X_parent_tfidf.shape[1])],
                                         index=parent_data.index)
 
-        # 全特徴量を結合
         X_parts = [X_numerical_scaled_df, X_longname_tfidf_df, X_parent_tfidf_df]
         if len(X_operation_type_df.columns) > 0:
             X_parts.append(X_operation_type_df)
@@ -392,7 +376,6 @@ class BugHunterTrainer:
 
             print(f"選択された特徴量数: {len(self.selected_features)}")
 
-            # 特徴量タイプ別の統計
             longname_count = len([f for f in self.selected_features if f.startswith('LongName_tfidf_')])
             parent_count = len([f for f in self.selected_features if f.startswith('Parent_tfidf_')])
             operation_type_count = len([f for f in self.selected_features if f.startswith('operation_type_')])
@@ -497,7 +480,6 @@ class BugHunterTrainer:
         print(f"Accuracy: {test_results['accuracy']:.4f}")
         print(f"ROC-AUC: {test_results['roc_auc']:.4f}")
 
-        # 予測結果を保存
         self.predictions_data = {
             'y_true': y_test.values,
             'y_pred': y_test_pred,
@@ -508,7 +490,6 @@ class BugHunterTrainer:
         return test_results
 
     def save_model(self, model_path: str):
-        """学習済みモデルと必要なコンポーネントを保存"""
         model_data = {
             'model': self.best_model,
             'tfidf_vectorizer_longname': self.tfidf_vectorizer_longname,
@@ -534,16 +515,12 @@ class BugHunterTrainer:
         print(f"モデルを '{model_path}' に保存しました")
 
     def run_training_pipeline(self, data_path: str, max_rows: int = 10000, model_save_path: str = "bug_hunter_model.pkl"):
-        """モデル訓練パイプラインを実行"""
         print("=== BugHunter モデル訓練パイプライン ===")
 
-        # データ読み込み
         data = self.read_data(data_path, max_rows)
 
-        # データ前処理
         X_full, y_full = self.prepare_data(data, is_training=True)
 
-        # 訓練・テストデータ分割
         print(f"\n=== 訓練・テストデータ分割 (テスト比率: {self.test_size}) ===")
         X_train, X_test, y_train, y_test = train_test_split(
             X_full, y_full,
@@ -556,7 +533,6 @@ class BugHunterTrainer:
         print(f"訓練データ: {len(X_train)}件")
         print(f"テストデータ: {len(X_test)}件")
 
-        # 特徴量選択
         print("\n=== 特徴量選択器の学習 ===")
         X_train_temp_resampled, y_train_temp_resampled = self.apply_undersampling(X_train, y_train)
         self.select_features_by_rf_importance(X_train_temp_resampled, y_train_temp_resampled)
@@ -564,19 +540,14 @@ class BugHunterTrainer:
         X_train_reduced = X_train[self.selected_features]
         X_test_reduced = X_test[self.selected_features]
 
-        # 交差検証評価
         self.cv_results = self.evaluate_model_with_cv(X_train_reduced, y_train, k_folds=10)
 
-        # 最終モデル訓練
         self.train_final_model(X_train_reduced, y_train)
 
-        # テストデータ評価
         self.test_results = self.evaluate_on_test_data(X_test_reduced, y_test)
 
-        # モデル保存
         self.save_model(model_save_path)
 
-        # 結果表示
         print("\n=== 10分割交差検証結果 ===")
         print(f"F1スコア: {self.cv_results['f1_mean']:.4f} ± {self.cv_results['f1_std']:.4f}")
         print(f"ROC-AUC: {self.cv_results['roc_auc_mean']:.4f} ± {self.cv_results['roc_auc_std']:.4f}")
@@ -592,7 +563,6 @@ class BugHunterTrainer:
 
 
 def main():
-    """モデル訓練の実行例"""
     trainer = BugHunterTrainer(
         feature_selection_threshold=0.001,
         tfidf_max_features=100,
@@ -602,11 +572,9 @@ def main():
     )
 
     try:
-        # データファイルのパスを指定
         data_path = "method-p_filtered_v2_changes.csv"
         model_save_path = "predictions_changes.pkl"
 
-        # 訓練パイプライン実行
         cv_results, test_results = trainer.run_training_pipeline(
             data_path=data_path,
             max_rows=3000,

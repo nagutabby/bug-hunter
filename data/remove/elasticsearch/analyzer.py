@@ -14,19 +14,12 @@ warnings.filterwarnings('ignore')
 
 
 class BugHunterAnalyzer:
-    """学習済みBugHunterモデルを使用した特徴量分析クラス"""
-
     def __init__(self, model_path: str):
-        """
-        Args:
-            model_path: 学習済みモデルのpklファイルパス
-        """
         self.model_path = model_path
         self.model_data = None
         self.load_model()
 
     def load_model(self):
-        """学習済みモデルを読み込む"""
         if not os.path.exists(self.model_path):
             raise FileNotFoundError(f"モデルファイル '{self.model_path}' が見つかりません")
 
@@ -37,7 +30,6 @@ class BugHunterAnalyzer:
         self._display_model_info()
 
     def _display_model_info(self):
-        """読み込んだモデルの基本情報を表示"""
         print("\n=== モデル基本情報 ===")
         print(f"モデルタイプ: {type(self.model_data['model']).__name__}")
         print(f"選択された特徴量数: {len(self.model_data['selected_features'])}")
@@ -53,7 +45,6 @@ class BugHunterAnalyzer:
             print(f"テストF1スコア: {test_f1:.4f}")
 
     def display_feature_importance_table(self, top_n: int = 20) -> pd.DataFrame:
-        """特徴量重要度のテーブルを表示"""
         if not self.model_data['feature_importance_scores'] is not None:
             print("Feature Importanceスコアが見つかりません。")
             return None
@@ -78,7 +69,6 @@ class BugHunterAnalyzer:
         display_df = selected_features_df.head(top_n)[['特徴量', 'タイプ', 'Feature Importance']].copy()
         print(display_df.to_string(index=False))
 
-        # タイプ別統計
         print(f"\n=== 特徴量タイプ別統計（選択された特徴量のみ） ===")
         type_stats = selected_features_df['タイプ'].value_counts()
         for feature_type, count in type_stats.items():
@@ -88,7 +78,6 @@ class BugHunterAnalyzer:
         return selected_features_df
 
     def display_sampling_summary(self):
-        """サンプリング情報のサマリーを表示"""
         original_dist = self.model_data.get('original_class_distribution')
         resampled_dist = self.model_data.get('resampled_train_distribution')
 
@@ -111,7 +100,6 @@ class BugHunterAnalyzer:
         print(f"\n元の訓練データからの変化率: {change_rate:.1f}%")
 
     def display_feature_selection_summary(self):
-        """特徴量選択のサマリーを表示"""
         feature_scores = self.model_data.get('feature_importance_scores')
         selected_features = self.model_data.get('selected_features')
         all_features = self.model_data.get('all_feature_names')
@@ -132,7 +120,6 @@ class BugHunterAnalyzer:
         print(f"  最小値: {np.min(feature_scores):.4f}")
 
     def display_operation_type_analysis(self):
-        """operation_type特徴量の分析結果を表示"""
         has_operation_type = self.model_data.get('has_operation_type', False)
         operation_type_columns = self.model_data.get('operation_type_columns')
 
@@ -165,7 +152,6 @@ class BugHunterAnalyzer:
             print("operation_typeカラム情報が取得できませんでした。")
 
     def get_cv_detailed_results(self) -> Optional[pd.DataFrame]:
-        """交差検証の詳細結果を取得"""
         cv_results = self.model_data.get('cv_results')
         if not cv_results:
             print("交差検証結果が見つかりません。")
@@ -187,8 +173,6 @@ class BugHunterAnalyzer:
 
     def plot_feature_histograms(self, data_path: str, top_n: int = 20,
                                save_path: Optional[str] = None, max_rows: int = 10000):
-        """上位N個の特徴量のヒストグラムを描画"""
-
         print(f"\n=== 上位{top_n}特徴量のヒストグラム分析 ===")
 
         if not os.path.exists(data_path):
@@ -207,12 +191,10 @@ class BugHunterAnalyzer:
             print("モデルデータが読み込まれていません")
             return
 
-        # trainer と同じ方法でデータ前処理
         try:
             from trainer import BugHunterTrainer
             temp_trainer = BugHunterTrainer()
 
-            # 学習済みコンポーネントを復元
             temp_trainer.tfidf_vectorizer_longname = self.model_data['tfidf_vectorizer_longname']
             temp_trainer.tfidf_vectorizer_parent = self.model_data['tfidf_vectorizer_parent']
             temp_trainer.scaler = self.model_data['scaler']
@@ -221,7 +203,6 @@ class BugHunterAnalyzer:
             temp_trainer.has_operation_type = self.model_data['has_operation_type']
             temp_trainer.java_tokenizer = self.model_data['java_tokenizer']
 
-            # データ前処理（is_training=Falseで推論モード）
             X_processed, _ = temp_trainer.prepare_data(data, is_training=False)
             print(f"前処理完了: {X_processed.shape[1]}個の特徴量")
 
@@ -260,7 +241,6 @@ class BugHunterAnalyzer:
         plt.rcParams['axes.labelsize'] = 10
         plt.rcParams['figure.titlesize'] = 16
 
-        # グリッドサイズを計算（4列固定）
         n_cols = 4
         n_rows = (len(top_features) + n_cols - 1) // n_cols
 
@@ -271,7 +251,6 @@ class BugHunterAnalyzer:
 
         fig, axes = plt.subplots(n_rows, n_cols, figsize=(fig_width, fig_height))
 
-        # axesを1次元配列に変換（単一行の場合の対応）
         if n_rows == 1:
             axes = axes.reshape(1, -1)
         if n_cols == 1:
@@ -307,7 +286,6 @@ class BugHunterAnalyzer:
                 print(f"特徴量 '{feature_name}' のヒストグラム描画でエラー: {e}")
                 self._plot_error_message(ax, feature_name, str(e))
 
-        # 余った subplot を非表示にする
         for i in range(len(top_features), n_rows * n_cols):
             row = i // n_cols
             col = i % n_cols
@@ -328,7 +306,6 @@ class BugHunterAnalyzer:
         print("特徴量ヒストグラム描画完了")
 
     def _plot_binary_histogram(self, ax, feature_data: pd.Series, feature_name: str):
-        """バイナリ特徴量（operation_type）のヒストグラム"""
         unique_values = sorted(feature_data.unique())
         value_counts = feature_data.value_counts().sort_index()
 
@@ -342,7 +319,6 @@ class BugHunterAnalyzer:
         ax.set_xlabel('値')
         ax.set_ylabel('頻度')
 
-        # 値をバーの上に表示
         for bar, count in zip(bars, [value_counts.get(val, 0) for val in unique_values]):
             height = bar.get_height()
             ax.text(bar.get_x() + bar.get_width()/2., height + max(value_counts) * 0.01,
@@ -351,7 +327,6 @@ class BugHunterAnalyzer:
         total_count = len(feature_data)
         proportions = [value_counts.get(val, 0) / total_count for val in unique_values]
 
-        # テキストボックスで統計情報を表示
         stats_text = f'N={total_count}\n'
         for val, prop in zip(unique_values, proportions):
             stats_text += f'{val}: {prop:.1%}\n'
@@ -363,17 +338,14 @@ class BugHunterAnalyzer:
         ax.grid(True, alpha=0.3, axis='y')
 
     def _plot_continuous_histogram(self, ax, feature_data: pd.Series, feature_name: str):
-        """連続値特徴量のヒストグラム（基本統計量表示）"""
         mean_val = feature_data.mean()
         median_val = feature_data.median()
 
-        # データ量に応じてbin数を調整
         n_bins = min(50, max(10, len(feature_data) // 20))
 
         counts, bins, patches = ax.hist(feature_data, bins=n_bins, density=True,
                                        alpha=0.7, color='skyblue', edgecolor='navy')
 
-        # 平均値と中央値の縦線
         ax.axvline(mean_val, color='red', linestyle='--', alpha=0.8)
         ax.axvline(median_val, color='green', linestyle='--', alpha=0.8)
 
@@ -382,7 +354,6 @@ class BugHunterAnalyzer:
         ax.grid(True, alpha=0.3)
 
     def _plot_no_data_message(self, ax, feature_name: str):
-        """データが見つからない場合のメッセージ"""
         ax.text(0.5, 0.5, f'{self._shorten_feature_name(feature_name)}\n\nデータなし',
                ha='center', va='center', transform=ax.transAxes, fontsize=12,
                bbox=dict(boxstyle="round,pad=0.3", facecolor="#FFE4B5", alpha=0.8))
@@ -392,7 +363,6 @@ class BugHunterAnalyzer:
         ax.set_yticks([])
 
     def _plot_error_message(self, ax, feature_name: str, error_msg: str):
-        """エラーメッセージの表示"""
         ax.text(0.5, 0.5, f'エラー:\n{self._shorten_feature_name(feature_name)}\n\n{error_msg[:30]}...',
                ha='center', va='center', transform=ax.transAxes, fontsize=10,
                bbox=dict(boxstyle="round,pad=0.3", facecolor="#ffcccc", alpha=0.8))
@@ -402,8 +372,6 @@ class BugHunterAnalyzer:
         ax.set_yticks([])
 
     def plot_partial_dependence(self, top_n: int = 20, save_path: Optional[str] = None):
-        """特徴量上位N個のPartial Dependence Plotを描画"""
-
         model = self.model_data['model']
         feature_scores = self.model_data['feature_importance_scores']
         selected_features = self.model_data['selected_features']
@@ -433,21 +401,16 @@ class BugHunterAnalyzer:
             feature_type = self._get_feature_type(feature)
             print(f"  {i:2d}. {feature} ({feature_type}) - 重要度: {importance:.4f}")
 
-        # 1. 特徴量重要度チャートを描画
         print("\n=== 1) 特徴量重要度チャート描画 ===")
         importance_save_path = "feature_importance_chart.png" if save_path is None else save_path.replace('.png', '_importance.png')
         self._plot_feature_importance_chart(top_features, feature_scores, all_features, importance_save_path)
 
-        # 2. Partial Dependence Plotsを描画
         print("\n=== 2) Partial Dependence Plots描画 ===")
         pdp_save_path = "partial_dependence_plots.png" if save_path is None else save_path
         self._plot_partial_dependence_plots(top_features, model, selected_features, pdp_save_path)
 
     def _plot_partial_dependence_plots(self, top_features: List[str], model, selected_features: List[str], save_path: str):
-        """実際のPartial Dependence Plotsを描画"""
         try:
-            # 実データベースのサンプルデータから特徴量の値範囲を取得する必要があるが、
-            # ここでは-50から50の範囲を使用してサンプルデータを生成
             print("Partial Dependence Plot用のサンプルデータを生成中...")
 
             n_samples = 1000
@@ -455,13 +418,10 @@ class BugHunterAnalyzer:
 
             for feature in selected_features:
                 if feature.startswith('LongName_tfidf_') or feature.startswith('Parent_tfidf_'):
-                    # TF-IDF特徴量: -50から50の範囲
                     sample_data[feature] = np.random.uniform(-50, 50, n_samples)
                 elif feature.startswith('operation_type_'):
-                    # One-Hot特徴量: 0と1のみ
                     sample_data[feature] = np.random.choice([0, 1], n_samples, p=[0.7, 0.3])
                 else:
-                    # 数値特徴量: -50から50の範囲
                     sample_data[feature] = np.random.uniform(-50, 50, n_samples)
 
             X_sample = pd.DataFrame(sample_data)
@@ -475,7 +435,6 @@ class BugHunterAnalyzer:
             plt.rcParams['axes.labelsize'] = 10
             plt.rcParams['figure.titlesize'] = 16
 
-            # グリッドサイズを計算（5列固定）
             n_cols = 5
             n_rows = (len(top_features) + n_cols - 1) // n_cols
 
@@ -486,7 +445,6 @@ class BugHunterAnalyzer:
 
             fig, axes = plt.subplots(n_rows, n_cols, figsize=(fig_width, fig_height))
 
-            # axesを1次元配列に変換（単一行の場合の対応）
             if n_rows == 1:
                 axes = axes.reshape(1, -1)
             if n_cols == 1:
@@ -500,15 +458,12 @@ class BugHunterAnalyzer:
                 try:
                     feature_idx = selected_features.index(feature_name)
 
-                    # operation_type特徴量の特別処理
                     if feature_name.startswith('operation_type_'):
                         self._plot_operation_type_pdp(ax, feature_name, feature_idx, X_sample, model)
                     else:
-                        # 通常のPDP描画 - -50から50の範囲でPDPを計算
                         try:
                             grid_values = np.linspace(-50, 50, 30)
 
-                            # 手動でPDPを計算
                             pdp_values = []
                             for grid_val in grid_values:
                                 X_temp = X_sample.copy()
@@ -518,14 +473,12 @@ class BugHunterAnalyzer:
 
                             ax.plot(grid_values, pdp_values, 'o-', color='blue', linewidth=2, markersize=3)
                             ax.set_xlabel('特徴量の値', fontsize=9)
-                            # X軸の範囲を明示的に設定
                             ax.set_xlim(-50, 50)
 
                         except Exception as pdp_error:
                             print(f"PDP手動計算でエラー: {pdp_error}")
                             self._plot_manual_pdp_simple(ax, feature_name, feature_idx, X_sample, model)
 
-                    # タイトルを設定（特徴量名を短縮）
                     short_name = self._shorten_feature_name(feature_name)
                     all_features = self.model_data['all_feature_names']
                     feature_scores = self.model_data['feature_importance_scores']
@@ -536,16 +489,13 @@ class BugHunterAnalyzer:
                     ax.tick_params(axis='both', which='major', labelsize=8)
                     ax.set_ylabel('Partial Dependence', fontsize=9)
 
-                    # 軸の目盛りを適切にフォーマット
                     ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'{x:.0f}'))
                     ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'{x:.3f}'))
 
                 except Exception as e:
                     print(f"特徴量 '{feature_name}' のPDP描画でエラー: {e}")
-                    # エラーの場合は代替表示
                     self._plot_error_alternative(ax, feature_name, e)
 
-            # 余った subplot を非表示にする
             for i in range(len(top_features), n_rows * n_cols):
                 row = i // n_cols
                 col = i % n_cols
@@ -567,20 +517,16 @@ class BugHunterAnalyzer:
             print("PDPの描画に失敗しました。")
 
     def _plot_operation_type_pdp(self, ax, feature_name: str, feature_idx: int, X_sample: pd.DataFrame, model):
-        """operation_type特徴量専用のPDP描画"""
         try:
             feature_data = X_sample.iloc[:, feature_idx]
             unique_values = sorted(feature_data.unique())
 
             print(f"  {feature_name} のユニーク値: {unique_values}")
 
-            # 0と1の両方が存在することを確認
             if len(unique_values) < 2 or 0 not in unique_values or 1 not in unique_values:
-                # 強制的に0と1の両方を含むデータセットを作成
                 print(f"  {feature_name} に0と1の両方を強制追加")
                 X_modified = X_sample.copy()
 
-                # 半分を0、半分を1に設定
                 n_half = len(X_modified) // 2
                 X_modified.iloc[:n_half, feature_idx] = 0
                 X_modified.iloc[n_half:, feature_idx] = 1
@@ -590,15 +536,12 @@ class BugHunterAnalyzer:
             else:
                 X_modified = X_sample
 
-            # 手動でPartial Dependenceを計算
             pdp_values = []
 
             for value in unique_values:
-                # 特徴量の値を固定してPDを計算
                 X_temp = X_modified.copy()
                 X_temp.iloc[:, feature_idx] = value
 
-                # 予測確率を計算
                 predictions = model.predict_proba(X_temp)[:, 1]
                 pdp_value = np.mean(predictions)
                 pdp_values.append(pdp_value)
@@ -610,7 +553,6 @@ class BugHunterAnalyzer:
             ax.set_xticks(range(len(unique_values)))
             ax.set_xticklabels([f'{val}' for val in unique_values])
 
-            # 値をバーの上に表示
             for i, (bar, pdp_val) in enumerate(zip(bars, pdp_values)):
                 height = bar.get_height()
                 ax.text(bar.get_x() + bar.get_width()/2., height + max(pdp_values) * 0.01,
@@ -622,27 +564,21 @@ class BugHunterAnalyzer:
 
         except Exception as e:
             print(f"  operation_type PDP描画でエラー: {e}")
-            # 最終的な代替表示
             self._plot_simple_bar_alternative(ax, feature_name)
 
     def _plot_manual_pdp_simple(self, ax, feature_name: str, feature_idx: int, X_sample: pd.DataFrame, model):
-        """シンプルな手動PDP描画"""
         try:
             feature_data = X_sample.iloc[:, feature_idx]
 
             min_val, max_val = feature_data.min(), feature_data.max()
 
-            # 値の範囲が極端に小さい場合の処理
             if abs(max_val - min_val) < 1e-10:
                 self._plot_simple_bar_alternative(ax, feature_name)
                 return
 
-            # 適切な値の範囲でPDPを計算
             if len(feature_data.unique()) <= 10:
-                # 離散値の場合
                 test_values = sorted(feature_data.unique())
             else:
-                # 連続値の場合
                 test_values = np.linspace(min_val, max_val, 20)
 
             pdp_values = []
@@ -653,12 +589,10 @@ class BugHunterAnalyzer:
                 pdp_values.append(np.mean(predictions))
 
             if len(test_values) <= 10:
-                # 離散値: 棒グラフ
                 ax.bar(range(len(test_values)), pdp_values, alpha=0.7, color='skyblue', edgecolor='navy')
                 ax.set_xticks(range(len(test_values)))
                 ax.set_xticklabels([f'{val:.2f}' for val in test_values])
             else:
-                # 連続値: 線グラフ
                 ax.plot(test_values, pdp_values, 'o-', color='blue', linewidth=2, markersize=4)
 
             ax.grid(True, alpha=0.3, linestyle='--')
@@ -668,7 +602,6 @@ class BugHunterAnalyzer:
             self._plot_simple_bar_alternative(ax, feature_name)
 
     def _plot_simple_bar_alternative(self, ax, feature_name: str):
-        """最も単純な代替表示"""
         ax.text(0.5, 0.5, f'{self._shorten_feature_name(feature_name)}\n\nPDP計算困難\n(単一値または\nデータ不足)',
                ha='center', va='center', transform=ax.transAxes, fontsize=10,
                bbox=dict(boxstyle="round,pad=0.3", facecolor="#E8F4FD", alpha=0.8, edgecolor='blue'))
@@ -679,11 +612,9 @@ class BugHunterAnalyzer:
         ax.set_yticks([])
         ax.set_facecolor('#f8f8f8')
 
-        # Y軸ラベルは統一
         ax.set_ylabel('Partial Dependence', fontsize=9)
 
     def _plot_error_alternative(self, ax, feature_name: str, error):
-        """エラーが発生した場合の代替表示"""
         ax.text(0.5, 0.5, f'描画エラー:\n{self._shorten_feature_name(feature_name)}\n\n{str(error)[:50]}...',
                ha='center', va='center', transform=ax.transAxes, fontsize=8,
                bbox=dict(boxstyle="round,pad=0.3", facecolor="#ffcccc", alpha=0.8, edgecolor='red'))
@@ -695,7 +626,6 @@ class BugHunterAnalyzer:
         ax.set_facecolor('#f8f8f8')
 
     def _get_feature_type(self, feature_name: str) -> str:
-        """特徴量の種類を判定"""
         if feature_name.startswith('LongName_tfidf_'):
             return 'LongName TF-IDF'
         elif feature_name.startswith('Parent_tfidf_'):
@@ -707,7 +637,6 @@ class BugHunterAnalyzer:
 
     def _plot_feature_importance_chart(self, top_features: List[str], feature_scores: np.ndarray,
                                      all_features: List[str], save_path: Optional[str] = None):
-        """特徴量重要度のチャートを描画"""
         sns.set_style("whitegrid")
         sns.set_palette("husl")
         sns.set(font='IPAexGothic')
@@ -727,7 +656,6 @@ class BugHunterAnalyzer:
             feature_types.append(self._get_feature_type(feature))
             short_names.append(self._shorten_feature_name(feature))
 
-        # カラーマップを特徴量タイプごとに設定
         type_colors = {
             'LongName TF-IDF': '#FF6B6B',
             'Parent TF-IDF': '#4ECDC4',
@@ -739,7 +667,6 @@ class BugHunterAnalyzer:
 
         fig, ax = plt.subplots(figsize=(12, max(8, len(top_features) * 0.4)))
 
-        # 特徴量を重要度の降順で並べる（上から重要度が高い順）
         y_pos = np.arange(len(top_features))
         bars = ax.barh(y_pos, importances, color=colors, alpha=0.8, edgecolor='black', linewidth=0.5)
 
@@ -748,19 +675,16 @@ class BugHunterAnalyzer:
         ax.set_xlabel('Feature Importance', fontsize=12)
         ax.set_title(f'特徴量重要度 Top {len(top_features)}', fontsize=14, pad=20)
 
-        # 重要度の値をバーの右端に表示
         for i, (bar, importance) in enumerate(zip(bars, importances)):
             width = bar.get_width()
             ax.text(width + max(importances) * 0.01, bar.get_y() + bar.get_height()/2,
                    f'{importance:.4f}', ha='left', va='center', fontsize=9)
 
-        # 凡例を追加
         unique_types = list(set(feature_types))
         legend_elements = [plt.Rectangle((0,0),1,1, facecolor=type_colors.get(t, '#95A5A6'),
                                        alpha=0.8, edgecolor='black') for t in unique_types]
         ax.legend(legend_elements, unique_types, loc='lower right', fontsize=10)
 
-        # Y軸を反転（重要度が高い順に上から表示）
         ax.invert_yaxis()
 
         ax.grid(True, alpha=0.3, linestyle='--', axis='x')
@@ -776,11 +700,9 @@ class BugHunterAnalyzer:
         print("特徴量重要度チャート描画完了")
 
     def _shorten_feature_name(self, feature_name: str, max_length: int = 25) -> str:
-        """特徴量名を短縮"""
         if len(feature_name) <= max_length:
             return feature_name
 
-        # TF-IDF特徴量の場合は番号のみ表示
         if feature_name.startswith('LongName_tfidf_'):
             return f"LN_tf_{feature_name.split('_')[-1]}"
         elif feature_name.startswith('Parent_tfidf_'):
@@ -789,13 +711,11 @@ class BugHunterAnalyzer:
             op_type = feature_name.replace('operation_type_', '')
             return f"op_{op_type[:15]}"
         else:
-            # 数値特徴量は前後を切り詰め
             if len(feature_name) > max_length:
                 return feature_name[:max_length-3] + "..."
             return feature_name
 
     def generate_analysis_report(self, data_path: Optional[str] = None):
-        """包括的な分析レポートを生成（ヒストグラム分析も含む）"""
         print("="*80)
         print("BugHunter モデル分析レポート")
         print("="*80)
@@ -835,20 +755,16 @@ class BugHunterAnalyzer:
 
 
 def main():
-    """分析の実行例"""
     try:
         analyzer = BugHunterAnalyzer("predictions_changes.pkl")
 
-        # 元データのパスを指定（ヒストグラム分析のため）
         data_path = "method-p_filtered_v2_changes.csv"
 
-        # 包括的な分析レポートを生成（ヒストグラム分析も含む）
         analyzer.generate_analysis_report(data_path=data_path)
 
-        # 特徴量重要度チャートとPartial Dependence Plotsを描画
         analyzer.plot_partial_dependence(
             top_n=20,
-            save_path="analysis_charts.png"  # feature_importance_chart.png と partial_dependence_plots.png が生成される
+            save_path="analysis_charts.png"
         )
 
         print("\n" + "="*60)
