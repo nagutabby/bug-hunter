@@ -572,7 +572,7 @@ def main():
     )
 
     try:
-        base_dir = "../data/remove/antlr4/"
+        base_dir = "../data/remove/ceylon-ide-eclipse/"
         data_path = base_dir + "method-p_add_change_metrics.csv"
         model_save_path = base_dir + "predictions_add_change_metrics.pkl"
 

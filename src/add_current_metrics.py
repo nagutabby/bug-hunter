@@ -400,10 +400,10 @@ def prepare_current_state_csv_output(original_df, current_state_results):
     return enhanced_df
 
 def main():
-    base_dir = "../data/remove/antlr4/"
+    base_dir = "../data/remove/ceylon-ide-eclipse/"
     input_path = base_dir + "method-p_drop_columns_rows.csv"
     output_path = base_dir + "method-p_add_current_metrics.csv"
-    repo_path = "/Users/nagutabby/antlr4"
+    repo_path = "/Users/nagutabby/ceylon-ide-eclipse"
     max_records = 3000
 
     SKIP_MISSING_METHODS = True

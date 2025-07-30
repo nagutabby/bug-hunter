@@ -95,7 +95,7 @@ class McNemarTest:
 def main():
     test = McNemarTest(alpha=0.05)
 
-    base_dir = "../data/remove/antlr4/"
+    base_dir = "../data/remove/ceylon-ide-eclipse/"
     file_1 = base_dir + "predictions_add_current_metrics.pkl"
     file_2 = base_dir + "predictions_add_change_metrics.pkl"
 
