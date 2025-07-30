@@ -3,12 +3,12 @@ import numpy as np
 from sklearn.inspection import PartialDependenceDisplay
 import matplotlib.pyplot as plt
 import seaborn as sns
-import japanize_matplotlib  # 日本語フォント対応
+import japanize_matplotlib
 import pickle
 import os
 from typing import Dict, List, Optional
 import warnings
-from trainer import JavaCodeTokenizer
+from train import JavaCodeTokenizer
 
 warnings.filterwarnings('ignore')
 
@@ -192,7 +192,7 @@ class BugHunterAnalyzer:
             return
 
         try:
-            from trainer import BugHunterTrainer
+            from train import BugHunterTrainer
             temp_trainer = BugHunterTrainer()
 
             temp_trainer.tfidf_vectorizer_longname = self.model_data['tfidf_vectorizer_longname']
@@ -715,10 +715,12 @@ class BugHunterAnalyzer:
                 return feature_name[:max_length-3] + "..."
             return feature_name
 
-    def generate_analysis_report(self, data_path: Optional[str] = None):
+    def generate_analysis_report(self, data_path: Optional[str] = None, output_dir: str = "."):
         print("="*80)
         print("BugHunter モデル分析レポート")
         print("="*80)
+
+        os.makedirs(output_dir, exist_ok=True)
 
         self._display_model_info()
         self.display_sampling_summary()
@@ -736,10 +738,11 @@ class BugHunterAnalyzer:
             print("実データを使用した特徴量分布分析")
             print(f"{'='*80}")
 
+            histogram_path = os.path.join(output_dir, "feature_histograms.png")
             self.plot_feature_histograms(
                 data_path=data_path,
                 top_n=20,
-                save_path="feature_histograms.png",
+                save_path=histogram_path,
                 max_rows=3000
             )
 
@@ -756,19 +759,23 @@ class BugHunterAnalyzer:
 
 def main():
     try:
-        analyzer = BugHunterAnalyzer("predictions_changes.pkl")
+        base_dir = "../data/remove/elasticsearch/"
+        output_dir = "../materials/images/elasticsearch"
+        analyzer = BugHunterAnalyzer(base_dir + "predictions_add_change_metrics.pkl")
+        data_path = base_dir + "method-p_add_change_metrics.csv"
 
-        data_path = "method-p_filtered_v2_changes.csv"
+        os.makedirs(output_dir, exist_ok=True)
 
-        analyzer.generate_analysis_report(data_path=data_path)
+        analyzer.generate_analysis_report(data_path=data_path, output_dir=output_dir)
 
+        pdp_save_path = os.path.join(output_dir, "analysis_charts.png")
         analyzer.plot_partial_dependence(
             top_n=20,
-            save_path="analysis_charts.png"
+            save_path=pdp_save_path
         )
 
         print("\n" + "="*60)
-        print("分析完了！生成されたファイル:")
+        print(f"分析完了！{output_dir} に以下のファイルが生成されました:")
         print("  - feature_histograms.png (特徴量ヒストグラム)")
         print("  - feature_importance_chart.png (特徴量重要度)")
         print("  - partial_dependence_plots.png (Partial Dependence Plots)")

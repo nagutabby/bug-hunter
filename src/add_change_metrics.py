@@ -38,11 +38,13 @@ def extract_method_name(long_name):
         return None, None, None
 
     method_part = long_name[:paren_index]
+
     last_dot_index = method_part.rfind('.')
     if last_dot_index == -1:
         return None, None, None
 
     method_name = method_part[last_dot_index + 1:]
+
     close_paren_index = long_name.find(')', paren_index)
     if close_paren_index != -1:
         signature = long_name[paren_index:]
@@ -57,6 +59,7 @@ def extract_method_name(long_name):
     if method_name == '<init>':
         if '$' in class_name_part:
             class_parts = class_name_part.split('$')
+
             inner_class_part = class_parts[-1]
 
             if inner_class_part and inner_class_part[0].isdigit():
@@ -71,8 +74,10 @@ def extract_method_name(long_name):
             return actual_class_name, 'constructor', signature
         else:
             return class_name_part, 'constructor', signature
+
     elif method_name == '<clinit>':
         return 'static_initializer', 'method', signature
+
     else:
         return method_name, 'method', signature
 
@@ -87,37 +92,61 @@ def extract_package_path(parent_path):
     package_parts = parts[:-1]
     return '/'.join(package_parts) + '/'
 
-def get_current_commit(repo_path, commit_hash):
+def get_current_and_previous_commit(repo_path, start_commit_hash):
     try:
         from git import Repo
         repo = Repo(repo_path)
-        commit = repo.commit(commit_hash)
-        print(f"対象コミット: {commit_hash}")
-        return [commit_hash], ["現在のコミット"]
+
+        start_commit = repo.commit(start_commit_hash)
+
+        commit_list = list(repo.iter_commits(start_commit, max_count=2))
+
+        if len(commit_list) < 2:
+            print(f"警告: コミット {start_commit_hash} の前のコミットが見つかりません")
+            return [start_commit_hash], ["現在のコミットのみ"]
+
+        current_commit = commit_list[0].hexsha
+        previous_commit = commit_list[1].hexsha
+
+        commit_hashes = [previous_commit, current_commit]
+        commit_labels = ["前のコミット", "現在のコミット"]
+
+        print(f"取得したコミット:")
+        print(f"  前のコミット: {previous_commit}")
+        print(f"  現在のコミット: {current_commit}")
+
+        return commit_hashes, commit_labels
+
     except Exception as e:
-        print(f"エラー: コミット取得中にエラーが発生しました: {e}")
+        print(f"エラー: コミット履歴の取得中にエラーが発生しました: {e}")
         return [], []
 
 def checkout_commit(repo_path, commit_hash):
     try:
         from git import Repo
         repo = Repo(repo_path)
+
         repo.git.checkout(commit_hash)
+
         print(f"成功: コミット {commit_hash} にチェックアウトしました")
         return True
+
     except Exception as e:
         print(f"エラー: チェックアウト中に例外が発生しました: {e}")
         return False
 
 def find_java_file_in_filesystem(repo_path, class_name, package_path):
+
     try:
         search_patterns = []
 
         if package_path:
             pattern1 = os.path.join(repo_path, "**", package_path, f"{class_name}.java")
             search_patterns.append(pattern1)
+
             pattern2 = os.path.join(repo_path, "**", "src", "main", "java", package_path, f"{class_name}.java")
             search_patterns.append(pattern2)
+
             pattern3 = os.path.join(repo_path, "**", "src", "test", "java", package_path, f"{class_name}.java")
             search_patterns.append(pattern3)
 
@@ -130,6 +159,7 @@ def find_java_file_in_filesystem(repo_path, class_name, package_path):
                 return matches[0]
 
         return None
+
     except Exception as e:
         print(f"エラー: ファイルシステム検索中に例外が発生しました: {e}")
         return None
@@ -185,6 +215,7 @@ def analyze_java_file_with_lizard(file_path):
             })
 
         return methods
+
     except Exception as e:
         print(f"エラー: Lizard分析中に例外が発生しました: {e}")
         return []
@@ -253,6 +284,8 @@ def filter_methods_by_target(methods, target_method_name, target_class_name, tar
             paren_end = target_signature.find(')')
             if paren_end != -1:
                 args_str = target_signature[1:paren_end]
+                return_type = target_signature[paren_end + 1:] if paren_end + 1 < len(target_signature) else ""
+
                 expected_params = parse_java_signature_params(args_str)
 
                 if method['params'] != expected_params:
@@ -283,7 +316,7 @@ def filter_methods_by_target(methods, target_method_name, target_class_name, tar
 
     return filtered_methods
 
-def analyze_current_state_only(java_file_path, target_method_name, target_class_name, target_signature=None, outer_class_name=None, method_type='method', debug=False):
+def analyze_with_lizard_only(java_file_path, target_method_name, target_class_name, target_signature=None, outer_class_name=None, method_type='method', debug=False):
     methods = analyze_java_file_with_lizard(java_file_path)
 
     if debug:
@@ -301,17 +334,22 @@ def analyze_current_state_only(java_file_path, target_method_name, target_class_
             print(f"      - '{method['detected_method']}' -> '{method['target_method']}' (クラス: {method['target_class']}, Params: {method['params']})")
 
     if filtered_methods:
-        return filtered_methods, "現在状態分析成功"
+        return filtered_methods, "Lizard分析成功"
     else:
-        return [], "現在状態でメソッドが見つからない"
+        return [], "Lizardでメソッドが見つからない"
 
-def track_current_state(repo_path, commit_hash, parent_path, long_name, debug=False):
-    print(f"\n=== 現在状態記録開始 ===")
-    print(f"対象コミット: {commit_hash}")
+def track_method_complexity_changes(repo_path, start_commit_hash, parent_path, long_name, debug=False):
+    print(f"\n=== メソッド複雑度変化追跡開始 ===")
+    print(f"開始コミット: {start_commit_hash}")
     print(f"Parent: {parent_path}")
     print(f"LongName: {long_name}")
 
     try:
+        commit_sequence, commit_labels = get_current_and_previous_commit(repo_path, start_commit_hash)
+        if not commit_sequence:
+            print("エラー: コミット履歴を取得できませんでした")
+            return []
+
         target_class_name, outer_class_name = extract_class_name(parent_path)
         method_name, method_type, method_signature = extract_method_name(long_name)
         package_path = extract_package_path(parent_path)
@@ -325,104 +363,169 @@ def track_current_state(repo_path, commit_hash, parent_path, long_name, debug=Fa
         print(f"  パッケージパス: {package_path}")
         print(f"  検索用クラス名: {search_class_name}")
 
-        success = checkout_commit(repo_path, commit_hash)
-        if not success:
-            print(f"  スキップ: チェックアウトに失敗")
-            return None
+        complexity_data = []
 
-        java_file_path = find_java_file_in_filesystem(repo_path, search_class_name, package_path)
-        if not java_file_path:
-            print(f"  スキップ: Javaファイルが見つかりません (クラス: {search_class_name})")
-            return None
+        for i, (commit_hash, label) in enumerate(zip(commit_sequence, commit_labels)):
+            print(f"\n--- {label}: {commit_hash} ---")
 
-        print(f"  見つかったファイル: {java_file_path}")
+            success = checkout_commit(repo_path, commit_hash)
+            if not success:
+                print(f"  スキップ: チェックアウトに失敗")
+                continue
 
-        filtered_methods, strategy = analyze_current_state_only(
-            java_file_path,
-            method_name,
-            target_class_name,
-            method_signature,
-            outer_class_name,
-            method_type,
-            debug=debug
-        )
+            java_file_path = find_java_file_in_filesystem(repo_path, search_class_name, package_path)
+            if not java_file_path:
+                print(f"  スキップ: Javaファイルが見つかりません (クラス: {search_class_name})")
+                continue
 
-        if len(filtered_methods) == 0:
-            print(f"  結果: メソッドが見つかりませんでした ({strategy})")
-            return None
-        elif len(filtered_methods) > 1:
-            print(f"  警告: 複数のメソッドがマッチしました ({len(filtered_methods)}個) - 最初のものを使用")
+            print(f"  見つかったファイル: {java_file_path}")
 
-        # 現在状態データを記録
-        method_data = filtered_methods[0]
-        current_state = {
-            'commit_hash': commit_hash,
-            'current_ccn': method_data['ccn'],
-            'current_length': method_data['length'],
-            'current_tokens': method_data['tokens'],
-            'filename': method_data['filename'],
-            'line_number': method_data['line_number'],
-            'strategy': strategy
-        }
+            filtered_methods, strategy = analyze_with_lizard_only(
+                java_file_path,
+                method_name,
+                target_class_name,
+                method_signature,
+                outer_class_name,
+                method_type,
+                debug=debug
+            )
 
-        print(f"  現在のCCN: {method_data['ccn']}")
-        print(f"  現在の長さ: {method_data['length']}")
-        print(f"  現在のトークン数: {method_data['tokens']}")
+            if len(filtered_methods) == 0:
+                print(f"  結果: Lizardでメソッドが見つかりませんでした ({strategy})")
+                continue
+            elif len(filtered_methods) > 1:
+                print(f"  警告: 複数のメソッドがマッチしました ({len(filtered_methods)}個) - 最初のものを使用")
 
-        return current_state
+            method_data = filtered_methods[0]
+            complexity_data.append({
+                'commit_order': i + 1,
+                'commit_hash': commit_hash,
+                'commit_label': label,
+                'ccn': method_data['ccn'],
+                'length': method_data['length'],
+                'tokens': method_data['tokens'],
+                'params': method_data['params'],
+                'filename': method_data['filename'],
+                'line_number': method_data['line_number'],
+                'strategy': strategy
+            })
+
+            print(f"  複雑度 (CCN): {method_data['ccn']}")
+            print(f"  長さ: {method_data['length']}")
+            print(f"  トークン数: {method_data['tokens']}")
+            print(f"  パラメーター数: {method_data['params']}")
+
+        print(f"\n取得されたデータポイント数: {len(complexity_data)}")
+        return complexity_data
 
     except Exception as e:
-        print(f"エラー: 現在状態記録中に例外が発生しました: {e}")
+        print(f"エラー: 複雑度追跡中に例外が発生しました: {e}")
         import traceback
         traceback.print_exc()
-        return None
+        return []
 
-def prepare_current_state_csv_output(original_df, current_state_results):
+def calculate_complexity_changes(complexity_data):
+    if len(complexity_data) == 0:
+        return {
+            'current_commit': None,
+            'ccn_change': None,
+            'length_change': None,
+            'tokens_change': None,
+            'operation_type': 'NaN'
+        }
+    elif len(complexity_data) == 1:
+        single_data = complexity_data[0]
+
+        if single_data['commit_order'] == 1:
+            return {
+                'current_commit': single_data['commit_hash'],
+                'ccn_change': None,
+                'length_change': None,
+                'tokens_change': None,
+                'operation_type': 'deleted'
+            }
+        else:
+            return {
+                'current_commit': single_data['commit_hash'],
+                'ccn_change': None,
+                'length_change': None,
+                'tokens_change': None,
+                'operation_type': 'added'
+            }
+    elif len(complexity_data) == 2:
+        previous_data = complexity_data[0]
+        current_data = complexity_data[1]
+
+        ccn_change = current_data['ccn'] - previous_data['ccn']
+        length_change = current_data['length'] - previous_data['length']
+        tokens_change = current_data['tokens'] - previous_data['tokens']
+
+        return {
+            'current_commit': current_data['commit_hash'],
+            'ccn_change': ccn_change,
+            'length_change': length_change,
+            'tokens_change': tokens_change,
+            'operation_type': 'modified'
+        }
+    else:
+        print(f"予期しないデータ数: {len(complexity_data)}")
+        return {
+            'current_commit': None,
+            'ccn_change': None,
+            'length_change': None,
+            'tokens_change': None,
+            'operation_type': 'NaN'
+        }
+
+def prepare_enhanced_csv_output(original_df, complexity_results):
     enhanced_df = original_df.copy()
 
     new_columns = [
-        'current_ccn',
-        'current_length',
-        'current_tokens',
+        'ccn_change',
+        'length_change',
+        'tokens_change',
+        'operation_type'
     ]
 
     for col in new_columns:
         enhanced_df[col] = pd.NA
 
-    for record_id, state in current_state_results.items():
+    for record_id, changes in complexity_results.items():
         row_index = record_id - 1
 
-        if state is not None:
-            enhanced_df.loc[row_index, 'current_ccn'] = state['current_ccn']
-            enhanced_df.loc[row_index, 'current_length'] = state['current_length']
-            enhanced_df.loc[row_index, 'current_tokens'] = state['current_tokens']
+        if changes is not None:
+            enhanced_df.loc[row_index, 'ccn_change'] = changes['ccn_change']
+            enhanced_df.loc[row_index, 'length_change'] = changes['length_change']
+            enhanced_df.loc[row_index, 'tokens_change'] = changes['tokens_change']
+            enhanced_df.loc[row_index, 'operation_type'] = changes['operation_type']
 
     return enhanced_df
 
 def main():
-    csv_file = "method-p_drop_columns_rows.csv"
+    base_dir = "../data/remove/elasticsearch/"
+    input_path = base_dir + "method-p_drop_columns_rows.csv"
+    output_path = base_dir + "method-p_add_change_metrics.csv"
     repo_path = "/Users/nagutabby/elasticsearch"
-    enhanced_output_csv = "method-p_add_current_metrics.csv"
     max_records = 3000
 
     SKIP_MISSING_METHODS = True
     DEBUG_MODE = False
 
-    print("=== Git Repository Analysis Tool (現在状態記録版) ===")
+    print("=== Git Repository Analysis Tool (変化量追跡版) ===")
     print("注意: このスクリプトはリポジトリの状態を変更します。")
     print("分析後、リポジトリは最後に処理されたコミットの状態になります。")
     print("分析前に必要な作業をコミット・保存してください。")
     print("\nこのバージョンでは各メソッドについて:")
-    print("- 指定されたコミットでの現在状態を記録")
-    print("- CCN、長さ、トークン数の絶対値を記録")
+    print("- 現在のコミットとその1つ前のコミットを比較")
+    print("- CCN、長さ、トークン数の変化量を計算")
 
     response = input("\n続行しますか？ (y/N): ")
     if response.lower() not in ['y', 'yes']:
         print("処理を中止しました。")
         sys.exit(0)
 
-    if not os.path.exists(csv_file):
-        print(f"エラー: CSVファイル '{csv_file}' が見つかりません")
+    if not os.path.exists(input_path):
+        print(f"エラー: CSVファイル '{input_path}' が見つかりません")
         sys.exit(1)
 
     if not os.path.exists(repo_path):
@@ -430,7 +533,7 @@ def main():
         sys.exit(1)
 
     try:
-        df = pd.read_csv(csv_file)
+        df = pd.read_csv(input_path)
 
         required_columns = ['Hash', 'Parent', 'LongName']
         for col in required_columns:
@@ -449,9 +552,10 @@ def main():
             print(f"情報: CSVファイルの全{len(df)}レコードを処理します")
             df_to_process = df
 
+        all_tracking_results = []
         processed_count = 0
         skipped_count = 0
-        current_state_results = {}
+        complexity_results = {}
 
         print(f"\n{'='*80}")
         print(f"処理開始: {len(df_to_process)}レコードを処理します")
@@ -470,7 +574,7 @@ def main():
             print(f"  LongName: {long_name}")
 
             try:
-                current_state = track_current_state(
+                complexity_data = track_method_complexity_changes(
                     repo_path,
                     commit_hash,
                     parent_path,
@@ -478,20 +582,38 @@ def main():
                     debug=DEBUG_MODE
                 )
 
-                print(f"\n=== 分析結果 ===")
-                if current_state is not None:
-                    print(f"現在のCCN: {current_state['current_ccn']}")
-                    print(f"現在の長さ: {current_state['current_length']}")
-                    print(f"現在のトークン数: {current_state['current_tokens']}")
+                if complexity_data:
+                    pass
                 else:
-                    print(f"メソッドの現在状態を取得できませんでした")
+                    print(f"  結果: メソッドのメトリクスが取得できませんでした")
 
-                current_state_results[record_id] = current_state
+                changes = calculate_complexity_changes(complexity_data)
+
+                print(f"\n=== 分析結果 ===")
+                print(f"操作タイプ: {changes['operation_type']}")
+                if changes['operation_type'] == 'modified':
+                    print(f"CCN変化量: {changes['ccn_change']:+d}")
+                    print(f"長さ変化量: {changes['length_change']:+d}")
+                    print(f"トークン変化量: {changes['tokens_change']:+d}")
+                elif changes['operation_type'] == 'added':
+                    print(f"メソッドが新たに追加されました")
+                elif changes['operation_type'] == 'deleted':
+                    print(f"メソッドが削除されました")
+                elif changes['operation_type'] == 'NaN':
+                    print(f"メソッドの分析に失敗しました")
+
+                complexity_results[record_id] = changes
                 processed_count += 1
 
             except Exception as e:
                 print(f"エラー: レコード {record_id} の処理中に例外が発生しました: {e}")
-                current_state_results[record_id] = None
+                complexity_results[record_id] = {
+                    'current_commit': None,
+                    'ccn_change': None,
+                    'length_change': None,
+                    'tokens_change': None,
+                    'operation_type': 'NaN'
+                }
                 if DEBUG_MODE:
                     import traceback
                     traceback.print_exc()
@@ -501,10 +623,10 @@ def main():
                 else:
                     raise
 
-        enhanced_df = prepare_current_state_csv_output(df, current_state_results)
-        enhanced_df.to_csv(enhanced_output_csv, index=False, encoding='utf-8')
+        enhanced_df = prepare_enhanced_csv_output(df, complexity_results)
+        enhanced_df.to_csv(output_path, index=False, encoding='utf-8')
         print(f"\n{'='*80}")
-        print(f"現在状態データが '{enhanced_output_csv}' に保存されました")
+        print(f"変化量データが '{output_path}' に保存されました")
 
         print(f"\n{'='*80}")
         print(f"=== 処理完了サマリー ===")
@@ -515,7 +637,7 @@ def main():
 
         print(f"\n{'='*80}")
         print("処理が正常に完了しました。")
-        print(f"出力ファイル: {enhanced_output_csv}")
+        print(f"出力ファイル: {output_path}")
         print("\n注意: リポジトリは最後に処理されたコミットの状態になっています。")
         print("必要に応じて手動で元のブランチ/コミットに戻してください。")
 

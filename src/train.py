@@ -572,8 +572,9 @@ def main():
     )
 
     try:
-        data_path = "method-p_filtered_v2_changes.csv"
-        model_save_path = "predictions_changes.pkl"
+        base_dir = "../data/remove/elasticsearch/"
+        data_path = base_dir + "method-p_add_change_metrics.csv"
+        model_save_path = base_dir + "predictions_add_change_metrics.pkl"
 
         cv_results, test_results = trainer.run_training_pipeline(
             data_path=data_path,
