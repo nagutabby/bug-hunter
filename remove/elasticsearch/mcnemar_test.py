@@ -14,13 +14,10 @@ warnings.filterwarnings('ignore')
 
 
 class McNemarTest:
-    """マクネマー検定による予測結果比較"""
-
     def __init__(self, alpha=0.05):
         self.alpha = alpha
 
     def _extract_predictions(self, model_data):
-        """予測結果を抽出"""
         if hasattr(model_data, 'predictions_data') and model_data.predictions_data is not None:
             return model_data.predictions_data
         elif isinstance(model_data, dict) and 'predictions_data' in model_data:
@@ -31,7 +28,6 @@ class McNemarTest:
             raise ValueError("予測結果の形式が不正です")
 
     def load_predictions(self, file_path_1, file_path_2):
-        """予測結果を読み込み"""
         with open(file_path_1, 'rb') as f:
             model_data_1 = pickle.load(f)
         with open(file_path_2, 'rb') as f:
@@ -40,14 +36,12 @@ class McNemarTest:
         self.pred_1 = self._extract_predictions(model_data_1)
         self.pred_2 = self._extract_predictions(model_data_2)
 
-        # データ整合性確認
         if len(self.pred_1['y_true']) != len(self.pred_2['y_true']):
             raise ValueError("データサイズが異なります")
         if not np.array_equal(self.pred_1['y_true'], self.pred_2['y_true']):
             raise ValueError("正解ラベルが一致しません")
 
     def create_contingency_table(self):
-        """2×2分割表を作成"""
         y_true = self.pred_1['y_true']
         correct_1 = (self.pred_1['y_pred'] == y_true)
         correct_2 = (self.pred_2['y_pred'] == y_true)
@@ -60,15 +54,12 @@ class McNemarTest:
         return np.array([[both_correct, model1_only], [model2_only, both_wrong]])
 
     def perform_test(self):
-        """マクネマー検定を実行"""
         table = self.create_contingency_table()
 
-        # 不一致数
-        b = table[0, 1]  # モデル1のみ正解
-        c = table[1, 0]  # モデル2のみ正解
+        b = table[0, 1]
+        c = table[1, 0]
         total_disagreements = b + c
 
-        # 適切な検定方法を選択
         if total_disagreements < 25:
             result = mcnemar(table, exact=True)
             test_type = "正確検定"
@@ -86,7 +77,6 @@ class McNemarTest:
         }
 
     def compare_models(self, file_path_1, file_path_2, model_name_1="モデル1", model_name_2="モデル2"):
-        """モデル比較を実行"""
         self.load_predictions(file_path_1, file_path_2)
         result = self.perform_test()
 
@@ -109,10 +99,8 @@ class McNemarTest:
 
 
 def main():
-    """メイン関数"""
     test = McNemarTest(alpha=0.05)
 
-    # ファイルパスを設定
     file_1 = "predictions_current.pkl"
     file_2 = "predictions_changes.pkl"
 
