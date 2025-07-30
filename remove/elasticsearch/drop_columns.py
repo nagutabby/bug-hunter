@@ -51,7 +51,7 @@ def drop_zero_columns(input_file, output_file):
 def main():
     # ファイルパスを指定
     input_file = "method-p.csv"
-    output_file = "method-p_filtered.csv"
+    output_file = "method-p_drop_columns.csv"
 
     # 処理実行
     result = drop_zero_columns(input_file, output_file)

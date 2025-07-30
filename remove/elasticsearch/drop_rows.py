@@ -67,8 +67,8 @@ def filter_csv_file(input_file, output_file):
 
 def main():
     # ファイルパスの設定
-    input_file = "method-p_filtered.csv"
-    output_file = "method-p_filtered_v2.csv"
+    input_file = "method-p_drop_columns.csv"
+    output_file = "method-p_drop_columns_rows.csv"
 
     print("CSVフィルタリングプログラム（pandas使用）")
     print("=" * 50)
