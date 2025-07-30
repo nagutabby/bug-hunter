@@ -6,14 +6,14 @@ import seaborn as sns
 import japanize_matplotlib
 import pickle
 import os
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 import warnings
 from train import JavaCodeTokenizer
 
 warnings.filterwarnings('ignore')
 
 
-class BugHunterAnalyzer:
+class ComprehensiveBugHunterAnalyzer:
     def __init__(self, model_path: str):
         self.model_path = model_path
         self.model_data = None
@@ -171,27 +171,16 @@ class BugHunterAnalyzer:
 
         return pd.DataFrame(detailed_results)
 
-    def plot_feature_histograms(self, data_path: str, top_n: int = 20,
-                               save_path: Optional[str] = None, max_rows: int = 10000):
-        print(f"\n=== 上位{top_n}特徴量のヒストグラム分析 ===")
-
+    def _get_real_data_statistics(self, data_path: str, max_rows: int = 10000) -> Optional[pd.DataFrame]:
         if not os.path.exists(data_path):
             print(f"データファイル '{data_path}' が見つかりません")
-            return
+            return None
 
-        print(f"データを読み込み中... (最大{max_rows}行)")
+        print(f"実データから統計情報を取得中... (最大{max_rows}行)")
         try:
             data = pd.read_csv(data_path, nrows=max_rows)
             print(f"データ読み込み完了: {len(data)}行")
-        except Exception as e:
-            print(f"データ読み込みエラー: {e}")
-            return
 
-        if not self.model_data:
-            print("モデルデータが読み込まれていません")
-            return
-
-        try:
             from train import BugHunterTrainer
             temp_trainer = BugHunterTrainer()
 
@@ -206,8 +195,99 @@ class BugHunterAnalyzer:
             X_processed, _ = temp_trainer.prepare_data(data, is_training=False)
             print(f"前処理完了: {X_processed.shape[1]}個の特徴量")
 
+            return X_processed
+
         except Exception as e:
-            print(f"データ前処理エラー: {e}")
+            print(f"データ読み込みエラー: {e}")
+            return None
+
+    def _calculate_feature_range(self, feature_data: pd.Series, feature_name: str) -> Tuple[float, float, str]:
+        feature_data_clean = feature_data.dropna()
+
+        if len(feature_data_clean) == 0:
+            return 0, 1, "no_data"
+
+        unique_vals = feature_data_clean.unique()
+        if len(unique_vals) <= 2 and all(val in [0, 1] for val in unique_vals):
+            return 0, 1, "binary"
+
+        # 外れ値を除外した範囲を計算（5%～95%パーセンタイル）
+        if feature_name.startswith('LongName_tfidf_') or feature_name.startswith('Parent_tfidf_'):
+            # TF-IDFは0以上なので、下限は0に固定
+            min_val = 0
+            max_val = feature_data_clean.quantile(0.95)
+            range_type = "tfidf"
+        else:
+            # その他の特徴量は5%～95%のパーセンタイルを使用
+            min_val = feature_data_clean.quantile(0.05)
+            max_val = feature_data_clean.quantile(0.95)
+            range_type = "continuous"
+
+        # 範囲が非常に小さい場合の処理
+        if abs(max_val - min_val) < 1e-10:
+            mean_val = feature_data_clean.mean()
+            std_val = feature_data_clean.std() if feature_data_clean.std() > 0 else 1
+            min_val = mean_val - 2 * std_val
+            max_val = mean_val + 2 * std_val
+            range_type = "expanded"
+
+        return min_val, max_val, range_type
+
+    def _generate_realistic_sample_data(self, X_real: pd.DataFrame, selected_features: List[str],
+                                      n_samples: int = 1000) -> pd.DataFrame:
+        print("実データの統計に基づいたサンプルデータを生成中...")
+
+        sample_data = {}
+
+        for feature in selected_features:
+            if feature not in X_real.columns:
+                if feature.startswith('operation_type_'):
+                    sample_data[feature] = np.random.choice([0, 1], n_samples, p=[0.7, 0.3])
+                else:
+                    sample_data[feature] = np.random.normal(0, 1, n_samples)
+                continue
+
+            feature_data = X_real[feature].dropna()
+
+            if len(feature_data) == 0:
+                sample_data[feature] = np.zeros(n_samples)
+                continue
+
+            if feature.startswith('operation_type_'):
+                prob_1 = feature_data.mean()
+                sample_data[feature] = np.random.choice([0, 1], n_samples,
+                                                       p=[1-prob_1, prob_1])
+
+            elif feature.startswith('LongName_tfidf_') or feature.startswith('Parent_tfidf_'):
+                mean_val = feature_data.mean()
+                if mean_val > 0:
+                    var_val = feature_data.var()
+                    if var_val > 0:
+                        scale = var_val / mean_val
+                        shape = mean_val / scale
+                        sample_data[feature] = np.random.gamma(shape, scale, n_samples)
+                        sample_data[feature] = np.maximum(0, sample_data[feature])
+                    else:
+                        sample_data[feature] = np.full(n_samples, mean_val)
+                else:
+                    sample_data[feature] = np.zeros(n_samples)
+
+            else:
+                mean_val = feature_data.mean()
+                std_val = feature_data.std()
+                if std_val > 0:
+                    sample_data[feature] = np.random.normal(mean_val, std_val, n_samples)
+                else:
+                    sample_data[feature] = np.full(n_samples, mean_val)
+
+        return pd.DataFrame(sample_data)
+
+    def plot_feature_histograms(self, data_path: str, top_n: int = 20,
+                               save_path: Optional[str] = None, max_rows: int = 10000):
+        print(f"\n=== 上位{top_n}特徴量のヒストグラム分析 ===")
+
+        X_processed = self._get_real_data_statistics(data_path, max_rows)
+        if X_processed is None:
             return
 
         feature_scores = self.model_data['feature_importance_scores']
@@ -346,42 +426,18 @@ class BugHunterAnalyzer:
         counts, bins, patches = ax.hist(feature_data, bins=n_bins, density=True,
                                        alpha=0.7, color='skyblue', edgecolor='navy')
 
-        ax.axvline(mean_val, color='red', linestyle='--', alpha=0.8)
-        ax.axvline(median_val, color='green', linestyle='--', alpha=0.8)
+        ax.axvline(mean_val, color='red', linestyle='--', alpha=0.8, label='平均')
+        ax.axvline(median_val, color='green', linestyle='--', alpha=0.8, label='中央値')
 
         ax.set_xlabel('値')
         ax.set_ylabel('密度')
         ax.grid(True, alpha=0.3)
+        ax.legend(fontsize=8)
 
-    def _plot_no_data_message(self, ax, feature_name: str):
-        ax.text(0.5, 0.5, f'{self._shorten_feature_name(feature_name)}\n\nデータなし',
-               ha='center', va='center', transform=ax.transAxes, fontsize=12,
-               bbox=dict(boxstyle="round,pad=0.3", facecolor="#FFE4B5", alpha=0.8))
-        ax.set_xlim(0, 1)
-        ax.set_ylim(0, 1)
-        ax.set_xticks([])
-        ax.set_yticks([])
-
-    def _plot_error_message(self, ax, feature_name: str, error_msg: str):
-        ax.text(0.5, 0.5, f'エラー:\n{self._shorten_feature_name(feature_name)}\n\n{error_msg[:30]}...',
-               ha='center', va='center', transform=ax.transAxes, fontsize=10,
-               bbox=dict(boxstyle="round,pad=0.3", facecolor="#ffcccc", alpha=0.8))
-        ax.set_xlim(0, 1)
-        ax.set_ylim(0, 1)
-        ax.set_xticks([])
-        ax.set_yticks([])
-
-    def plot_partial_dependence(self, top_n: int = 20, save_path: Optional[str] = None):
-        model = self.model_data['model']
+    def plot_feature_importance_chart(self, top_n: int = 20, save_path: Optional[str] = None):
         feature_scores = self.model_data['feature_importance_scores']
         selected_features = self.model_data['selected_features']
         all_features = self.model_data['all_feature_names']
-
-        if not model or feature_scores is None or not selected_features:
-            print("PDP描画に必要なデータが不足しています。")
-            return
-
-        print(f"\n=== 特徴量上位{top_n}個の分析と可視化 ===")
 
         selected_features_df = pd.DataFrame({
             '特徴量': all_features,
@@ -394,249 +450,6 @@ class BugHunterAnalyzer:
 
         top_features = selected_features_df.head(top_n)['特徴量'].tolist()
 
-        print(f"対象特徴量（上位{len(top_features)}個）:")
-        for i, feature in enumerate(top_features, 1):
-            importance_idx = all_features.index(feature)
-            importance = feature_scores[importance_idx]
-            feature_type = self._get_feature_type(feature)
-            print(f"  {i:2d}. {feature} ({feature_type}) - 重要度: {importance:.4f}")
-
-        print("\n=== 1) 特徴量重要度チャート描画 ===")
-        importance_save_path = "feature_importance_chart.png" if save_path is None else save_path.replace('.png', '_importance.png')
-        self._plot_feature_importance_chart(top_features, feature_scores, all_features, importance_save_path)
-
-        print("\n=== 2) Partial Dependence Plots描画 ===")
-        pdp_save_path = "partial_dependence_plots.png" if save_path is None else save_path
-        self._plot_partial_dependence_plots(top_features, model, selected_features, pdp_save_path)
-
-    def _plot_partial_dependence_plots(self, top_features: List[str], model, selected_features: List[str], save_path: str):
-        try:
-            print("Partial Dependence Plot用のサンプルデータを生成中...")
-
-            n_samples = 1000
-            sample_data = {}
-
-            for feature in selected_features:
-                if feature.startswith('LongName_tfidf_') or feature.startswith('Parent_tfidf_'):
-                    sample_data[feature] = np.random.uniform(-50, 50, n_samples)
-                elif feature.startswith('operation_type_'):
-                    sample_data[feature] = np.random.choice([0, 1], n_samples, p=[0.7, 0.3])
-                else:
-                    sample_data[feature] = np.random.uniform(-50, 50, n_samples)
-
-            X_sample = pd.DataFrame(sample_data)
-
-            sns.set_style("whitegrid")
-            sns.set_palette("husl")
-            sns.set(font='IPAexGothic')
-
-            plt.rcParams['font.size'] = 10
-            plt.rcParams['axes.titlesize'] = 12
-            plt.rcParams['axes.labelsize'] = 10
-            plt.rcParams['figure.titlesize'] = 16
-
-            n_cols = 5
-            n_rows = (len(top_features) + n_cols - 1) // n_cols
-
-            fig_width = n_cols * 4
-            fig_height = n_rows * 3
-
-            print(f"PDP描画中... ({n_rows}行 × {n_cols}列のグリッド)")
-
-            fig, axes = plt.subplots(n_rows, n_cols, figsize=(fig_width, fig_height))
-
-            if n_rows == 1:
-                axes = axes.reshape(1, -1)
-            if n_cols == 1:
-                axes = axes.reshape(-1, 1)
-
-            for i, feature_name in enumerate(top_features):
-                row = i // n_cols
-                col = i % n_cols
-                ax = axes[row, col]
-
-                try:
-                    feature_idx = selected_features.index(feature_name)
-
-                    if feature_name.startswith('operation_type_'):
-                        self._plot_operation_type_pdp(ax, feature_name, feature_idx, X_sample, model)
-                    else:
-                        try:
-                            grid_values = np.linspace(-50, 50, 30)
-
-                            pdp_values = []
-                            for grid_val in grid_values:
-                                X_temp = X_sample.copy()
-                                X_temp.iloc[:, feature_idx] = grid_val
-                                predictions = model.predict_proba(X_temp)[:, 1]
-                                pdp_values.append(np.mean(predictions))
-
-                            ax.plot(grid_values, pdp_values, 'o-', color='blue', linewidth=2, markersize=3)
-                            ax.set_xlabel('特徴量の値', fontsize=9)
-                            ax.set_xlim(-50, 50)
-
-                        except Exception as pdp_error:
-                            print(f"PDP手動計算でエラー: {pdp_error}")
-                            self._plot_manual_pdp_simple(ax, feature_name, feature_idx, X_sample, model)
-
-                    short_name = self._shorten_feature_name(feature_name)
-                    all_features = self.model_data['all_feature_names']
-                    feature_scores = self.model_data['feature_importance_scores']
-                    importance_idx = all_features.index(feature_name)
-                    importance = feature_scores[importance_idx]
-                    ax.set_title(f'{short_name}\n(重要度: {importance:.3f})', fontsize=10, pad=10)
-
-                    ax.tick_params(axis='both', which='major', labelsize=8)
-                    ax.set_ylabel('Partial Dependence', fontsize=9)
-
-                    ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'{x:.0f}'))
-                    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'{x:.3f}'))
-
-                except Exception as e:
-                    print(f"特徴量 '{feature_name}' のPDP描画でエラー: {e}")
-                    self._plot_error_alternative(ax, feature_name, e)
-
-            for i in range(len(top_features), n_rows * n_cols):
-                row = i // n_cols
-                col = i % n_cols
-                axes[row, col].set_visible(False)
-
-            fig.suptitle(f'Partial Dependence Plots (上位{len(top_features)}特徴量) \n特徴量範囲: -50 ～ 50', fontsize=16, y=0.98)
-
-            plt.tight_layout(rect=[0, 0, 1, 0.96])
-
-            plt.savefig(save_path, dpi=300, bbox_inches='tight',
-                       facecolor='white', edgecolor='none')
-            print(f"Partial Dependence Plotsを '{save_path}' に保存しました")
-
-            plt.show()
-            print("Partial Dependence Plots描画完了")
-
-        except Exception as e:
-            print(f"PDP描画中にエラーが発生しました: {e}")
-            print("PDPの描画に失敗しました。")
-
-    def _plot_operation_type_pdp(self, ax, feature_name: str, feature_idx: int, X_sample: pd.DataFrame, model):
-        try:
-            feature_data = X_sample.iloc[:, feature_idx]
-            unique_values = sorted(feature_data.unique())
-
-            print(f"  {feature_name} のユニーク値: {unique_values}")
-
-            if len(unique_values) < 2 or 0 not in unique_values or 1 not in unique_values:
-                print(f"  {feature_name} に0と1の両方を強制追加")
-                X_modified = X_sample.copy()
-
-                n_half = len(X_modified) // 2
-                X_modified.iloc[:n_half, feature_idx] = 0
-                X_modified.iloc[n_half:, feature_idx] = 1
-
-                feature_data = X_modified.iloc[:, feature_idx]
-                unique_values = [0, 1]
-            else:
-                X_modified = X_sample
-
-            pdp_values = []
-
-            for value in unique_values:
-                X_temp = X_modified.copy()
-                X_temp.iloc[:, feature_idx] = value
-
-                predictions = model.predict_proba(X_temp)[:, 1]
-                pdp_value = np.mean(predictions)
-                pdp_values.append(pdp_value)
-
-            colors = ['#FF6B6B' if val == 0 else '#4ECDC4' for val in unique_values]
-            bars = ax.bar(range(len(unique_values)), pdp_values,
-                         color=colors, alpha=0.7, edgecolor='navy', linewidth=1)
-
-            ax.set_xticks(range(len(unique_values)))
-            ax.set_xticklabels([f'{val}' for val in unique_values])
-
-            for i, (bar, pdp_val) in enumerate(zip(bars, pdp_values)):
-                height = bar.get_height()
-                ax.text(bar.get_x() + bar.get_width()/2., height + max(pdp_values) * 0.01,
-                       f'{pdp_val:.3f}', ha='center', va='bottom', fontsize=8)
-
-            ax.grid(True, alpha=0.3, linestyle='--', axis='y')
-
-            print(f"  {feature_name} PDP値: {dict(zip(unique_values, pdp_values))}")
-
-        except Exception as e:
-            print(f"  operation_type PDP描画でエラー: {e}")
-            self._plot_simple_bar_alternative(ax, feature_name)
-
-    def _plot_manual_pdp_simple(self, ax, feature_name: str, feature_idx: int, X_sample: pd.DataFrame, model):
-        try:
-            feature_data = X_sample.iloc[:, feature_idx]
-
-            min_val, max_val = feature_data.min(), feature_data.max()
-
-            if abs(max_val - min_val) < 1e-10:
-                self._plot_simple_bar_alternative(ax, feature_name)
-                return
-
-            if len(feature_data.unique()) <= 10:
-                test_values = sorted(feature_data.unique())
-            else:
-                test_values = np.linspace(min_val, max_val, 20)
-
-            pdp_values = []
-            for value in test_values:
-                X_temp = X_sample.copy()
-                X_temp.iloc[:, feature_idx] = value
-                predictions = model.predict_proba(X_temp)[:, 1]
-                pdp_values.append(np.mean(predictions))
-
-            if len(test_values) <= 10:
-                ax.bar(range(len(test_values)), pdp_values, alpha=0.7, color='skyblue', edgecolor='navy')
-                ax.set_xticks(range(len(test_values)))
-                ax.set_xticklabels([f'{val:.2f}' for val in test_values])
-            else:
-                ax.plot(test_values, pdp_values, 'o-', color='blue', linewidth=2, markersize=4)
-
-            ax.grid(True, alpha=0.3, linestyle='--')
-
-        except Exception as e:
-            print(f"  手動PDP描画でエラー: {e}")
-            self._plot_simple_bar_alternative(ax, feature_name)
-
-    def _plot_simple_bar_alternative(self, ax, feature_name: str):
-        ax.text(0.5, 0.5, f'{self._shorten_feature_name(feature_name)}\n\nPDP計算困難\n(単一値または\nデータ不足)',
-               ha='center', va='center', transform=ax.transAxes, fontsize=10,
-               bbox=dict(boxstyle="round,pad=0.3", facecolor="#E8F4FD", alpha=0.8, edgecolor='blue'))
-
-        ax.set_xlim(0, 1)
-        ax.set_ylim(0, 1)
-        ax.set_xticks([])
-        ax.set_yticks([])
-        ax.set_facecolor('#f8f8f8')
-
-        ax.set_ylabel('Partial Dependence', fontsize=9)
-
-    def _plot_error_alternative(self, ax, feature_name: str, error):
-        ax.text(0.5, 0.5, f'描画エラー:\n{self._shorten_feature_name(feature_name)}\n\n{str(error)[:50]}...',
-               ha='center', va='center', transform=ax.transAxes, fontsize=8,
-               bbox=dict(boxstyle="round,pad=0.3", facecolor="#ffcccc", alpha=0.8, edgecolor='red'))
-        ax.set_xlim(0, 1)
-        ax.set_ylim(0, 1)
-        ax.set_xticks([])
-        ax.set_yticks([])
-        ax.set_ylabel('Partial Dependence', fontsize=9)
-        ax.set_facecolor('#f8f8f8')
-
-    def _get_feature_type(self, feature_name: str) -> str:
-        if feature_name.startswith('LongName_tfidf_'):
-            return 'LongName TF-IDF'
-        elif feature_name.startswith('Parent_tfidf_'):
-            return 'Parent TF-IDF'
-        elif feature_name.startswith('operation_type_'):
-            return 'operation_type'
-        else:
-            return '数値'
-
-    def _plot_feature_importance_chart(self, top_features: List[str], feature_scores: np.ndarray,
-                                     all_features: List[str], save_path: Optional[str] = None):
         sns.set_style("whitegrid")
         sns.set_palette("husl")
         sns.set(font='IPAexGothic')
@@ -686,18 +499,227 @@ class BugHunterAnalyzer:
         ax.legend(legend_elements, unique_types, loc='lower right', fontsize=10)
 
         ax.invert_yaxis()
-
         ax.grid(True, alpha=0.3, linestyle='--', axis='x')
 
         plt.tight_layout()
 
-        if save_path:
-            plt.savefig(save_path, dpi=300, bbox_inches='tight',
-                       facecolor='white', edgecolor='none')
-            print(f"特徴量重要度チャートを '{save_path}' に保存しました")
+        if save_path is None:
+            save_path = "feature_importance_chart.png"
+
+        plt.savefig(save_path, dpi=300, bbox_inches='tight',
+                   facecolor='white', edgecolor='none')
+        print(f"特徴量重要度チャートを '{save_path}' に保存しました")
 
         plt.show()
         print("特徴量重要度チャート描画完了")
+
+    def plot_partial_dependence(self, data_path: str, top_n: int = 20,
+                               save_path: Optional[str] = None, max_rows: int = 10000):
+        print(f"\n=== Partial Dependence Plots (上位{top_n}特徴量) ===")
+
+        X_real = self._get_real_data_statistics(data_path, max_rows)
+        if X_real is None:
+            print("実データの取得に失敗しました")
+            return
+
+        model = self.model_data['model']
+        feature_scores = self.model_data['feature_importance_scores']
+        selected_features = self.model_data['selected_features']
+        all_features = self.model_data['all_feature_names']
+
+        if not model or feature_scores is None or not selected_features:
+            print("PDP描画に必要なデータが不足しています。")
+            return
+
+        selected_features_df = pd.DataFrame({
+            '特徴量': all_features,
+            'Feature Importance': feature_scores
+        })
+
+        selected_features_df = selected_features_df[
+            selected_features_df['特徴量'].isin(selected_features)
+        ].sort_values('Feature Importance', ascending=False)
+
+        top_features = selected_features_df.head(top_n)['特徴量'].tolist()
+
+        print(f"対象特徴量（上位{len(top_features)}個）:")
+        for i, feature in enumerate(top_features, 1):
+            importance_idx = all_features.index(feature)
+            importance = feature_scores[importance_idx]
+            feature_type = self._get_feature_type(feature)
+            print(f"  {i:2d}. {feature} ({feature_type}) - 重要度: {importance:.4f}")
+
+        X_sample = self._generate_realistic_sample_data(X_real, selected_features, n_samples=1000)
+
+        sns.set_style("whitegrid")
+        sns.set_palette("husl")
+        sns.set(font='IPAexGothic')
+
+        plt.rcParams['font.size'] = 10
+        plt.rcParams['axes.titlesize'] = 12
+        plt.rcParams['axes.labelsize'] = 10
+        plt.rcParams['figure.titlesize'] = 16
+
+        n_cols = 5
+        n_rows = (len(top_features) + n_cols - 1) // n_cols
+
+        fig_width = n_cols * 4
+        fig_height = n_rows * 3
+
+        print(f"PDP描画中... ({n_rows}行 × {n_cols}列のグリッド)")
+
+        fig, axes = plt.subplots(n_rows, n_cols, figsize=(fig_width, fig_height))
+
+        if n_rows == 1:
+            axes = axes.reshape(1, -1)
+        if n_cols == 1:
+            axes = axes.reshape(-1, 1)
+
+        for i, feature_name in enumerate(top_features):
+            row = i // n_cols
+            col = i % n_cols
+            ax = axes[row, col]
+
+            try:
+                feature_idx = selected_features.index(feature_name)
+
+                if feature_name in X_real.columns:
+                    min_val, max_val, range_type = self._calculate_feature_range(
+                        X_real[feature_name], feature_name
+                    )
+
+                    print(f"  {feature_name}: 範囲 [{min_val:.3f}, {max_val:.3f}] ({range_type})")
+
+                    if range_type == "binary":
+                        self._plot_binary_pdp(ax, feature_name, feature_idx, X_sample, model,
+                                            min_val, max_val)
+                    else:
+                        self._plot_continuous_pdp(ax, feature_name, feature_idx, X_sample, model,
+                                                min_val, max_val, range_type)
+                else:
+                    print(f"  {feature_name}: 実データに存在しません")
+                    self._plot_no_data_message(ax, feature_name)
+
+                short_name = self._shorten_feature_name(feature_name)
+                importance_idx = all_features.index(feature_name)
+                importance = feature_scores[importance_idx]
+                ax.set_title(f'{short_name}\n(重要度: {importance:.3f})', fontsize=10, pad=10)
+
+                ax.tick_params(axis='both', which='major', labelsize=8)
+                ax.set_ylabel('Partial Dependence', fontsize=9)
+
+            except Exception as e:
+                print(f"特徴量 '{feature_name}' のPDP描画でエラー: {e}")
+                self._plot_error_message(ax, feature_name, str(e))
+
+        for i in range(len(top_features), n_rows * n_cols):
+            row = i // n_cols
+            col = i % n_cols
+            axes[row, col].set_visible(False)
+
+        fig.suptitle(f'Partial Dependence Plots (上位{len(top_features)}特徴量)\n実データ範囲に基づく（外れ値除外）',
+                    fontsize=16, y=0.98)
+
+        plt.tight_layout(rect=[0, 0, 1, 0.96])
+
+        if save_path is None:
+            save_path = "partial_dependence_plots.png"
+
+        plt.savefig(save_path, dpi=300, bbox_inches='tight',
+                   facecolor='white', edgecolor='none')
+        print(f"Partial Dependence Plotsを '{save_path}' に保存しました")
+
+        plt.show()
+        print("Partial Dependence Plots描画完了")
+
+    def _plot_binary_pdp(self, ax, feature_name: str, feature_idx: int, X_sample: pd.DataFrame,
+                        model, min_val: float, max_val: float):
+        try:
+            unique_values = [0, 1]
+            pdp_values = []
+
+            for value in unique_values:
+                X_temp = X_sample.copy()
+                X_temp.iloc[:, feature_idx] = value
+                predictions = model.predict_proba(X_temp)[:, 1]
+                pdp_value = np.mean(predictions)
+                pdp_values.append(pdp_value)
+
+            colors = ['#FF6B6B', '#4ECDC4']
+            bars = ax.bar(range(len(unique_values)), pdp_values,
+                         color=colors, alpha=0.7, edgecolor='navy', linewidth=1)
+
+            ax.set_xticks(range(len(unique_values)))
+            ax.set_xticklabels([f'{val}' for val in unique_values])
+            ax.set_xlabel('値')
+
+            for i, (bar, pdp_val) in enumerate(zip(bars, pdp_values)):
+                height = bar.get_height()
+                ax.text(bar.get_x() + bar.get_width()/2., height + max(pdp_values) * 0.01,
+                       f'{pdp_val:.3f}', ha='center', va='bottom', fontsize=8)
+
+            ax.grid(True, alpha=0.3, linestyle='--', axis='y')
+
+        except Exception as e:
+            print(f"  バイナリPDP描画でエラー: {e}")
+            self._plot_error_message(ax, feature_name, str(e))
+
+    def _plot_continuous_pdp(self, ax, feature_name: str, feature_idx: int, X_sample: pd.DataFrame,
+                           model, min_val: float, max_val: float, range_type: str):
+        try:
+            if range_type == "tfidf":
+                grid_values = np.linspace(0, max_val, 30)
+            else:
+                grid_values = np.linspace(min_val, max_val, 30)
+
+            pdp_values = []
+            for grid_val in grid_values:
+                X_temp = X_sample.copy()
+                X_temp.iloc[:, feature_idx] = grid_val
+                predictions = model.predict_proba(X_temp)[:, 1]
+                pdp_values.append(np.mean(predictions))
+
+            ax.plot(grid_values, pdp_values, 'o-', color='blue', linewidth=2, markersize=3)
+            ax.set_xlabel('特徴量の値')
+            ax.set_xlim(min_val, max_val)
+
+            range_info = f'範囲: [{min_val:.2f}, {max_val:.2f}]'
+            ax.text(0.05, 0.95, range_info, transform=ax.transAxes, fontsize=8,
+                   bbox=dict(boxstyle="round,pad=0.2", facecolor="white", alpha=0.8))
+
+            ax.grid(True, alpha=0.3)
+
+        except Exception as e:
+            print(f"  連続値PDP描画でエラー: {e}")
+            self._plot_error_message(ax, feature_name, str(e))
+
+    def _plot_no_data_message(self, ax, feature_name: str):
+        ax.text(0.5, 0.5, f'{self._shorten_feature_name(feature_name)}\n\nデータなし',
+               ha='center', va='center', transform=ax.transAxes, fontsize=12,
+               bbox=dict(boxstyle="round,pad=0.3", facecolor="#FFE4B5", alpha=0.8))
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, 1)
+        ax.set_xticks([])
+        ax.set_yticks([])
+
+    def _plot_error_message(self, ax, feature_name: str, error_msg: str):
+        ax.text(0.5, 0.5, f'エラー:\n{self._shorten_feature_name(feature_name)}\n\n{error_msg[:30]}...',
+               ha='center', va='center', transform=ax.transAxes, fontsize=10,
+               bbox=dict(boxstyle="round,pad=0.3", facecolor="#ffcccc", alpha=0.8))
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, 1)
+        ax.set_xticks([])
+        ax.set_yticks([])
+
+    def _get_feature_type(self, feature_name: str) -> str:
+        if feature_name.startswith('LongName_tfidf_'):
+            return 'LongName TF-IDF'
+        elif feature_name.startswith('Parent_tfidf_'):
+            return 'Parent TF-IDF'
+        elif feature_name.startswith('operation_type_'):
+            return 'operation_type'
+        else:
+            return '数値'
 
     def _shorten_feature_name(self, feature_name: str, max_length: int = 25) -> str:
         if len(feature_name) <= max_length:
@@ -715,9 +737,62 @@ class BugHunterAnalyzer:
                 return feature_name[:max_length-3] + "..."
             return feature_name
 
-    def generate_analysis_report(self, data_path: Optional[str] = None, output_dir: str = "."):
+    def plot_cv_performance_chart(self, save_path: Optional[str] = None):
+        cv_results = self.model_data.get('cv_results')
+        if not cv_results:
+            print("交差検証結果が見つかりません。")
+            return
+
+        print("\n=== 交差検証パフォーマンスチャート描画 ===")
+
+        metrics = ['f1_scores', 'precision_scores', 'recall_scores', 'accuracy_scores', 'roc_auc_scores']
+        metric_names = ['F1', 'Precision', 'Recall', 'Accuracy', 'ROC-AUC']
+
+        sns.set_style("whitegrid")
+        sns.set_palette("husl")
+        sns.set(font='IPAexGothic')
+
+        fig, axes = plt.subplots(2, 3, figsize=(18, 12))
+        axes = axes.flatten()
+
+        for i, (metric, name) in enumerate(zip(metrics, metric_names)):
+            ax = axes[i]
+            scores = cv_results[metric]
+            folds = list(range(1, len(scores) + 1))
+
+            ax.plot(folds, scores, 'o-', linewidth=2, markersize=6, label=name)
+            ax.axhline(y=np.mean(scores), color='red', linestyle='--', alpha=0.7,
+                      label=f'平均: {np.mean(scores):.3f}')
+
+            ax.fill_between(folds,
+                           np.mean(scores) - np.std(scores),
+                           np.mean(scores) + np.std(scores),
+                           alpha=0.2, color='gray', label=f'±1σ: {np.std(scores):.3f}')
+
+            ax.set_xlabel('Fold')
+            ax.set_ylabel(f'{name} Score')
+            ax.set_title(f'{name} - 交差検証結果', fontsize=12, pad=10)
+            ax.legend()
+            ax.grid(True, alpha=0.3)
+            ax.set_xticks(folds)
+
+        axes[5].set_visible(False)
+
+        plt.tight_layout()
+
+        if save_path is None:
+            save_path = "cv_performance_chart.png"
+
+        plt.savefig(save_path, dpi=300, bbox_inches='tight',
+                   facecolor='white', edgecolor='none')
+        print(f"交差検証パフォーマンスチャートを '{save_path}' に保存しました")
+
+        plt.show()
+        print("交差検証パフォーマンスチャート描画完了")
+
+    def generate_comprehensive_analysis_report(self, data_path: Optional[str] = None, output_dir: str = "."):
         print("="*80)
-        print("BugHunter モデル分析レポート")
+        print("BugHunter 統合分析レポート")
         print("="*80)
 
         os.makedirs(output_dir, exist_ok=True)
@@ -733,9 +808,19 @@ class BugHunterAnalyzer:
             print("\n=== 各フォールドの詳細結果（交差検証） ===")
             print(cv_df.round(4))
 
+        print(f"\n{'='*80}")
+        print("グラフ生成中...")
+        print(f"{'='*80}")
+
+        importance_path = os.path.join(output_dir, "feature_importance_chart.png")
+        self.plot_feature_importance_chart(top_n=20, save_path=importance_path)
+
+        cv_performance_path = os.path.join(output_dir, "cv_performance_chart.png")
+        self.plot_cv_performance_chart(save_path=cv_performance_path)
+
         if data_path and os.path.exists(data_path):
             print(f"\n{'='*80}")
-            print("実データを使用した特徴量分布分析")
+            print("実データを使用した分析")
             print(f"{'='*80}")
 
             histogram_path = os.path.join(output_dir, "feature_histograms.png")
@@ -743,17 +828,32 @@ class BugHunterAnalyzer:
                 data_path=data_path,
                 top_n=20,
                 save_path=histogram_path,
-                max_rows=3000
+                max_rows=10000
+            )
+
+            pdp_path = os.path.join(output_dir, "partial_dependence_plots.png")
+            self.plot_partial_dependence(
+                data_path=data_path,
+                top_n=20,
+                save_path=pdp_path,
+                max_rows=10000
             )
 
         else:
             if data_path:
-                print(f"\nデータファイル '{data_path}' が見つからないため、ヒストグラム分析をスキップします")
+                print(f"\nデータファイル '{data_path}' が見つからないため、実データ分析をスキップします")
             else:
-                print(f"\ndata_pathが指定されていないため、ヒストグラム分析をスキップします")
+                print(f"\ndata_pathが指定されていないため、実データ分析をスキップします")
 
         print("\n" + "="*80)
-        print("分析レポート完了")
+        print("統合分析レポート完了")
+        print(f"出力ディレクトリ: {output_dir}")
+        print("生成されたファイル:")
+        print("  - feature_importance_chart.png (特徴量重要度)")
+        print("  - cv_performance_chart.png (交差検証パフォーマンス)")
+        if data_path and os.path.exists(data_path):
+            print("  - feature_histograms.png (特徴量ヒストグラム)")
+            print("  - partial_dependence_plots.png (PDP)")
         print("="*80)
 
 
@@ -761,24 +861,16 @@ def main():
     try:
         base_dir = "../data/remove/elasticsearch/"
         output_dir = "../materials/images/elasticsearch"
-        analyzer = BugHunterAnalyzer(base_dir + "predictions_add_change_metrics.pkl")
+
+        analyzer = ComprehensiveBugHunterAnalyzer(base_dir + "predictions_add_change_metrics.pkl")
         data_path = base_dir + "method-p_add_change_metrics.csv"
 
         os.makedirs(output_dir, exist_ok=True)
 
-        analyzer.generate_analysis_report(data_path=data_path, output_dir=output_dir)
-
-        pdp_save_path = os.path.join(output_dir, "analysis_charts.png")
-        analyzer.plot_partial_dependence(
-            top_n=20,
-            save_path=pdp_save_path
-        )
+        analyzer.generate_comprehensive_analysis_report(data_path=data_path, output_dir=output_dir)
 
         print("\n" + "="*60)
-        print(f"分析完了！{output_dir} に以下のファイルが生成されました:")
-        print("  - feature_histograms.png (特徴量ヒストグラム)")
-        print("  - feature_importance_chart.png (特徴量重要度)")
-        print("  - partial_dependence_plots.png (Partial Dependence Plots)")
+        print("全ての分析とグラフ生成が完了しました！")
         print("="*60)
 
     except FileNotFoundError as e:
