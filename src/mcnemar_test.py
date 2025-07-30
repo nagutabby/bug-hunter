@@ -1,17 +1,12 @@
-"""
-マクネマー検定による予測モデル性能比較（簡潔版）
-"""
-
 import numpy as np
 import pickle
 import os
 import pandas as pd
 from statsmodels.stats.contingency_tables import mcnemar
 import warnings
-from trainer import JavaCodeTokenizer
+from train import JavaCodeTokenizer
 
 warnings.filterwarnings('ignore')
-
 
 class McNemarTest:
     def __init__(self, alpha=0.05):
@@ -97,12 +92,12 @@ class McNemarTest:
 
         return result
 
-
 def main():
     test = McNemarTest(alpha=0.05)
 
-    file_1 = "predictions_current.pkl"
-    file_2 = "predictions_changes.pkl"
+    base_dir = "../data/remove/antlr4/"
+    file_1 = base_dir + "predictions_add_current_metrics.pkl"
+    file_2 = base_dir + "predictions_add_change_metrics.pkl"
 
     if not os.path.exists(file_1) or not os.path.exists(file_2):
         print("予測結果ファイルが見つかりません")
@@ -112,7 +107,6 @@ def main():
         result = test.compare_models(file_1, file_2)
     except Exception as e:
         print(f"エラー: {e}")
-
 
 if __name__ == "__main__":
     main()

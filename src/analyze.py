@@ -859,8 +859,8 @@ class ComprehensiveBugHunterAnalyzer:
 
 def main():
     try:
-        base_dir = "../data/remove/elasticsearch/"
-        output_dir = "../materials/images/elasticsearch"
+        base_dir = "../data/remove/antlr4/"
+        output_dir = "../materials/images/antlr4"
 
         analyzer = ComprehensiveBugHunterAnalyzer(base_dir + "predictions_add_change_metrics.pkl")
         data_path = base_dir + "method-p_add_change_metrics.csv"
