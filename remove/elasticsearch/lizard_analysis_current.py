@@ -190,9 +190,6 @@ def analyze_java_file_with_lizard(file_path):
         return []
 
 def filter_methods_by_target(methods, target_method_name, target_class_name, target_signature=None, outer_class_name=None, method_type='method'):
-    """
-    対象のメソッド名、クラス名、シグネチャでフィルタリングする
-    """
     filtered_methods = []
 
     for method in methods:
@@ -287,9 +284,6 @@ def filter_methods_by_target(methods, target_method_name, target_class_name, tar
     return filtered_methods
 
 def analyze_current_state_only(java_file_path, target_method_name, target_class_name, target_signature=None, outer_class_name=None, method_type='method', debug=False):
-    """
-    現在のコミットの状態のみを分析する
-    """
     methods = analyze_java_file_with_lizard(java_file_path)
 
     if debug:
@@ -312,16 +306,12 @@ def analyze_current_state_only(java_file_path, target_method_name, target_class_
         return [], "現在状態でメソッドが見つからない"
 
 def track_current_state(repo_path, commit_hash, parent_path, long_name, debug=False):
-    """
-    指定されたコミットでの現在状態を記録する
-    """
     print(f"\n=== 現在状態記録開始 ===")
     print(f"対象コミット: {commit_hash}")
     print(f"Parent: {parent_path}")
     print(f"LongName: {long_name}")
 
     try:
-        # メソッド情報を抽出
         target_class_name, outer_class_name = extract_class_name(parent_path)
         method_name, method_type, method_signature = extract_method_name(long_name)
         package_path = extract_package_path(parent_path)
@@ -335,13 +325,11 @@ def track_current_state(repo_path, commit_hash, parent_path, long_name, debug=Fa
         print(f"  パッケージパス: {package_path}")
         print(f"  検索用クラス名: {search_class_name}")
 
-        # コミットにチェックアウト
         success = checkout_commit(repo_path, commit_hash)
         if not success:
             print(f"  スキップ: チェックアウトに失敗")
             return None
 
-        # Javaファイルを検索
         java_file_path = find_java_file_in_filesystem(repo_path, search_class_name, package_path)
         if not java_file_path:
             print(f"  スキップ: Javaファイルが見つかりません (クラス: {search_class_name})")
@@ -349,7 +337,6 @@ def track_current_state(repo_path, commit_hash, parent_path, long_name, debug=Fa
 
         print(f"  見つかったファイル: {java_file_path}")
 
-        # 現在状態を分析
         filtered_methods, strategy = analyze_current_state_only(
             java_file_path,
             method_name,
@@ -378,7 +365,6 @@ def track_current_state(repo_path, commit_hash, parent_path, long_name, debug=Fa
             'strategy': strategy
         }
 
-        # 結果表示
         print(f"  現在のCCN: {method_data['ccn']}")
         print(f"  現在の長さ: {method_data['length']}")
         print(f"  現在のトークン数: {method_data['tokens']}")
@@ -392,27 +378,21 @@ def track_current_state(repo_path, commit_hash, parent_path, long_name, debug=Fa
         return None
 
 def prepare_current_state_csv_output(original_df, current_state_results):
-    """
-    元のCSVデータに現在状態の新しいカラムを追加したデータフレームを作成する
-    """
     enhanced_df = original_df.copy()
 
-    # 新しいカラムを初期化（NaN値で）
     new_columns = [
-        'current_ccn',          # 現在のCCN（絶対値）
-        'current_length',       # 現在の長さ（絶対値）
-        'current_tokens',       # 現在のトークン数（絶対値）
+        'current_ccn',
+        'current_length',
+        'current_tokens',
     ]
 
     for col in new_columns:
         enhanced_df[col] = pd.NA
 
-    # 現在状態結果を元のデータフレームにマージ
     for record_id, state in current_state_results.items():
-        row_index = record_id - 1  # record_idは1ベース、DataFrameは0ベース
+        row_index = record_id - 1
 
         if state is not None:
-            # 処理に成功した場合のみデータを設定
             enhanced_df.loc[row_index, 'current_ccn'] = state['current_ccn']
             enhanced_df.loc[row_index, 'current_length'] = state['current_length']
             enhanced_df.loc[row_index, 'current_tokens'] = state['current_tokens']
@@ -420,15 +400,13 @@ def prepare_current_state_csv_output(original_df, current_state_results):
     return enhanced_df
 
 def main():
-    # 設定
     csv_file = "method-p_filtered_v2.csv"
     repo_path = "/Users/nagutabby/elasticsearch"
     enhanced_output_csv = "method-p_filtered_v2_current.csv"
     max_records = 3000
 
-    # 処理をスキップするかどうかのフラグ
-    SKIP_MISSING_METHODS = True  # メソッドが見つからない場合はスキップ
-    DEBUG_MODE = False  # デバッグ情報を表示
+    SKIP_MISSING_METHODS = True
+    DEBUG_MODE = False
 
     print("=== Git Repository Analysis Tool (現在状態記録版) ===")
     print("注意: このスクリプトはリポジトリの状態を変更します。")
@@ -443,21 +421,17 @@ def main():
         print("処理を中止しました。")
         sys.exit(0)
 
-    # CSVファイルの存在確認
     if not os.path.exists(csv_file):
         print(f"エラー: CSVファイル '{csv_file}' が見つかりません")
         sys.exit(1)
 
-    # リポジトリパスの存在確認
     if not os.path.exists(repo_path):
         print(f"エラー: リポジトリパス '{repo_path}' が見つかりません")
         sys.exit(1)
 
     try:
-        # CSVファイルを読み込み
         df = pd.read_csv(csv_file)
 
-        # 必要なカラムの存在確認
         required_columns = ['Hash', 'Parent', 'LongName']
         for col in required_columns:
             if col not in df.columns:
@@ -468,7 +442,6 @@ def main():
             print("エラー: CSVファイルにデータが含まれていません")
             sys.exit(1)
 
-        # 最初のmax_recordsレコードのみを処理対象とする
         if len(df) > max_records:
             print(f"情報: CSVファイルには{len(df)}レコードありますが、最初の{max_records}レコードのみ処理します")
             df_to_process = df.head(max_records)
@@ -478,13 +451,12 @@ def main():
 
         processed_count = 0
         skipped_count = 0
-        current_state_results = {}  # record_id -> current_state のマッピング
+        current_state_results = {}
 
         print(f"\n{'='*80}")
         print(f"処理開始: {len(df_to_process)}レコードを処理します")
         print(f"{'='*80}")
 
-        # 各レコードを処理
         for idx, record in df_to_process.iterrows():
             commit_hash = record['Hash']
             parent_path = record['Parent']
@@ -498,7 +470,6 @@ def main():
             print(f"  LongName: {long_name}")
 
             try:
-                # 現在状態を記録
                 current_state = track_current_state(
                     repo_path,
                     commit_hash,
@@ -507,7 +478,6 @@ def main():
                     debug=DEBUG_MODE
                 )
 
-                # 結果を常に表示
                 print(f"\n=== 分析結果 ===")
                 if current_state is not None:
                     print(f"現在のCCN: {current_state['current_ccn']}")
@@ -516,7 +486,6 @@ def main():
                 else:
                     print(f"メソッドの現在状態を取得できませんでした")
 
-                # 結果を保存
                 current_state_results[record_id] = current_state
                 processed_count += 1
 
@@ -532,13 +501,11 @@ def main():
                 else:
                     raise
 
-        # 拡張版CSVを作成して保存
         enhanced_df = prepare_current_state_csv_output(df, current_state_results)
         enhanced_df.to_csv(enhanced_output_csv, index=False, encoding='utf-8')
         print(f"\n{'='*80}")
         print(f"現在状態データが '{enhanced_output_csv}' に保存されました")
 
-        # 結果サマリーを表示
         print(f"\n{'='*80}")
         print(f"=== 処理完了サマリー ===")
         print(f"対象レコード数: {len(df_to_process)}")

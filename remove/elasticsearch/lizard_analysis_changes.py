@@ -221,9 +221,6 @@ def analyze_java_file_with_lizard(file_path):
         return []
 
 def filter_methods_by_target(methods, target_method_name, target_class_name, target_signature=None, outer_class_name=None, method_type='method'):
-    """
-    対象のメソッド名、クラス名、シグネチャでフィルタリングする（改良版 - 重複防止対応）
-    """
     filtered_methods = []
 
     for method in methods:
@@ -231,36 +228,29 @@ def filter_methods_by_target(methods, target_method_name, target_class_name, tar
         matched = False
 
         if method_type == 'constructor':
-            # コンストラクタの場合の厳密なマッチング
             constructor_patterns = [
-                # 完全一致パターン
                 target_method_name,
                 f"{target_class_name}::{target_method_name}",
             ]
 
-            # 内部クラスの場合の追加パターン
             if outer_class_name:
                 constructor_patterns.extend([
                     f"{outer_class_name}::{target_method_name}",
                     f"{outer_class_name}${target_class_name}::{target_method_name}",
                 ])
 
-            # パターンマッチング
             for pattern in constructor_patterns:
                 if method_name == pattern:
                     matched = True
                     break
 
-            # 追加の厳密チェック
             if not matched:
-                # method_nameが "クラス名::クラス名" の形式の場合
                 if '::' in method_name:
                     parts = method_name.split('::')
                     if len(parts) == 2:
                         class_part = parts[0]
                         method_part = parts[1]
 
-                        # ターゲットクラス名とマッチするかチェック
                         if (method_part == target_method_name and
                             (class_part == target_class_name or
                              class_part.endswith(f"${target_class_name}"))):
@@ -269,7 +259,6 @@ def filter_methods_by_target(methods, target_method_name, target_class_name, tar
                     matched = True
 
         else:
-            # 通常のメソッドの場合
             if method_name == target_method_name:
                 matched = True
             elif '::' in method_name:
@@ -278,43 +267,32 @@ def filter_methods_by_target(methods, target_method_name, target_class_name, tar
                     class_part = parts[0]
                     method_part = parts[1]
 
-                    # メソッド名が一致する場合
                     if method_part == target_method_name:
-                        # クラス名も正確にマッチするかチェック
                         if target_class_name and outer_class_name:
-                            # 内部クラスの場合: クラス名が正確にマッチするかチェック
                             if (class_part == target_class_name or
                                 class_part.endswith(f"${target_class_name}") or
                                 class_part == f"{outer_class_name}${target_class_name}"):
                                 matched = True
                         elif target_class_name:
-                            # 通常のクラスの場合
                             if (class_part == target_class_name or
                                 class_part.endswith(f"${target_class_name}")):
                                 matched = True
                         else:
-                            # クラス名が指定されていない場合はメソッド名のみでマッチ
                             matched = True
 
-        # シグネチャでの追加フィルタリング（オーバーロード対応）
         if matched and target_signature:
-            # 引数部分を抽出
             paren_end = target_signature.find(')')
             if paren_end != -1:
-                args_str = target_signature[1:paren_end]  # ()の中身
+                args_str = target_signature[1:paren_end]
                 return_type = target_signature[paren_end + 1:] if paren_end + 1 < len(target_signature) else ""
 
-                # 引数数を正確に計算
                 expected_params = parse_java_signature_params(args_str)
 
-                # 引数数が一致しない場合はマッチしない
                 if method['params'] != expected_params:
                     matched = False
                     continue
 
-                # 同じ引数数の場合は、既に追加済みかチェックして重複を防ぐ
                 if matched:
-                    # 既に同じターゲットの結果が追加されているかチェック
                     already_added = any(
                         fm['target_method'] == target_method_name and
                         fm['target_class'] == target_class_name and
@@ -339,10 +317,6 @@ def filter_methods_by_target(methods, target_method_name, target_class_name, tar
     return filtered_methods
 
 def analyze_with_lizard_only(java_file_path, target_method_name, target_class_name, target_signature=None, outer_class_name=None, method_type='method', debug=False):
-    """
-    Lizardのみでメソッドを検索する（フォールバック処理なし）
-    """
-    # Lizard分析
     methods = analyze_java_file_with_lizard(java_file_path)
 
     if debug:
@@ -350,7 +324,6 @@ def analyze_with_lizard_only(java_file_path, target_method_name, target_class_na
         for i, method in enumerate(methods):
             print(f"      {i+1:2d}. '{method['method_name']}' (CCN: {method['ccn']}, Params: {method['params']})")
 
-    # フィルタリング
     filtered_methods = filter_methods_by_target(
         methods, target_method_name, target_class_name, target_signature, outer_class_name, method_type
     )
@@ -366,23 +339,17 @@ def analyze_with_lizard_only(java_file_path, target_method_name, target_class_na
         return [], "Lizardでメソッドが見つからない"
 
 def track_method_complexity_changes(repo_path, start_commit_hash, parent_path, long_name, debug=False):
-    """
-    指定されたコミットとその1つ前のコミットでメソッドの複雑度変化を追跡する
-    各コミットでメソッドが見つからない場合も適切にハンドリングする
-    """
     print(f"\n=== メソッド複雑度変化追跡開始 ===")
     print(f"開始コミット: {start_commit_hash}")
     print(f"Parent: {parent_path}")
     print(f"LongName: {long_name}")
 
     try:
-        # 現在のコミットとその1つ前のコミットを取得
         commit_sequence, commit_labels = get_current_and_previous_commit(repo_path, start_commit_hash)
         if not commit_sequence:
             print("エラー: コミット履歴を取得できませんでした")
             return []
 
-        # メソッド情報を抽出
         target_class_name, outer_class_name = extract_class_name(parent_path)
         method_name, method_type, method_signature = extract_method_name(long_name)
         package_path = extract_package_path(parent_path)
@@ -398,17 +365,14 @@ def track_method_complexity_changes(repo_path, start_commit_hash, parent_path, l
 
         complexity_data = []
 
-        # 各コミットで複雑度を測定
         for i, (commit_hash, label) in enumerate(zip(commit_sequence, commit_labels)):
             print(f"\n--- {label}: {commit_hash} ---")
 
-            # コミットにチェックアウト
             success = checkout_commit(repo_path, commit_hash)
             if not success:
                 print(f"  スキップ: チェックアウトに失敗")
                 continue
 
-            # Javaファイルを検索
             java_file_path = find_java_file_in_filesystem(repo_path, search_class_name, package_path)
             if not java_file_path:
                 print(f"  スキップ: Javaファイルが見つかりません (クラス: {search_class_name})")
@@ -416,7 +380,6 @@ def track_method_complexity_changes(repo_path, start_commit_hash, parent_path, l
 
             print(f"  見つかったファイル: {java_file_path}")
 
-            # メソッドを分析（Lizardのみ）
             filtered_methods, strategy = analyze_with_lizard_only(
                 java_file_path,
                 method_name,
@@ -429,12 +392,10 @@ def track_method_complexity_changes(repo_path, start_commit_hash, parent_path, l
 
             if len(filtered_methods) == 0:
                 print(f"  結果: Lizardでメソッドが見つかりませんでした ({strategy})")
-                # メソッドが見つからない場合でも継続（操作タイプの判定のため）
                 continue
             elif len(filtered_methods) > 1:
                 print(f"  警告: 複数のメソッドがマッチしました ({len(filtered_methods)}個) - 最初のものを使用")
 
-            # 複雑度データを記録
             method_data = filtered_methods[0]
             complexity_data.append({
                 'commit_order': i + 1,
@@ -449,7 +410,6 @@ def track_method_complexity_changes(repo_path, start_commit_hash, parent_path, l
                 'strategy': strategy
             })
 
-            # 結果表示
             print(f"  複雑度 (CCN): {method_data['ccn']}")
             print(f"  長さ: {method_data['length']}")
             print(f"  トークン数: {method_data['tokens']}")
@@ -465,12 +425,7 @@ def track_method_complexity_changes(repo_path, start_commit_hash, parent_path, l
         return []
 
 def calculate_complexity_changes(complexity_data):
-    """
-    前のコミットと現在のコミットの間の変化量を計算する
-    同時に操作の種類（modified/added/deleted/NaN）も判定する
-    """
     if len(complexity_data) == 0:
-        # パターン1: 両方のコミットでメソッドが見つからない
         return {
             'current_commit': None,
             'ccn_change': None,
@@ -479,11 +434,9 @@ def calculate_complexity_changes(complexity_data):
             'operation_type': 'NaN'
         }
     elif len(complexity_data) == 1:
-        # パターン2 or 3: どちらか一方のコミットでのみメソッドが見つかった
         single_data = complexity_data[0]
 
         if single_data['commit_order'] == 1:
-            # パターン3: 前のコミットでのみ見つかった → メソッドが削除された
             return {
                 'current_commit': single_data['commit_hash'],
                 'ccn_change': None,
@@ -492,7 +445,6 @@ def calculate_complexity_changes(complexity_data):
                 'operation_type': 'deleted'
             }
         else:
-            # パターン2: 現在のコミットでのみ見つかった → メソッドが追加された
             return {
                 'current_commit': single_data['commit_hash'],
                 'ccn_change': None,
@@ -501,11 +453,9 @@ def calculate_complexity_changes(complexity_data):
                 'operation_type': 'added'
             }
     elif len(complexity_data) == 2:
-        # パターン4: 両方のコミットでメソッドが見つかった → メソッドが変更された
         previous_data = complexity_data[0]
         current_data = complexity_data[1]
 
-        # 変化量を計算（CCN、長さ、トークンのみ）
         ccn_change = current_data['ccn'] - previous_data['ccn']
         length_change = current_data['length'] - previous_data['length']
         tokens_change = current_data['tokens'] - previous_data['tokens']
@@ -528,13 +478,8 @@ def calculate_complexity_changes(complexity_data):
         }
 
 def prepare_enhanced_csv_output(original_df, complexity_results):
-    """
-    元のCSVデータに複雑度変化の新しいカラムを追加したデータフレームを作成する
-    """
-    # 元のDataFrameをコピー
     enhanced_df = original_df.copy()
 
-    # 新しいカラムを初期化（NaN値で）
     new_columns = [
         'ccn_change',
         'length_change',
@@ -545,12 +490,10 @@ def prepare_enhanced_csv_output(original_df, complexity_results):
     for col in new_columns:
         enhanced_df[col] = pd.NA
 
-    # 複雑度結果を元のデータフレームにマージ
     for record_id, changes in complexity_results.items():
-        row_index = record_id - 1  # record_idは1ベース、DataFrameは0ベース
+        row_index = record_id - 1
 
         if changes is not None:
-            # 処理に成功した場合のみデータを設定
             enhanced_df.loc[row_index, 'ccn_change'] = changes['ccn_change']
             enhanced_df.loc[row_index, 'length_change'] = changes['length_change']
             enhanced_df.loc[row_index, 'tokens_change'] = changes['tokens_change']
@@ -559,15 +502,13 @@ def prepare_enhanced_csv_output(original_df, complexity_results):
     return enhanced_df
 
 def main():
-    # 設定
     csv_file = "method-p_filtered_v2.csv"
     repo_path = "/Users/nagutabby/elasticsearch"
     enhanced_output_csv = "method-p_filtered_v2_changes.csv"
     max_records = 3000
 
-    # 処理をスキップするかどうかのフラグ
-    SKIP_MISSING_METHODS = True  # メソッドが見つからない場合はスキップ
-    DEBUG_MODE = False  # デバッグ情報を表示
+    SKIP_MISSING_METHODS = True
+    DEBUG_MODE = False
 
     print("=== Git Repository Analysis Tool (変化量追跡版) ===")
     print("注意: このスクリプトはリポジトリの状態を変更します。")
@@ -582,21 +523,17 @@ def main():
         print("処理を中止しました。")
         sys.exit(0)
 
-    # CSVファイルの存在確認
     if not os.path.exists(csv_file):
         print(f"エラー: CSVファイル '{csv_file}' が見つかりません")
         sys.exit(1)
 
-    # リポジトリパスの存在確認
     if not os.path.exists(repo_path):
         print(f"エラー: リポジトリパス '{repo_path}' が見つかりません")
         sys.exit(1)
 
     try:
-        # CSVファイルを読み込み
         df = pd.read_csv(csv_file)
 
-        # 必要なカラムの存在確認
         required_columns = ['Hash', 'Parent', 'LongName']
         for col in required_columns:
             if col not in df.columns:
@@ -607,7 +544,6 @@ def main():
             print("エラー: CSVファイルにデータが含まれていません")
             sys.exit(1)
 
-        # 最初の2000レコードのみを処理対象とする
         if len(df) > max_records:
             print(f"情報: CSVファイルには{len(df)}レコードありますが、最初の{max_records}レコードのみ処理します")
             df_to_process = df.head(max_records)
@@ -618,13 +554,12 @@ def main():
         all_tracking_results = []
         processed_count = 0
         skipped_count = 0
-        complexity_results = {}  # record_id -> changes のマッピング
+        complexity_results = {}
 
         print(f"\n{'='*80}")
         print(f"処理開始: {len(df_to_process)}レコードを処理します")
         print(f"{'='*80}")
 
-        # 各レコードを処理
         for idx, record in df_to_process.iterrows():
             commit_hash = record['Hash']
             parent_path = record['Parent']
@@ -638,7 +573,6 @@ def main():
             print(f"  LongName: {long_name}")
 
             try:
-                # メソッドの複雑度変化を追跡
                 complexity_data = track_method_complexity_changes(
                     repo_path,
                     commit_hash,
@@ -648,16 +582,12 @@ def main():
                 )
 
                 if complexity_data:
-                    # データが取得できた場合の処理は前述の通り
                     pass
                 else:
                     print(f"  結果: メソッドのメトリクスが取得できませんでした")
-                    # データが取得できない場合でも処理を継続（operation_typeを判定するため）
 
-                # 変化量を計算
                 changes = calculate_complexity_changes(complexity_data)
 
-                # 結果を常に表示（operation_typeを含む）
                 print(f"\n=== 分析結果 ===")
                 print(f"操作タイプ: {changes['operation_type']}")
                 if changes['operation_type'] == 'modified':
@@ -671,13 +601,11 @@ def main():
                 elif changes['operation_type'] == 'NaN':
                     print(f"メソッドの分析に失敗しました")
 
-                # 結果を保存
                 complexity_results[record_id] = changes
                 processed_count += 1
 
             except Exception as e:
                 print(f"エラー: レコード {record_id} の処理中に例外が発生しました: {e}")
-                # 例外が発生した場合もNaNタイプとして記録
                 complexity_results[record_id] = {
                     'current_commit': None,
                     'ccn_change': None,
@@ -694,13 +622,11 @@ def main():
                 else:
                     raise
 
-        # 拡張版CSVを作成して保存
         enhanced_df = prepare_enhanced_csv_output(df, complexity_results)
         enhanced_df.to_csv(enhanced_output_csv, index=False, encoding='utf-8')
         print(f"\n{'='*80}")
         print(f"変化量データが '{enhanced_output_csv}' に保存されました")
 
-        # 結果サマリーを表示
         print(f"\n{'='*80}")
         print(f"=== 処理完了サマリー ===")
         print(f"対象レコード数: {len(df_to_process)}")
