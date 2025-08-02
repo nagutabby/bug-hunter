@@ -25,8 +25,7 @@ The original BugHunter Dataset analyzed the following 15 GitHub repositories:
 - hazelcast: https://github.com/hazelcast/hazelcast.git
 - junit: https://github.com/junit-team/junit4.git
 - MapDB: https://github.com/jankotek/MapDB.git
-- mcMMO: https://github.com/nossr50/mcMMO-1.git
-- mct: https://github.com/nasa/openmct.git
+- mcMMO: https://github.com/mcMMO-Dev/mcMMO.git
 - neo4j: https://github.com/neo4j/neo4j.git
 - netty: https://github.com/netty/netty.git
 - orientdb: https://github.com/orientechnologies/orientdb.git
