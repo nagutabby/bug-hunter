@@ -33,4 +33,5 @@ lizard = "^1.17.31"
 statsmodels = "^0.14.5"
 shap = "^0.48.0"
 pygithub = "^2.7.0"
+python-dotenv = "^1.1.1"
 
