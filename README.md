@@ -31,3 +31,4 @@ The original BugHunter Dataset analyzed the following 15 GitHub repositories:
 - orientdb: https://github.com/orientechnologies/orientdb.git
 - oryx: https://github.com/OryxProject/oryx.git
 - titan: https://github.com/thinkaurelius/titan.git
+- mct: ~~https://github.com/nasa/mct~~ (deleted)
