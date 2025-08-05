@@ -5,10 +5,6 @@ paginate: true
 theme: dracula
 header: 中間発表
 headingDivider: 2
-style: |
-  img {
-    max-height: 55vh;
-  }
 ---
 
 
