@@ -93,18 +93,18 @@ _footer: '[4] R.Ferenc et al., "An automatically created novel bug dataset and i
   - 決定木の可視化による分類条件の抽出
 
 ## 結果1: 特徴量重要度
-<figure>
+<figure style="max-width: 60vw;">
   <img src="../images/hazelcast/feature_importance_chart.png" width="100%">
-  <figcaption>図1: hazelcastの特徴量重要度</figcaption>
+  <figcaption style="text-align: center;">図1 hazelcastの特徴量重要度</figcaption>
 </figure>
 
 - トークン数・コード行数の変化量の重要度が高い
 - Halsteadメトリクス、Maintainability Index（MI）も上位に位置している
 
 ## 結果2: 特徴量分布
-<figure>
+<figure style="max-width: 60vw;">
   <img src="../images/ceylon-ide-eclipse/feature_histograms.png" width="100%">
-  <figcaption>図3: ceylon-ide-eclipseの特徴量分布</figcaption>
+  <figcaption style="text-align: center;">図2 ceylon-ide-eclipseの特徴量分布</figcaption>
 </figure>
 
 - 変化量・Halsteadメトリクスは分散が小さく、特定の箇所に値が集中
@@ -112,18 +112,18 @@ _footer: '[4] R.Ferenc et al., "An automatically created novel bug dataset and i
 - 一蜂性の分布が多い
 
 ## 結果3: PDP分析
-<figure>
+<figure style="max-width: 60vw;">
   <img src="../images/elasticsearch/partial_dependence_plots.png" width="100%">
-  <figcaption>図3: elasticsearchのPDP</figcaption>
+  <figcaption style="text-align: center;">図3 elasticsearchのPDP</figcaption>
 </figure>
 
 - トークン数・コード行数の変化量が0付近のとき: 陽性クラスの予測確率が上昇
 - ほとんどの特徴量において、陽性クラスの予測確率が0.5未満
 
 ## 結果4: 決定木分析
-<figure>
+<figure style="max-width: 60vw;">
   <img src="../images/elasticsearch/decision_tree_visualization.png" width="100%">
-  <figcaption>図3: elasticsearchの決定木</figcaption>
+  <figcaption style="text-align: center;">図4 elasticsearchの決定木</figcaption>
 </figure>
 
 - 陰性クラスのノードのジニ不純度が比較的低い
