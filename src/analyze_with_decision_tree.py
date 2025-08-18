@@ -429,8 +429,9 @@ class DecisionTreeAnalyzer:
 
 def main():
     try:
-        base_dir = "../data/remove/elasticsearch/"
-        output_dir = "../materials/images/elasticsearch/"
+        project_name = "oryx"
+        base_dir = f"../data/remove/{project_name}/"
+        output_dir = f"../materials/images/{project_name}/"
 
         analyzer = DecisionTreeAnalyzer(
             model_path=base_dir + "predictions_add_change_metrics.pkl"

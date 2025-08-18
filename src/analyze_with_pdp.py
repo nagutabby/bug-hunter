@@ -305,7 +305,7 @@ class ComprehensiveBugHunterAnalyzer:
 
         top_features = selected_features_df.head(top_n)['特徴量'].tolist()
 
-        print(f"ヒストグラム対象特徴量（上位{len(top_features)}個）:")
+        print(f"ヒストグラム（上位{len(top_features)}特徴量）")
         for i, feature in enumerate(top_features, 1):
             importance_idx = all_features.index(feature)
             importance = feature_scores[importance_idx]
@@ -371,7 +371,7 @@ class ComprehensiveBugHunterAnalyzer:
             col = i % n_cols
             axes[row, col].set_visible(False)
 
-        fig.suptitle(f'特徴量分布ヒストグラム (上位{len(top_features)}特徴量)', fontsize=16, y=0.98)
+        fig.suptitle(f'ヒストグラム（上位{len(top_features)}特徴量）', fontsize=16, y=0.98)
 
         plt.tight_layout(rect=[0, 0, 1, 0.96])
 
@@ -542,7 +542,7 @@ class ComprehensiveBugHunterAnalyzer:
 
         top_features = selected_features_df.head(top_n)['特徴量'].tolist()
 
-        print(f"対象特徴量（上位{len(top_features)}個）:")
+        print(f"Partial Dependence Plots（上位{len(top_features)}特徴量）")
         for i, feature in enumerate(top_features, 1):
             importance_idx = all_features.index(feature)
             importance = feature_scores[importance_idx]
@@ -560,7 +560,7 @@ class ComprehensiveBugHunterAnalyzer:
         plt.rcParams['axes.labelsize'] = 10
         plt.rcParams['figure.titlesize'] = 16
 
-        n_cols = 5
+        n_cols = 4
         n_rows = (len(top_features) + n_cols - 1) // n_cols
 
         fig_width = n_cols * 4
@@ -617,7 +617,7 @@ class ComprehensiveBugHunterAnalyzer:
             col = i % n_cols
             axes[row, col].set_visible(False)
 
-        fig.suptitle(f'Partial Dependence Plots (上位{len(top_features)}特徴量)\n実データ範囲に基づく（外れ値除外）',
+        fig.suptitle(f'Partial Dependence Plots（上位{len(top_features)}特徴量）',
                     fontsize=16, y=0.98)
 
         plt.tight_layout(rect=[0, 0, 1, 0.96])
@@ -859,8 +859,9 @@ class ComprehensiveBugHunterAnalyzer:
 
 def main():
     try:
-        base_dir = "../data/remove/ceylon-ide-eclipse/"
-        output_dir = "../materials/images/ceylon-ide-eclipse"
+        project_name = "oryx"
+        base_dir = f"../data/remove/{project_name}/"
+        output_dir = f"../materials/images/{project_name}/"
 
         analyzer = ComprehensiveBugHunterAnalyzer(base_dir + "predictions_add_change_metrics.pkl")
         data_path = base_dir + "method-p_add_change_metrics.csv"
