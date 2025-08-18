@@ -44,7 +44,7 @@ class ComprehensiveBugHunterAnalyzer:
             test_f1 = self.model_data['test_results']['f1']
             print(f"テストF1スコア: {test_f1:.4f}")
 
-    def display_feature_importance_table(self, top_n: int = 20) -> pd.DataFrame:
+    def display_feature_importance_table(self, top_n: int = 10) -> pd.DataFrame:
         if not self.model_data['feature_importance_scores'] is not None:
             print("Feature Importanceスコアが見つかりません。")
             return None
@@ -282,7 +282,7 @@ class ComprehensiveBugHunterAnalyzer:
 
         return pd.DataFrame(sample_data)
 
-    def plot_feature_histograms(self, data_path: str, top_n: int = 20,
+    def plot_feature_histograms(self, data_path: str, top_n: int = 10,
                                save_path: Optional[str] = None, max_rows: int = 10000):
         print(f"\n=== 上位{top_n}特徴量のヒストグラム分析 ===")
 
@@ -434,7 +434,7 @@ class ComprehensiveBugHunterAnalyzer:
         ax.grid(True, alpha=0.3)
         ax.legend(fontsize=8)
 
-    def plot_feature_importance_chart(self, top_n: int = 20, save_path: Optional[str] = None):
+    def plot_feature_importance_chart(self, top_n: int = 10, save_path: Optional[str] = None):
         feature_scores = self.model_data['feature_importance_scores']
         selected_features = self.model_data['selected_features']
         all_features = self.model_data['all_feature_names']
@@ -486,7 +486,7 @@ class ComprehensiveBugHunterAnalyzer:
         ax.set_yticks(y_pos)
         ax.set_yticklabels(short_names)
         ax.set_xlabel('Feature Importance', fontsize=12)
-        ax.set_title(f'特徴量重要度 Top {len(top_features)}', fontsize=14, pad=20)
+        ax.set_title(f'ランダムフォレスト 特徴量重要度 Top {len(top_features)}', fontsize=14, pad=20)
 
         for i, (bar, importance) in enumerate(zip(bars, importances)):
             width = bar.get_width()
@@ -513,7 +513,7 @@ class ComprehensiveBugHunterAnalyzer:
         plt.show()
         print("特徴量重要度チャート描画完了")
 
-    def plot_partial_dependence(self, data_path: str, top_n: int = 20,
+    def plot_partial_dependence(self, data_path: str, top_n: int = 10,
                                save_path: Optional[str] = None, max_rows: int = 10000):
         print(f"\n=== Partial Dependence Plots (上位{top_n}特徴量) ===")
 
@@ -801,7 +801,7 @@ class ComprehensiveBugHunterAnalyzer:
         self.display_sampling_summary()
         self.display_feature_selection_summary()
         self.display_operation_type_analysis()
-        feature_df = self.display_feature_importance_table(top_n=20)
+        feature_df = self.display_feature_importance_table(top_n=10)
 
         cv_df = self.get_cv_detailed_results()
         if cv_df is not None:
@@ -813,7 +813,7 @@ class ComprehensiveBugHunterAnalyzer:
         print(f"{'='*80}")
 
         importance_path = os.path.join(output_dir, "feature_importance_chart.png")
-        self.plot_feature_importance_chart(top_n=20, save_path=importance_path)
+        self.plot_feature_importance_chart(top_n=10, save_path=importance_path)
 
         cv_performance_path = os.path.join(output_dir, "cv_performance_chart.png")
         self.plot_cv_performance_chart(save_path=cv_performance_path)
@@ -826,7 +826,7 @@ class ComprehensiveBugHunterAnalyzer:
             histogram_path = os.path.join(output_dir, "feature_histograms.png")
             self.plot_feature_histograms(
                 data_path=data_path,
-                top_n=20,
+                top_n=10,
                 save_path=histogram_path,
                 max_rows=10000
             )
@@ -834,7 +834,7 @@ class ComprehensiveBugHunterAnalyzer:
             pdp_path = os.path.join(output_dir, "partial_dependence_plots.png")
             self.plot_partial_dependence(
                 data_path=data_path,
-                top_n=20,
+                top_n=10,
                 save_path=pdp_path,
                 max_rows=10000
             )

@@ -151,7 +151,7 @@ class DecisionTreeAnalyzer:
         print(classification_report(self.y_test, y_pred,
                                   target_names=['陰性(バグなし)', '陽性(バグあり)']))
 
-    def analyze_tree_structure(self, top_n_features: int = 15):
+    def analyze_tree_structure(self, top_n_features: int = 10):
         print(f"\n=== 決定木構造分析 ===")
 
         feature_names = self.X_processed.columns.tolist()
@@ -196,7 +196,7 @@ class DecisionTreeAnalyzer:
             proportion=True  # サンプル数を割合で表示
         )
 
-        plt.title(f'簡易決定木 (深さ{max_depth_display}まで表示)', fontsize=16, pad=20)
+        plt.title(f'決定木 (深さ{max_depth_display})', fontsize=16, pad=20)
         plt.tight_layout()
 
         if save_path is None:
@@ -243,7 +243,7 @@ class DecisionTreeAnalyzer:
             fontsize=10
         )
 
-        plt.title(f'簡易決定木 (深さ{max_depth_display})', fontsize=16, pad=20)
+        plt.title(f'決定木 (深さ{max_depth_display})', fontsize=16, pad=20)
         plt.tight_layout()
 
         if save_path is None:
@@ -284,7 +284,7 @@ class DecisionTreeAnalyzer:
 
         plt.yticks(y_pos, short_names)
         plt.xlabel('特徴量重要度', fontsize=12)
-        plt.title(f'決定木特徴量重要度 Top {len(top_features)}', fontsize=14, pad=20)
+        plt.title(f'決定木 特徴量重要度 Top {len(top_features)}', fontsize=14, pad=20)
 
         for i, (bar, importance) in enumerate(zip(bars, top_features['重要度'])):
             width = bar.get_width()
