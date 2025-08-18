@@ -17,33 +17,26 @@ _header: ""
 
 鈴木研究室 笹川 尋翔
 
-## 背景1: ソフトウェア開発の課題
-### 持続的なソフトウェア開発の難しさ
-ソフトウェアは時間とともに複雑化、保守が困難に
+## 1.1 開発現場の課題
+持続的なソフトウェア開発が困難
 
-保守性はソフトウェア品質の維持に不可欠
-### リファクタリングの複雑さ
-76%の開発者がリファクタリングによるバグ混入やリグレッションのリスクを認識 <sup>[1]</sup>
+76%の開発者がリファクタリングによるバグ混入やリグレッションのリスクを感じている <sup>[1]</sup>
+
+
+**ソフトウェアが時間とともに複雑化 -> 開発者の認知負荷が増加**
 <!--
 _footer: '[1] Microsoft Research, "An Empirical Study of Refactoring Challenges and Benefits at Microsoft"'
 -->
 
-## 背景2: リファクタリング手法の限界
-### 静的解析ツールを用いた品質評価の普及
-コードメトリクスの異常検出を自動テストに組み込めるようになった
-### 時系列的な変化の不足
-単一時点での分析に留まっている
+## 1.2 リファクタリング環境の変化
+### CI/CDによる継続的な品質評価の普及
+利点: テストの自動化、カバレッジやメトリクスの追跡が可能に
 
-クラスや関数の状態が変化しても追跡できない
+欠点: 単一時点でのコード分析に留まっており、変化を追跡できない
 
-## 目的
-- 時系列変化量を用いたバグ予測精度の向上
-  - 保守性メトリクス（例: コード行数、循環的複雑度）の変化量を導入・分析
-- バグの特徴と保守性メトリクスの関係性の解明
-  - 欠陥分析により、バグの特徴を体系的に整理
-  - 保守性とのつながりを指摘し、具体的な改善策を提示
+**クラスや関数の状態の変化から、より有益な情報を得られるのでは？**
 
-## 関連研究
+## 2 関連研究
 - レビューコメントによるコードスメルの分析<sup>[2]</sup>
   - レビュアーは保守性の低下要因をコーディング規約から特定
 - 静的解析ツールによるリファクタリング支援<sup>[3]</sup>
@@ -52,30 +45,47 @@ _footer: '[1] Microsoft Research, "An Empirical Study of Refactoring Challenges 
 _footer: '[2] X.Han et al., "Understanding Code Smell Detection via Code Review: A Study of the OpenStack Community"<br>[3] S.Romano et al., "Do Static Analysis Tools Affect Software Quality when Using Test-driven Development?"'
 -->
 
-## 手順1: データ分析基盤の開発
-- データセット
-  - BugHunter Dataset<sup>[4]</sup>を使用
-- データ分析の流れ
-  1. 欠損値の削除
-  2. 新しいコードメトリクスの計算
-  3. 特徴量変換
-  4. 機械学習モデルの学習・評価
-  5. モデルの性能に影響する特徴量の可視化
+## 3 目的
+- 時系列変化量を用いたバグ予測精度の向上
+  - 保守性メトリクス（例: コード行数、循環的複雑度）の変化量を導入・分析
+- バグの特徴と保守性メトリクスの関係性の解明
+  - バグの特徴を体系的に整理し、保守性とのつながりを明確化
+  - バグの性質ごとにコードの改善策を示す
+
+
+
+## 4.1 時系列変化量の追跡と利点
+### 従来の分析手法の限界
+従来の静的解析は「スナップショット分析」
+- 経験則による評価 -> プロジェクトの性質が無視される
+
+### 変化に注目する
+「コードがどう変わったか？」を追跡
+- 前回の複雑度が10、今回は15 -> 複雑度が5増加
+
+
+## 4.2 比較対象データの構築
+スナップショット分析のためのデータとして、BugHunter Dataset<sup>[4]</sup>を使用
+
+このデータセットに保守性メトリクスの変化量を追加
+
+追加前と追加後で、評価指標の有意な改善が見られるかを検証
 <!--
 _footer: '[4] R.Ferenc et al., "An automatically created novel bug dataset and its validation in bug prediction"'
 -->
 
-## 手順2: 特徴量エンジニアリング
-- 新しい特徴量
-  - コード行数の変化量
-  - トークン数の変化量
-  - 循環的複雑度の変化量
-  - メソッド操作の種類（例: 追加、削除、変更）
-- 特徴量変換
-  - テキストデータ: TF-IDF
-  - カテゴリカル変数: One-Hotエンコーディング
 
-## 実験: 6プロジェクトの分析
+## 4.3 ランダムフォレストによるバグ予測
+<figure style="max-width: 60vw;">
+  <img src="../images/random_forest_classification.svg" width="100%">
+  <figcaption style="text-align: center;">図1 分類イメージ</figcaption>
+</figure>
+
+複数の決定木を組み合わせた機械学習アルゴリズム
+- 各決定木が独立して予測を実行
+- 多数決で最終的な分類結果を決定
+
+## 5.1 プロジェクトの選定
 <table style="margin: 0 auto;">
   <caption>表1 選定したプロジェクト</caption>
   <thead>
@@ -112,14 +122,22 @@ _footer: '[4] R.Ferenc et al., "An automatically created novel bug dataset and i
   </tbody>
 </table>
 
-## 実験: 6プロジェクトの分析
-- 分析手法
-  - 特徴量重要度の分析
-  - ヒストグラムによる特徴量分布の比較
-  - Partial Depedence Plot（PDP）の分析
-  - 決定木の可視化による分類条件の抽出
+## 5.2 プロジェクトの分析
+### 分析手法
+  - 特徴量重要度（Feature Importance）の測定
+  - ヒストグラムによる特徴量分布の確認
+  - Partial Depedence Plot（PDP）による分類傾向の把握
+  - 決定木の可視化による分類条件の可視化
 
-## 結果1: 特徴量重要度
+## 6.1 評価指標の測定
+- 3プロジェクト: F1スコアが最大0.1向上（有意差あり）
+- 2プロジェクト: F1スコアが向上（有意差なし）
+
+F1スコアの伸びに伴い、Precision、Recall、Accuracyも向上
+
+**全体的に、評価指標の値が改善される傾向が見られた**
+
+## 6.2 特徴量重要度
 <figure style="max-width: 60vw;">
   <img src="../images/hazelcast/feature_importance_chart.png" width="100%">
   <figcaption style="text-align: center;">図1 hazelcastの特徴量重要度</figcaption>
@@ -128,7 +146,7 @@ _footer: '[4] R.Ferenc et al., "An automatically created novel bug dataset and i
 - トークン数・コード行数の変化量の重要度が高い
 - Halsteadメトリクス、Maintainability Index（MI）も上位に位置している
 
-## 結果2: 特徴量分布
+## 6.3 特徴量分布
 <figure style="max-width: 60vw;">
   <img src="../images/ceylon-ide-eclipse/feature_histograms.png" width="100%">
   <figcaption style="text-align: center;">図2 ceylon-ide-eclipseの特徴量分布</figcaption>
@@ -136,9 +154,9 @@ _footer: '[4] R.Ferenc et al., "An automatically created novel bug dataset and i
 
 - 変化量・Halsteadメトリクスは分散が小さく、特定の箇所に値が集中
 - MIは分散が大きい
-- 一蜂性の分布が多い
+- 一峰性の分布が多い
 
-## 結果3: PDP分析
+## 6.4 PDP分析
 <figure style="max-width: 60vw;">
   <img src="../images/elasticsearch/partial_dependence_plots.png" width="100%">
   <figcaption style="text-align: center;">図3 elasticsearchのPDP</figcaption>
@@ -147,7 +165,7 @@ _footer: '[4] R.Ferenc et al., "An automatically created novel bug dataset and i
 - トークン数・コード行数の変化量が0付近のとき: 陽性クラスの予測確率が上昇
 - ほとんどの特徴量において、陽性クラスの予測確率が0.5未満
 
-## 結果4: 決定木分析
+## 6.5 決定木分析
 <figure style="max-width: 60vw;">
   <img src="../images/elasticsearch/decision_tree_visualization.png" width="100%">
   <figcaption style="text-align: center;">図4 elasticsearchの決定木</figcaption>
@@ -156,22 +174,17 @@ _footer: '[4] R.Ferenc et al., "An automatically created novel bug dataset and i
 - 陰性クラスのノードのジニ不純度が比較的低い
 - 高い確信度で陰性クラスを分類している
 
-## 結果5: モデルの評価指標
-- 3プロジェクト: F1スコアが最大0.1向上、有意差あり
-- 2プロジェクト: F1スコアが向上、有意差なし
-- 1プロジェクト: F1スコアが低下、有意差なし
-
-## 評価・考察
+## 7 評価・考察
 ### 陰性クラス予測の改善
 リファクタリングによるメトリクスの減少傾向を確認できた
 
 消去法的な分類がF1スコアの改善に寄与
-### 陽性クラス予測の曖昧さ
+### さらなる精度向上に向けて
 PDPや決定木を見ると、陽性クラスの予測確率が低い
 
 バグ混入理由が多様であることが影響している？
 
-## 課題・展望
+## 8 今後の見通し
 ### 陽性クラスの詳細な分類による因果関係の解明
 バグ混入と保守性メトリクスの関連性が不明確であるため
 ### バグの体系的分類によるパターンの識別
@@ -179,7 +192,17 @@ Orthogonal Defect Classification（ODC）のような分析手法を活用
 
 バグの特徴とコードメトリクスの時系列変化の関連性を示したい
 
-## 付録1: 保守性とは
+## 9 まとめ
+
+
+# 質疑応答用資料
+<!--
+_class: lead
+_paginate: false
+_header: ""
+-->
+
+## 保守性とは
 - JIS X 0129による定義
   - 修正のしやすさに関するソフトウェア製品の能力
   - 修正: 「是正」、「向上」、「環境の変化、要求仕様や機能仕様の変更にソフトウェアを適応させること」
@@ -189,18 +212,8 @@ Orthogonal Defect Classification（ODC）のような分析手法を活用
   - 凝集度: ある変数を参照しているメソッドの割合
   - サイズ: コード行数、メソッド数
 
-## 付録2: BugHunter Datasetについて
+## BugHunter Datasetについて
 - 特定のファイル、クラス、メソッドのデータセット
 - バグ混入コミット（陽性）とバグ修正コミット（陰性）を含む
 - コミットごとのコードメトリクスを計算・記録
 - コミットIDと識別子を使用してデータセットを拡張できる
-
-## 付録3: 機械学習手法について
-- モデル: ランダムフォレストを使用
-  - 先行研究で最もバグの有無の予測精度が高かったため
-- 前処理: アンダーサンプリングを使用
-  - 先行研究と同じ
-- 交差検証の回数: 10回
-  - 先行研究と同じ
-- その他の処理: 独自に実装
-  - プログラムが非公開であるため
