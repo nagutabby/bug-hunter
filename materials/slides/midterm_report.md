@@ -19,20 +19,22 @@ _header: ""
 
 ## 背景1: ソフトウェア開発の課題
 ### 持続的なソフトウェア開発の難しさ
-- ソフトウェアは時間とともに複雑化、保守が困難に
-- 保守性はソフトウェア品質の維持に不可欠
+ソフトウェアは時間とともに複雑化、保守が困難に
+
+保守性はソフトウェア品質の維持に不可欠
 ### リファクタリングの複雑さ
-- 76%の開発者がリファクタリングによるバグ混入やリグレッションのリスクを認識 <sup>[1]</sup>
+76%の開発者がリファクタリングによるバグ混入やリグレッションのリスクを認識 <sup>[1]</sup>
 <!--
 _footer: '[1] Microsoft Research, "An Empirical Study of Refactoring Challenges and Benefits at Microsoft"'
 -->
 
 ## 背景2: リファクタリング手法の限界
 ### 静的解析ツールを用いた品質評価の普及
-- 構文チェックやコードメトリクスの異常検出が自動テストに含まれることも
+コードメトリクスの異常検出を自動テストに組み込めるようになった
 ### 時系列的な変化の不足
-- 単一時点での分析に留まっている
-- クラスや関数の状態が変化しても追跡できない
+単一時点での分析に留まっている
+
+クラスや関数の状態が変化しても追跡できない
 
 ## 目的
 - 時系列変化量を用いたバグ予測精度の向上
@@ -45,8 +47,7 @@ _footer: '[1] Microsoft Research, "An Empirical Study of Refactoring Challenges 
 - レビューコメントによるコードスメルの分析<sup>[2]</sup>
   - レビュアーは保守性の低下要因をコーディング規約から特定
 - 静的解析ツールによるリファクタリング支援<sup>[3]</sup>
-  - 静的解析ツールを使用すると…
-    - リファクタリングの機会が増えるが、問題の背後にある理論的な根拠を理解するのが難しい
+  - ツールによりリファクタリングの機会が増えるが、問題の背後にある理由を理解するのが難しい
 <!--
 _footer: '[2] X.Han et al., "Understanding Code Smell Detection via Code Review: A Study of the OpenStack Community"<br>[3] S.Romano et al., "Do Static Analysis Tools Affect Software Quality when Using Test-driven Development?"'
 -->
@@ -75,15 +76,41 @@ _footer: '[4] R.Ferenc et al., "An automatically created novel bug dataset and i
   - カテゴリカル変数: One-Hotエンコーディング
 
 ## 実験: 6プロジェクトの分析
-- BugHunter Datasetから6プロジェクトを選定
-- 各プロジェクトで最大3000件のデータを使用
-- 対象プロジェクト
-  - antlr4: 構文解析ツール
-  - BroadleafCommerce: Webアプリフレームワーク
-  - ceylon-ide-eclipse: IDEプラグイン
-  - elasticsearch: 全文検索エンジン
-  - hazelcast: インメモリデータベース
-  - oryx: 機械学習フレームワーク
+<table style="margin: 0 auto;">
+  <caption>表1 選定したプロジェクト</caption>
+  <thead>
+    <tr>
+      <th>プロジェクト</th>
+      <th>役割</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>antlr4</td>
+      <td>構文解析ツール</td>
+    </tr>
+    <tr>
+      <td>BroadleafCommerce</td>
+      <td>Webアプリフレームワーク</td>
+    </tr>
+    <tr>
+      <td>ceylon-ide-eclipse</td>
+      <td>IDEプラグイン</td>
+    </tr>
+    <tr>
+      <td>elasticsearch</td>
+      <td>全文検索エンジン</td>
+    </tr>
+    <tr>
+      <td>hazelcast</td>
+      <td>インメモリデータベース</td>
+    </tr>
+    <tr>
+      <td>oryx</td>
+      <td>機械学習フレームワーク</td>
+    </tr>
+  </tbody>
+</table>
 
 ## 実験: 6プロジェクトの分析
 - 分析手法
@@ -136,18 +163,21 @@ _footer: '[4] R.Ferenc et al., "An automatically created novel bug dataset and i
 
 ## 評価・考察
 ### 陰性クラス予測の改善
-- リファクタリングによるメトリクスの減少傾向を確認できた
-- 消去法的な分類がF1スコアの改善に寄与
+リファクタリングによるメトリクスの減少傾向を確認できた
+
+消去法的な分類がF1スコアの改善に寄与
 ### 陽性クラス予測の曖昧さ
-- PDPや決定木を見ると、陽性クラスの予測確率が低い
-- バグ混入理由が多様であることが影響している？
+PDPや決定木を見ると、陽性クラスの予測確率が低い
+
+バグ混入理由が多様であることが影響している？
 
 ## 課題・展望
 ### 陽性クラスの詳細な分類による因果関係の解明
-- バグ混入と保守性メトリクスの関連性が不明確
+バグ混入と保守性メトリクスの関連性が不明確であるため
 ### バグの体系的分類によるパターンの識別
-- Orthogonal Defect Classification（ODC）のような欠陥分析
-- バグの特徴とコードメトリクスの時系列変化の関連性を示す
+Orthogonal Defect Classification（ODC）のような分析手法を活用
+
+バグの特徴とコードメトリクスの時系列変化の関連性を示したい
 
 ## 付録1: 保守性とは
 - JIS X 0129による定義
