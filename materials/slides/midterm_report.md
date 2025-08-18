@@ -76,7 +76,7 @@ _footer: '[4] R.Ferenc et al., "An automatically created novel bug dataset and i
 
 
 ## 4.3 ランダムフォレストによるバグ予測
-<figure style="max-width: 60vw;">
+<figure style="max-width: 45vw;">
   <img src="../images/random_forest_classification.svg" width="100%">
   <figcaption style="text-align: center;">図1 分類イメージ</figcaption>
 </figure>
@@ -138,7 +138,7 @@ F1スコアの伸びに伴い、Precision、Recall、Accuracyも向上
 **全体的に、評価指標の値が改善される傾向が見られた**
 
 ## 6.2 特徴量重要度
-<figure style="max-width: 60vw;">
+<figure style="max-width: 45vw;">
   <img src="../images/hazelcast/feature_importance_chart.png" width="100%">
   <figcaption style="text-align: center;">図1 hazelcastの特徴量重要度</figcaption>
 </figure>
@@ -147,7 +147,7 @@ F1スコアの伸びに伴い、Precision、Recall、Accuracyも向上
 - Halsteadメトリクス、Maintainability Index（MI）も上位に位置している
 
 ## 6.3 特徴量分布
-<figure style="max-width: 60vw;">
+<figure style="max-width: 45vw;">
   <img src="../images/ceylon-ide-eclipse/feature_histograms.png" width="100%">
   <figcaption style="text-align: center;">図2 ceylon-ide-eclipseの特徴量分布</figcaption>
 </figure>
@@ -157,7 +157,7 @@ F1スコアの伸びに伴い、Precision、Recall、Accuracyも向上
 - 一峰性の分布が多い
 
 ## 6.4 PDP分析
-<figure style="max-width: 60vw;">
+<figure style="max-width: 45vw;">
   <img src="../images/elasticsearch/partial_dependence_plots.png" width="100%">
   <figcaption style="text-align: center;">図3 elasticsearchのPDP</figcaption>
 </figure>
@@ -166,7 +166,7 @@ F1スコアの伸びに伴い、Precision、Recall、Accuracyも向上
 - ほとんどの特徴量において、陽性クラスの予測確率が0.5未満
 
 ## 6.5 決定木分析
-<figure style="max-width: 60vw;">
+<figure style="max-width: 45vw;">
   <img src="../images/elasticsearch/decision_tree_visualization.png" width="100%">
   <figcaption style="text-align: center;">図4 elasticsearchの決定木</figcaption>
 </figure>
