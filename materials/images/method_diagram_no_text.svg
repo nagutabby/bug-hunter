@@ -1,0 +1,111 @@
+<svg viewBox="0 0 800 300" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="2" dy="2" stdDeviation="3" flood-color="rgba(0,0,0,0.3)"/>
+    </filter>
+  </defs>
+  
+  <rect width="800" height="300" fill="#f8f9fa"/>
+  
+  <text x="400" y="30" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" font-weight="bold" fill="#2c3e50">
+    メソッドの肥大化と複雑化
+  </text>
+  
+  <!-- 肥大化（コード量の増加） -->
+  <g transform="translate(50, 50)">
+    
+    <!-- 小さなメソッド -->
+    <rect x="20" y="20" width="80" height="60" rx="5" fill="#3498db" opacity="0.9" filter="url(#shadow)"/>
+    <rect x="30" y="30" width="60" height="8" rx="2" fill="#2980b9"/>
+    <rect x="30" y="42" width="60" height="8" rx="2" fill="#2980b9"/>
+    <rect x="30" y="54" width="60" height="8" rx="2" fill="#2980b9"/>
+    
+    <!-- 中サイズメソッド -->
+    <rect x="140" y="20" width="80" height="120" rx="5" fill="#3498db" opacity="0.9" filter="url(#shadow)"/>
+    <rect x="150" y="30" width="60" height="8" rx="2" fill="#2980b9"/>
+    <rect x="150" y="42" width="60" height="8" rx="2" fill="#2980b9"/>
+    <rect x="150" y="54" width="60" height="8" rx="2" fill="#2980b9"/>
+    <rect x="150" y="66" width="60" height="8" rx="2" fill="#2980b9"/>
+    <rect x="150" y="78" width="60" height="8" rx="2" fill="#2980b9"/>
+    <rect x="150" y="90" width="60" height="8" rx="2" fill="#2980b9"/>
+    <rect x="150" y="102" width="60" height="8" rx="2" fill="#2980b9"/>
+    <rect x="150" y="114" width="60" height="8" rx="2" fill="#2980b9"/>
+    <rect x="150" y="126" width="60" height="8" rx="2" fill="#2980b9"/>
+    
+    <!-- 大きなメソッド -->
+    <rect x="260" y="20" width="80" height="200" rx="5" fill="#3498db" opacity="0.9" filter="url(#shadow)"/>
+    <rect x="270" y="30" width="60" height="8" rx="2" fill="#2980b9"/>
+    <rect x="270" y="42" width="60" height="8" rx="2" fill="#2980b9"/>
+    <rect x="270" y="54" width="60" height="8" rx="2" fill="#2980b9"/>
+    <rect x="270" y="66" width="60" height="8" rx="2" fill="#2980b9"/>
+    <rect x="270" y="78" width="60" height="8" rx="2" fill="#2980b9"/>
+    <rect x="270" y="90" width="60" height="8" rx="2" fill="#2980b9"/>
+    <rect x="270" y="102" width="60" height="8" rx="2" fill="#2980b9"/>
+    <rect x="270" y="114" width="60" height="8" rx="2" fill="#2980b9"/>
+    <rect x="270" y="126" width="60" height="8" rx="2" fill="#2980b9"/>
+    <rect x="270" y="138" width="60" height="8" rx="2" fill="#2980b9"/>
+    <rect x="270" y="150" width="60" height="8" rx="2" fill="#2980b9"/>
+    <rect x="270" y="162" width="60" height="8" rx="2" fill="#2980b9"/>
+    <rect x="270" y="174" width="60" height="8" rx="2" fill="#2980b9"/>
+    <rect x="270" y="186" width="60" height="8" rx="2" fill="#2980b9"/>
+    <rect x="270" y="198" width="60" height="8" rx="2" fill="#2980b9"/>
+    <rect x="270" y="210" width="60" height="8" rx="2" fill="#2980b9"/>
+    
+    <!-- 矢印で増加を示す -->
+    <path d="M110 60 L130 60" stroke="#2c3e50" stroke-width="2" marker-end="url(#arrowhead)"/>
+    <path d="M230 60 L250 60" stroke="#2c3e50" stroke-width="2" marker-end="url(#arrowhead)"/>
+  </g>
+  
+  <!-- 複雑化（分岐の増加） -->
+  <g transform="translate(450, 50)">
+    
+    <!-- 分岐なし -->
+    <g transform="translate(20, 40)">
+      <circle cx="40" cy="20" r="12" fill="#e74c3c" opacity="0.9" filter="url(#shadow)"/>
+      <line x1="40" y1="35" x2="40" y2="80" stroke="#c0392b" stroke-width="4"/>
+      <circle cx="40" cy="85" r="8" fill="#c0392b"/>
+    </g>
+    
+    <!-- 2分岐 -->
+    <g transform="translate(140, 40)">
+      <circle cx="40" cy="20" r="12" fill="#e74c3c" opacity="0.9" filter="url(#shadow)"/>
+      <line x1="40" y1="35" x2="25" y2="65" stroke="#c0392b" stroke-width="3"/>
+      <line x1="40" y1="35" x2="55" y2="65" stroke="#c0392b" stroke-width="3"/>
+      <circle cx="25" cy="70" r="8" fill="#c0392b"/>
+      <circle cx="55" cy="70" r="8" fill="#c0392b"/>
+      <line x1="25" y1="78" x2="40" y2="95" stroke="#c0392b" stroke-width="2"/>
+      <line x1="55" y1="78" x2="40" y2="95" stroke="#c0392b" stroke-width="2"/>
+      <circle cx="40" cy="100" r="6" fill="#c0392b"/>
+    </g>
+    
+    <!-- 多分岐 -->
+    <g transform="translate(260, 40)">
+      <circle cx="40" cy="20" r="12" fill="#e74c3c" opacity="0.9" filter="url(#shadow)"/>
+      <line x1="40" y1="35" x2="15" y2="55" stroke="#c0392b" stroke-width="2"/>
+      <line x1="40" y1="35" x2="30" y2="55" stroke="#c0392b" stroke-width="2"/>
+      <line x1="40" y1="35" x2="50" y2="55" stroke="#c0392b" stroke-width="2"/>
+      <line x1="40" y1="35" x2="65" y2="55" stroke="#c0392b" stroke-width="2"/>
+      <circle cx="15" cy="60" r="6" fill="#c0392b"/>
+      <circle cx="30" cy="60" r="6" fill="#c0392b"/>
+      <circle cx="50" cy="60" r="6" fill="#c0392b"/>
+      <circle cx="65" cy="60" r="6" fill="#c0392b"/>
+      <!-- ネスト分岐 -->
+      <line x1="30" y1="66" x2="25" y2="80" stroke="#c0392b" stroke-width="1"/>
+      <line x1="30" y1="66" x2="35" y2="80" stroke="#c0392b" stroke-width="1"/>
+      <circle cx="25" cy="85" r="4" fill="#c0392b"/>
+      <circle cx="35" cy="85" r="4" fill="#c0392b"/>
+    </g>
+    
+    <!-- 矢印で増加を示す -->
+    <path d="M110 60 L130 60" stroke="#2c3e50" stroke-width="2" marker-end="url(#arrowhead)"/>
+    <path d="M230 60 L250 60" stroke="#2c3e50" stroke-width="2" marker-end="url(#arrowhead)"/>
+  </g>
+
+  
+  <!-- 矢印マーカー定義 -->
+  <defs>
+    <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#2c3e50"/>
+    </marker>
+  </defs>
+</svg>

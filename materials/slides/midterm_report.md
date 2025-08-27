@@ -34,13 +34,15 @@ _header: ""
 -->
 
 ## 1.1 ソフトウェア開発における課題
-76%の開発者がリファクタリングによるバグ混入やリグレッションの<br>リスクを感じている <sup>[1]</sup>
+<figure style="max-width: 80vw; display: block; margin: 0 auto;">
+  <img src="../images/method_diagram_no_text.svg" width="100%">
+  <figcaption style="text-align: center; font-size: 2rem;">図1 メソッド構造の変化</figcaption>
+</figure>
+
+76%の開発者がリファクタリングによるバグ混入のリスクを認識 <sup>[1]</sup>
 
 ソフトウェアの構造の変化に伴い、クラスや関数の理解が困難に
 
-既存のリファクタリング手法は構造を捉えるが、変化を追跡できない
-
-**構造の変化から、より有益な情報を得られるのではないか？**
 
 > [1] Microsoft Research, "An Empirical Study of Refactoring Challenges and Benefits at Microsoft"
 
@@ -77,7 +79,7 @@ _header: ""
 ## 3.1 ソフトウェア構造の変化の追跡
 <figure style="max-width: 65vw; display: block; margin: 0 auto;">
   <img src="../images/software_structure_tracking.svg" width="100%">
-  <figcaption style="text-align: center; font-size: 2rem;">図1 ソフトウェア構造の変化</figcaption>
+  <figcaption style="text-align: center; font-size: 2rem;">図2 ソフトウェア構造の変化</figcaption>
 </figure>
 
 - 比較的単純な時系列データとして、コード行数・トークン数・<br>循環的複雑度の変化量を導入
@@ -87,12 +89,12 @@ _header: ""
 
 コードメトリクスの変化量をデータセットに追加
 
-追加前と追加後で、評価指標がどの程度を改善されるかを検証
+追加前と追加後で、評価指標がどの程度改善されるかを検証
 
 ## 3.3 ランダムフォレストによるバグ予測
 <figure style="max-width: 70vw; display: block; margin: 0 auto;">
   <img src="../images/random_forest_classification.svg" width="100%">
-  <figcaption style="text-align: center; font-size: 2rem;">図2 バグの2値分類の概要</figcaption>
+  <figcaption style="text-align: center; font-size: 2rem;">図3 バグの2値分類の概要</figcaption>
 </figure>
 
 - 決定木を複数生成し、多数決で境界線を決定
@@ -158,7 +160,7 @@ _header: ""
 ## 5.1 特徴量重要度
 <figure style="max-width: 65vw; display: block; margin: 0 auto;">
   <img src="../images/hazelcast/feature_importance_chart.png" width="100%">
-  <figcaption style="text-align: center; font-size: 2rem;">図3 hazelcastの特徴量重要度</figcaption>
+  <figcaption style="text-align: center; font-size: 2rem;">図4 hazelcastの特徴量重要度</figcaption>
 </figure>
 
 - トークン数・コード行数の変化量、Halsteadメトリクス、Maintainability Indexの重要度が高い
@@ -166,7 +168,7 @@ _header: ""
 ## 5.2 特徴量分布
 <figure style="max-width: 75vw;　display: block; margin: 0 auto;">
   <img src="../images/ceylon-ide-eclipse/feature_histograms.png" width="100%">
-  <figcaption style="text-align: center; font-size: 2rem;">図4 ceylon-ide-eclipseの特徴量分布</figcaption>
+  <figcaption style="text-align: center; font-size: 2rem;">図5 ceylon-ide-eclipseの特徴量分布</figcaption>
 </figure>
 
 - 変化量やHalstead系は分散が小さく、Maintainability Indexは<br>分散が大きい
@@ -174,7 +176,7 @@ _header: ""
 ## 5.3 PDP分析
 <figure style="max-width: 75vw;　display: block; margin: 0 auto;">
   <img src="../images/elasticsearch/partial_dependence_plots.png" width="100%">
-  <figcaption style="text-align: center; font-size: 2rem;">図5 elasticsearchのPDP</figcaption>
+  <figcaption style="text-align: center; font-size: 2rem;">図6 elasticsearchのPDP</figcaption>
 </figure>
 
 - ほとんどの特徴量において、陽性クラスの予測確率が0.5未満
@@ -182,7 +184,7 @@ _header: ""
 ## 5.4 決定木分析
 <figure style="max-width: 75vw;　display: block; margin: 0 auto;">
   <img src="../images/elasticsearch/decision_tree_visualization.png"　 width="100%">
-  <figcaption style="text-align: center; font-size: 2rem;">図6 elasticsearchの決定木</figcaption>
+  <figcaption style="text-align: center; font-size: 2rem;">図7 elasticsearchの決定木</figcaption>
 </figure>
 
 - 陰性クラスのノードのジニ不純度が比較的低い
