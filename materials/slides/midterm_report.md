@@ -34,7 +34,7 @@ _header: ""
 -->
 
 ## 1.1 ソフトウェア開発における課題
-<figure style="max-width: 80vw; display: block; margin: 0 auto;">
+<figure style="max-width: 50vw; display: block; margin: 0 auto;">
   <img src="../images/method_diagram_no_text.svg" width="100%">
   <figcaption style="text-align: center; font-size: 2rem;">図1 メソッド構造の変化</figcaption>
 </figure>
@@ -76,25 +76,34 @@ _paginate: false
 _header: ""
 -->
 
-## 3.1 ソフトウェア構造の変化の追跡
-<figure style="max-width: 65vw; display: block; margin: 0 auto;">
-  <img src="../images/software_structure_tracking.svg" width="100%">
-  <figcaption style="text-align: center; font-size: 2rem;">図2 ソフトウェア構造の変化</figcaption>
+## 3.1 概要
+<figure style="max-width: 55vw; display: block; margin: 0 auto;">
+  <img src="../images/data_analysis_flow.svg" width="100%">
+  <figcaption style="text-align: center; font-size: 2rem;">図2 データ分析の流れ</figcaption>
 </figure>
 
-- 比較的単純な時系列データとして、コード行数・トークン数・<br>循環的複雑度の変化量を導入
+1. 時系列変化量を追加
+2. テキストデータをカテゴリカル変数に変換
+3. 特徴量の追加前と追加後のデータを用いて機械学習モデルを学習
 
-## 3.2 データセットの選定と比較データの構築
-スナップショット分析のためのデータとして、BugHunter Datasetを使用
+## 3.2 時系列変化量の追加
+<figure style="max-width: 35vw; display: block; margin: 0 auto;">
+  <img src="../images/software_structure_tracking.svg" width="100%">
+  <figcaption style="text-align: center; font-size: 2rem;">図3 ソフトウェア構造の変化</figcaption>
+</figure>
 
-コードメトリクスの変化量をデータセットに追加
+- 単純な時系列データとして、コード行数・トークン数・循環的複雑度の変化量をデータセットに追加
 
-追加前と追加後で、評価指標がどの程度改善されるかを検証
+## 3.2 カテゴリカル変数の導入
+- クラスやメソッドの識別子を単語ごとに分解
+  - 単語の出現率などの類似性に基づいて学習できるようにする
+- メソッドに対する操作（例: 追加、削除）を表す変数を導入
+  - 変化量が欠損値であったときに、その理由を説明できるようにする
 
-## 3.3 ランダムフォレストによるバグ予測
-<figure style="max-width: 70vw; display: block; margin: 0 auto;">
+## 3.3 機械学習モデルの構築
+<figure style="max-width: 40vw; display: block; margin: 0 auto;">
   <img src="../images/random_forest_classification.svg" width="100%">
-  <figcaption style="text-align: center; font-size: 2rem;">図3 バグの2値分類の概要</figcaption>
+  <figcaption style="text-align: center; font-size: 2rem;">図4 バグの2値分類の概要</figcaption>
 </figure>
 
 - 決定木を複数生成し、多数決で境界線を決定
@@ -145,10 +154,10 @@ _header: ""
 
 ## 4.2 プロジェクトの分析
 ### 分析手順
-1. 特徴量重要度（Feature Importance）の測定
-2. ヒストグラムによる特徴量分布の確認
-3. Partial Depedence Plot（PDP）による分類傾向の把握
-4. 決定木の可視化による分類条件の可視化
+1. 特徴量重要度（Feature Importance）を算出
+2. ヒストグラムで特徴量分布を確認
+3. Partial Depedence Plot（PDP）を用いて分類傾向を把握
+4. 決定木で分類の流れを可視化し、判断の基準と信頼性を確認
 
 # 5. 結果
 <!--
@@ -158,33 +167,33 @@ _header: ""
 -->
 
 ## 5.1 特徴量重要度
-<figure style="max-width: 65vw; display: block; margin: 0 auto;">
+<figure style="max-width: 35vw; display: block; margin: 0 auto;">
   <img src="../images/hazelcast/feature_importance_chart.png" width="100%">
-  <figcaption style="text-align: center; font-size: 2rem;">図4 hazelcastの特徴量重要度</figcaption>
+  <figcaption style="text-align: center; font-size: 2rem;">図5 hazelcastの特徴量重要度</figcaption>
 </figure>
 
 - トークン数・コード行数の変化量、Halsteadメトリクス、Maintainability Indexの重要度が高い
 
 ## 5.2 特徴量分布
-<figure style="max-width: 75vw;　display: block; margin: 0 auto;">
+<figure style="max-width: 45vw;　display: block; margin: 0 auto;">
   <img src="../images/ceylon-ide-eclipse/feature_histograms.png" width="100%">
-  <figcaption style="text-align: center; font-size: 2rem;">図5 ceylon-ide-eclipseの特徴量分布</figcaption>
+  <figcaption style="text-align: center; font-size: 2rem;">図6 ceylon-ide-eclipseの特徴量分布</figcaption>
 </figure>
 
 - 変化量やHalstead系は分散が小さく、Maintainability Indexは<br>分散が大きい
 
 ## 5.3 PDP分析
-<figure style="max-width: 75vw;　display: block; margin: 0 auto;">
+<figure style="max-width: 45vw;　display: block; margin: 0 auto;">
   <img src="../images/elasticsearch/partial_dependence_plots.png" width="100%">
-  <figcaption style="text-align: center; font-size: 2rem;">図6 elasticsearchのPDP</figcaption>
+  <figcaption style="text-align: center; font-size: 2rem;">図7 elasticsearchのPDP</figcaption>
 </figure>
 
 - ほとんどの特徴量において、陽性クラスの予測確率が0.5未満
 
 ## 5.4 決定木分析
-<figure style="max-width: 75vw;　display: block; margin: 0 auto;">
+<figure style="max-width: 45vw;　display: block; margin: 0 auto;">
   <img src="../images/elasticsearch/decision_tree_visualization.png"　 width="100%">
-  <figcaption style="text-align: center; font-size: 2rem;">図7 elasticsearchの決定木</figcaption>
+  <figcaption style="text-align: center; font-size: 2rem;">図8 elasticsearchの決定木</figcaption>
 </figure>
 
 - 陰性クラスのノードのジニ不純度が比較的低い
