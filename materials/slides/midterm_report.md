@@ -190,12 +190,45 @@ _header: ""
 - 陰性クラスのノードのジニ不純度が比較的低い
 
 ## 5.5 評価指標の測定
-- 3つのプロジェクト: F1スコアが最大0.1向上（有意差あり）
-- 2つのプロジェクト: F1スコアが向上（有意差なし）
+<table style="font-size: 2rem; margin: 0 auto;">
+  <caption>表2 評価指標の値の変化</caption>
+  <thead>
+    <tr>
+      <th>プロジェクト</td>
+      <th>F1スコア (変更前)</td>
+      <th>F1スコア (変更後)</td>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>ceylon-ide-eclipse</td>
+      <td>0.39</td>
+      <td>0.49</td>
+    </tr>
+    <tr>
+      <td>elasticsearch</td>
+      <td>0.62</td>
+      <td>0.72</td>
+    </tr>
+    <tr>
+      <td>hazelcast</td>
+      <td>0.67</td>
+      <td>0.71</td>
+    </tr>
+    <tr>
+      <td>antlr4</td>
+      <td>0.45</td>
+      <td>0.48</td>
+    </tr>
+    <tr>
+      <td>oryx</td>
+      <td>0.33</td>
+      <td>0.39</td>
+    </tr>
+  </tbody>
+</table>
 
-F1スコアの伸びに伴い、適合率や再現率が全体的に向上
-
-**モデルの予測性能が改善される傾向があることを確認**
+モデルの予測性能が改善される傾向があることを確認
 
 # 6. 考察
 <!--
