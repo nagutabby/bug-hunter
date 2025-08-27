@@ -2,13 +2,13 @@
 marp: true
 size: 16:9
 paginate: true
-theme: dracula
+theme: academic
 header: 中間発表
 headingDivider: 2
 ---
 
 
-# コードの時系列変化を考慮した保守性低下の要因分析と改善
+# コードの時系列変化を考慮した<br>保守性低下の要因分析と改善
 <!--
 _class: lead
 _paginate: false
@@ -20,13 +20,11 @@ _header: ""
 ## 1.1 開発現場の課題
 持続的なソフトウェア開発が困難
 
-76%の開発者がリファクタリングによるバグ混入やリグレッションのリスクを感じている <sup>[1]</sup>
+76%の開発者がリファクタリングによるバグ混入やリグレッションの<br>リスクを感じている <sup>[1]</sup>
 
 
 **ソフトウェアが時間とともに複雑化 -> 開発者の認知負荷が増加**
-<!--
-_footer: '[1] Microsoft Research, "An Empirical Study of Refactoring Challenges and Benefits at Microsoft"'
--->
+> [1] Microsoft Research, "An Empirical Study of Refactoring Challenges and Benefits at Microsoft"
 
 ## 1.2 リファクタリング環境の変化
 ### CI/CDによる継続的な品質評価の普及
@@ -41,9 +39,9 @@ _footer: '[1] Microsoft Research, "An Empirical Study of Refactoring Challenges 
   - レビュアーは保守性の低下要因をコーディング規約から特定
 - 静的解析ツールによるリファクタリング支援<sup>[3]</sup>
   - ツールによりリファクタリングの機会が増えるが、問題の背後にある理由を理解するのが難しい
-<!--
-_footer: '[2] X.Han et al., "Understanding Code Smell Detection via Code Review: A Study of the OpenStack Community"<br>[3] S.Romano et al., "Do Static Analysis Tools Affect Software Quality when Using Test-driven Development?"'
--->
+
+> [2] X.Han et al., "Understanding Code Smell Detection via Code Review: A Study of the OpenStack Community"
+> [3] S.Romano et al., "Do Static Analysis Tools Affect Software Quality when Using Test-driven Development?"'
 
 ## 3 目的
 - 時系列変化量を用いたバグ予測精度の向上
@@ -70,23 +68,20 @@ _footer: '[2] X.Han et al., "Understanding Code Smell Detection via Code Review:
 このデータセットに保守性メトリクスの変化量を追加
 
 追加前と追加後で、評価指標の有意な改善が見られるかを検証
-<!--
-_footer: '[4] R.Ferenc et al., "An automatically created novel bug dataset and its validation in bug prediction"'
--->
+
+> [4] R.Ferenc et al., "An automatically created novel bug dataset and its validation in bug prediction"
 
 
 ## 4.3 ランダムフォレストによるバグ予測
-<figure style="max-width: 45vw;">
+<figure style="max-width: 70vw; display: block; margin: 0 auto;">
   <img src="../images/random_forest_classification.svg" width="100%">
-  <figcaption style="text-align: center;">図1 分類イメージ</figcaption>
+  <figcaption style="text-align: center; font-size: 2rem;">図1 バグの2値分類の概要</figcaption>
 </figure>
 
-複数の決定木を組み合わせた機械学習アルゴリズム
-- 各決定木が独立して予測を実行
-- 多数決で最終的な分類結果を決定
+- 決定木を複数生成し、多数決で境界線を決定
 
 ## 5.1 プロジェクトの選定
-<table style="margin: 0 auto;">
+<table style="font-size: 2rem; margin: 0 auto;">
   <caption>表1 選定したプロジェクト</caption>
   <thead>
     <tr>
@@ -138,41 +133,36 @@ F1スコアの伸びに伴い、Precision、Recall、Accuracyも向上
 **全体的に、評価指標の値が改善される傾向が見られた**
 
 ## 6.2 特徴量重要度
-<figure style="max-width: 45vw;">
+<figure style="max-width: 65vw; display: block; margin: 0 auto;">
   <img src="../images/hazelcast/feature_importance_chart.png" width="100%">
-  <figcaption style="text-align: center;">図1 hazelcastの特徴量重要度</figcaption>
+  <figcaption style="text-align: center; font-size: 2rem;">図1 hazelcastの特徴量重要度</figcaption>
 </figure>
 
-- トークン数・コード行数の変化量の重要度が高い
-- Halsteadメトリクス、Maintainability Index（MI）も上位に位置している
+- トークン数・コード行数の変化量、Halsteadメトリクス、Maintainability Indexの重要度が高い
 
 ## 6.3 特徴量分布
-<figure style="max-width: 45vw;">
+<figure style="max-width: 75vw;　display: block; margin: 0 auto;">
   <img src="../images/ceylon-ide-eclipse/feature_histograms.png" width="100%">
-  <figcaption style="text-align: center;">図2 ceylon-ide-eclipseの特徴量分布</figcaption>
+  <figcaption style="text-align: center; font-size: 2rem;">図2 ceylon-ide-eclipseの特徴量分布</figcaption>
 </figure>
 
-- 変化量・Halsteadメトリクスは分散が小さく、特定の箇所に値が集中
-- MIは分散が大きい
-- 一峰性の分布が多い
+- 変化量やHalstead系は分散が小さく、Maintainability Indexは<br>分散が大きい
 
 ## 6.4 PDP分析
-<figure style="max-width: 45vw;">
+<figure style="max-width: 75w;　display: block; margin: 0 auto;">
   <img src="../images/elasticsearch/partial_dependence_plots.png" width="100%">
-  <figcaption style="text-align: center;">図3 elasticsearchのPDP</figcaption>
+  <figcaption style="text-align: center; font-size: 2rem;">図3 elasticsearchのPDP</figcaption>
 </figure>
 
-- トークン数・コード行数の変化量が0付近のとき: 陽性クラスの予測確率が上昇
 - ほとんどの特徴量において、陽性クラスの予測確率が0.5未満
 
 ## 6.5 決定木分析
-<figure style="max-width: 45vw;">
-  <img src="../images/elasticsearch/decision_tree_visualization.png" width="100%">
-  <figcaption style="text-align: center;">図4 elasticsearchの決定木</figcaption>
+<figure style="max-width: 75vw;　display: block; margin: 0 auto;">
+  <img src="../images/elasticsearch/decision_tree_visualization.png"　 width="100%">
+  <figcaption style="text-align: center; font-size: 2rem;">図4 elasticsearchの決定木</figcaption>
 </figure>
 
 - 陰性クラスのノードのジニ不純度が比較的低い
-- 高い確信度で陰性クラスを分類している
 
 ## 7 評価・考察
 ### 陰性クラス予測の改善
@@ -193,12 +183,11 @@ Orthogonal Defect Classification（ODC）のような分析手法を活用
 バグの特徴とコードメトリクスの時系列変化の関連性を示したい
 
 ## 9 まとめ
-6つのプロジェクトのうち3つで有意差が認められ、F1スコアが最大0.1向上
+半数のプロジェクトで有意差があり、F1スコアが最大0.1向上
 
-保守性メトリクスの変化量を組み合わせることで、より効果的なバグ分類ができるようになった
+コードメトリクスの変化量を組み合わせることで、より効果的な<br>バグ分類ができるようになった
 
-### 実用性向上に向けて
-陽性クラスの分類精度を高め、品質改善に役立つコードの特徴を捉えたい
+今後は陽性クラスの分類精度を高め、品質改善に役立つコードの特徴を<br>捉えたい
 
 # 質疑応答用資料
 <!--
