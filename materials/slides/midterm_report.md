@@ -52,7 +52,7 @@ _header: ""
 - コードメトリクスを用いたバグ予測により、コード品質を改善<sup>[4]</sup>
 
 > [2] X.Han et al., "Understanding Code Smell Detection via Code Review: A Study of the OpenStack Community"
-> [3] S.Romano et al., "Do Static Analysis Tools Affect Software Quality when Using Test-driven Development?"'
+> [3] S.Romano et al., "Do Static Analysis Tools Affect Software Quality when Using Test-driven Development?"
 > [4] R.Ferenc et al., "An automatically created novel bug dataset and its validation in bug prediction"
 
 # 2. 目的
