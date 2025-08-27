@@ -75,8 +75,12 @@ _header: ""
 -->
 
 ## 3.1 ソフトウェア構造の変化の追跡
-- 比較的単純な時系列データとして、メソッドごとのコード行数、トークン数、循環的複雑度の変化量を導入
-- バグ混入の前後、バグ修正の前後のコードメトリクスを追跡
+<figure style="max-width: 65vw; display: block; margin: 0 auto;">
+  <img src="../images/software_structure_tracking.svg" width="100%">
+  <figcaption style="text-align: center; font-size: 2rem;">図1 ソフトウェア構造の変化</figcaption>
+</figure>
+
+- 比較的単純な時系列データとして、コード行数・トークン数・<br>循環的複雑度の変化量を導入
 
 ## 3.2 データセットの選定と比較データの構築
 スナップショット分析のためのデータとして、BugHunter Datasetを使用
@@ -88,7 +92,7 @@ _header: ""
 ## 3.3 ランダムフォレストによるバグ予測
 <figure style="max-width: 70vw; display: block; margin: 0 auto;">
   <img src="../images/random_forest_classification.svg" width="100%">
-  <figcaption style="text-align: center; font-size: 2rem;">図1 バグの2値分類の概要</figcaption>
+  <figcaption style="text-align: center; font-size: 2rem;">図2 バグの2値分類の概要</figcaption>
 </figure>
 
 - 決定木を複数生成し、多数決で境界線を決定
@@ -154,7 +158,7 @@ _header: ""
 ## 5.1 特徴量重要度
 <figure style="max-width: 65vw; display: block; margin: 0 auto;">
   <img src="../images/hazelcast/feature_importance_chart.png" width="100%">
-  <figcaption style="text-align: center; font-size: 2rem;">図1 hazelcastの特徴量重要度</figcaption>
+  <figcaption style="text-align: center; font-size: 2rem;">図3 hazelcastの特徴量重要度</figcaption>
 </figure>
 
 - トークン数・コード行数の変化量、Halsteadメトリクス、Maintainability Indexの重要度が高い
@@ -162,15 +166,15 @@ _header: ""
 ## 5.2 特徴量分布
 <figure style="max-width: 75vw;　display: block; margin: 0 auto;">
   <img src="../images/ceylon-ide-eclipse/feature_histograms.png" width="100%">
-  <figcaption style="text-align: center; font-size: 2rem;">図2 ceylon-ide-eclipseの特徴量分布</figcaption>
+  <figcaption style="text-align: center; font-size: 2rem;">図4 ceylon-ide-eclipseの特徴量分布</figcaption>
 </figure>
 
 - 変化量やHalstead系は分散が小さく、Maintainability Indexは<br>分散が大きい
 
 ## 5.3 PDP分析
-<figure style="max-width: 75w;　display: block; margin: 0 auto;">
+<figure style="max-width: 75vw;　display: block; margin: 0 auto;">
   <img src="../images/elasticsearch/partial_dependence_plots.png" width="100%">
-  <figcaption style="text-align: center; font-size: 2rem;">図3 elasticsearchのPDP</figcaption>
+  <figcaption style="text-align: center; font-size: 2rem;">図5 elasticsearchのPDP</figcaption>
 </figure>
 
 - ほとんどの特徴量において、陽性クラスの予測確率が0.5未満
@@ -178,7 +182,7 @@ _header: ""
 ## 5.4 決定木分析
 <figure style="max-width: 75vw;　display: block; margin: 0 auto;">
   <img src="../images/elasticsearch/decision_tree_visualization.png"　 width="100%">
-  <figcaption style="text-align: center; font-size: 2rem;">図4 elasticsearchの決定木</figcaption>
+  <figcaption style="text-align: center; font-size: 2rem;">図6 elasticsearchの決定木</figcaption>
 </figure>
 
 - 陰性クラスのノードのジニ不純度が比較的低い
@@ -229,19 +233,3 @@ Orthogonal Defect Classification（ODC）のような分析手法を活用
 コードメトリクスの変化量を組み合わせることで、より効果的な<br>バグ分類ができるようになった
 
 今後は陽性クラスの分類精度を高め、品質改善に役立つコードの特徴を<br>捉えたい
-
-## 保守性とは
-- JIS X 0129による定義
-  - 修正のしやすさに関するソフトウェア製品の能力
-  - 修正: 「是正」、「向上」、「環境の変化、要求仕様や機能仕様の変更にソフトウェアを適応させること」
-- 保守性メトリクスの例
-  - 複雑度: 循環的複雑度、ネストの深さ
-  - 結合度: ファンイン/ファンアウト
-  - 凝集度: ある変数を参照しているメソッドの割合
-  - サイズ: コード行数、メソッド数
-
-## BugHunter Datasetについて
-- 特定のファイル、クラス、メソッドのデータセット
-- バグ混入コミット（陽性）とバグ修正コミット（陰性）を含む
-- コミットごとのコードメトリクスを計算・記録
-- コミットIDと識別子を使用してデータセットを拡張できる
