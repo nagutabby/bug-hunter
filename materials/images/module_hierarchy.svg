@@ -1,0 +1,58 @@
+<svg viewBox="0 0 900 420" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="mainGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#2c5282;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1a365d;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="moduleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4299e1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2b6cb0;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="subModuleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#90cdf4;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#63b3ed;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <rect x="50" y="180" width="120" height="80" fill="url(#mainGrad)" stroke="#1a202c" stroke-width="2" rx="8"/>
+
+  <rect x="250" y="80" width="100" height="60" fill="url(#moduleGrad)" stroke="#2d3748" stroke-width="2" rx="6"/>
+  <rect x="250" y="180" width="100" height="60" fill="url(#moduleGrad)" stroke="#2d3748" stroke-width="2" rx="6"/>
+  <rect x="250" y="280" width="100" height="60" fill="url(#moduleGrad)" stroke="#2d3748" stroke-width="2" rx="6"/>
+
+  <rect x="450" y="40" width="80" height="40" fill="url(#subModuleGrad)" stroke="#2d3748" stroke-width="1" rx="4"/>
+  <rect x="450" y="100" width="80" height="40" fill="url(#subModuleGrad)" stroke="#2d3748" stroke-width="1" rx="4"/>
+  <rect x="450" y="160" width="80" height="40" fill="url(#subModuleGrad)" stroke="#2d3748" stroke-width="1" rx="4"/>
+  <rect x="450" y="220" width="80" height="40" fill="url(#subModuleGrad)" stroke="#2d3748" stroke-width="1" rx="4"/>
+  <rect x="450" y="280" width="80" height="40" fill="url(#subModuleGrad)" stroke="#2d3748" stroke-width="1" rx="4"/>
+  <rect x="450" y="340" width="80" height="40" fill="url(#subModuleGrad)" stroke="#2d3748" stroke-width="1" rx="4"/>
+
+  <rect x="650" y="40" width="80" height="40" fill="url(#subModuleGrad)" stroke="#2d3748" stroke-width="1" rx="4"/>
+  <rect x="650" y="100" width="80" height="40" fill="url(#subModuleGrad)" stroke="#2d3748" stroke-width="1" rx="4"/>
+  <rect x="650" y="160" width="80" height="40" fill="url(#subModuleGrad)" stroke="#2d3748" stroke-width="1" rx="4"/>
+  <rect x="650" y="220" width="80" height="40" fill="url(#subModuleGrad)" stroke="#2d3748" stroke-width="1" rx="4"/>
+  <rect x="650" y="280" width="80" height="40" fill="url(#subModuleGrad)" stroke="#2d3748" stroke-width="1" rx="4"/>
+  <rect x="650" y="340" width="80" height="40" fill="url(#subModuleGrad)" stroke="#2d3748" stroke-width="1" rx="4"/>
+
+  <line x1="170" y1="200" x2="250" y2="110" stroke="#718096" stroke-width="2"/>
+  <line x1="170" y1="220" x2="250" y2="210" stroke="#718096" stroke-width="2"/>
+  <line x1="170" y1="240" x2="250" y2="310" stroke="#718096" stroke-width="2"/>
+
+  <line x1="350" y1="90" x2="450" y2="60" stroke="#718096" stroke-width="1.5"/>
+  <line x1="350" y1="110" x2="450" y2="120" stroke="#718096" stroke-width="1.5"/>
+
+  <line x1="350" y1="190" x2="450" y2="180" stroke="#718096" stroke-width="1.5"/>
+  <line x1="350" y1="210" x2="450" y2="240" stroke="#718096" stroke-width="1.5"/>
+
+  <line x1="350" y1="300" x2="450" y2="300" stroke="#718096" stroke-width="1.5"/>
+  <line x1="350" y1="320" x2="450" y2="360" stroke="#718096" stroke-width="1.5"/>
+
+  <line x1="530" y1="60" x2="650" y2="60" stroke="#718096" stroke-width="1.5"/>
+  <line x1="530" y1="120" x2="650" y2="120" stroke="#718096" stroke-width="1.5"/>
+  <line x1="530" y1="180" x2="650" y2="180" stroke="#718096" stroke-width="1.5"/>
+  <line x1="530" y1="240" x2="650" y2="240" stroke="#718096" stroke-width="1.5"/>
+  <line x1="530" y1="300" x2="650" y2="300" stroke="#718096" stroke-width="1.5"/>
+  <line x1="530" y1="360" x2="650" y2="360" stroke="#718096" stroke-width="1.5"/>
+
+  <text x="450" y="30" text-anchor="middle" fill="#2d3748" font-family="Arial, sans-serif" font-size="16" font-weight="bold">ソフトウェア構造の複雑化</text>
+</svg>

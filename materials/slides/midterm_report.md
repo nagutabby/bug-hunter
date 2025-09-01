@@ -35,13 +35,13 @@ _paginate: false
 
 ## 1.1 ソフトウェア開発における課題
 <figure style="max-width: 50vw; display: block; margin: 0 auto;">
-  <img src="../images/method_diagram_no_text.svg" width="100%">
-  <figcaption style="text-align: center; font-size: 2rem;">図1 メソッド構造の変化</figcaption>
+  <img src="../images/module_hierarchy.svg" width="100%">
+  <figcaption style="text-align: center; font-size: 2rem;">図1 ソフトウェア構造の複雑化</figcaption>
 </figure>
 
 76%の開発者がリファクタリングによるバグ混入のリスクを認識 <sup>[1]</sup>
 
-ソフトウェアの構造の変化に伴い、クラスや関数の理解が困難に
+ソフトウェア構造の変化に伴い、品質保証とバグの特定が困難に
 
 
 > [1] Microsoft Research, "An Empirical Study of Refactoring Challenges and Benefits at Microsoft"
