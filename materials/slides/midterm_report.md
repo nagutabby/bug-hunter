@@ -19,21 +19,21 @@ _header: ""
 笹川 尋翔
 
 ## 目次
-1. 背景と関連研究
+1. 背景
 2. 目的
-3. データ分析の流れ
+3. 関連研究
 4. 分析手法
 5. 結果
 6. 考察
 7. 課題と展望
 
-# 1. 背景と関連研究
+# 1. 背景
 <!--
 _class: lead
 _paginate: false
 -->
 
-## 1.1 ソフトウェア開発における課題
+## 1. 背景
 <figure style="max-width: 50vw; display: block; margin: 0 auto;">
   <img src="../images/module_hierarchy.svg" width="100%">
   <figcaption style="text-align: center; font-size: 2rem;">図1 ソフトウェア構造の複雑化</figcaption>
@@ -43,10 +43,28 @@ _paginate: false
 
 ソフトウェア構造の変化に伴い、品質保証とバグの特定が困難に
 
-
 > [1] Microsoft Research, "An Empirical Study of Refactoring Challenges and Benefits at Microsoft"
 
-## 1.2 関連研究
+# 2. 目的
+<!--
+_class: lead
+_paginate: false
+-->
+
+## 2. 目的
+- 時系列変化量を用いたバグ予測精度の向上
+  - コードメトリクス（例: メソッドの複雑度・凝集度）の変化量を導入・分析
+- バグの特徴とメトリクスの関係性の解明
+  - バグの特徴を体系的に整理し、保守性とのつながりを明確化
+  - バグの性質ごとにコードの改善策を示す
+
+# 3. 関連研究
+<!--
+_class: lead
+_paginate: false
+-->
+
+## 3. 関連研究
 - レビューコメントを収集し、保守性の低下リスクを分析<sup>[2]</sup>
 - 静的解析ツールを用いてコードの改善策を提示<sup>[3]</sup>
 - コードメトリクスを用いたバグ予測により、コード品質を改善<sup>[4]</sup>
@@ -55,18 +73,6 @@ _paginate: false
 > [3] S.Romano et al., "Do Static Analysis Tools Affect Software Quality when Using Test-driven Development?"
 > [4] R.Ferenc et al., "An automatically created novel bug dataset and its validation in bug prediction"
 
-# 2. 目的
-<!--
-_class: lead
-_paginate: false
--->
-
-## 2 目的
-- 時系列変化量を用いたバグ予測精度の向上
-  - コードメトリクス（例: メソッドの複雑度・凝集度）の変化量を導入・分析
-- バグの特徴とメトリクスの関係性の解明
-  - バグの特徴を体系的に整理し、保守性とのつながりを明確化
-  - バグの性質ごとにコードの改善策を示す
 
 # 3. データ分析の流れ
 <!--
