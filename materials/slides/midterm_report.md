@@ -57,7 +57,6 @@ _paginate: false
   - 例: メソッドの複雑度の変化、テストやドキュメント数の変化
 - 開発プロセスとコードメトリクスの関係性を解明
   - コード自体の変化と開発者の行動を対応付け、具体的な改善策を提示
-  
 
 # 3. 関連研究
 <!--
@@ -120,33 +119,47 @@ _paginate: false
   <thead>
     <tr>
       <th>プロジェクト</th>
-      <th>役割</th>
+      <th>コード行数<br>（概算）</th>
+      <th>コミット数</th>
+      <th>バグレポートの数</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td>antlr4</td>
-      <td>構文解析ツール</td>
+      <td>ANTLR v4</td>
+      <td>68,000</td>
+      <td>6,526</td>
+      <td>179</td>
     </tr>
     <tr>
-      <td>BroadleafCommerce</td>
-      <td>Webアプリフレームワーク</td>
+      <td>Broadleaf Commerce</td>
+      <td>322,000</td>
+      <td>14,920</td>
+      <td>703</td>
     </tr>
     <tr>
-      <td>ceylon-ide-eclipse</td>
-      <td>IDEプラグイン</td>
+      <td>Eclipse plugin for Ceylon</td>
+      <td>181,000</td>
+      <td>7,984</td>
+      <td>923</td>
     </tr>
     <tr>
-      <td>elasticsearch</td>
-      <td>全文検索エンジン</td>
+      <td>Elasticsearch</td>
+      <td>995,000</td>
+      <td>28,815</td>
+      <td>4,494</td>
     </tr>
     <tr>
-      <td>hazelcast</td>
-      <td>インメモリデータベース</td>
+      <td>Hazelcast</td>
+      <td>949,000</td>
+      <td>24,380</td>
+      <td>3,882</td>
     </tr>
     <tr>
-      <td>oryx</td>
-      <td>機械学習フレームワーク</td>
+      <td>Oryx</td>
+      <td>34,000</td>
+      <td>1,054</td>
+      <td>67</td>
     </tr>
   </tbody>
 </table>
