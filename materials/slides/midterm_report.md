@@ -41,7 +41,7 @@ _paginate: false
 
 76%の開発者がリファクタリングによるバグ混入のリスクを認識 <sup>[1]</sup>
 
-ソフトウェア構造の変化に伴い、品質保証とバグの特定が困難に
+ソフトウェア構造が常に変化し、一時的な分析では品質改善が困難に
 
 > [1] Microsoft Research, "An Empirical Study of Refactoring Challenges and Benefits at Microsoft",　2014
 
