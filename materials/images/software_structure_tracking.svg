@@ -1,30 +1,22 @@
 <svg viewBox="0 0 1000 700" xmlns="http://www.w3.org/2000/svg">
-  <!-- 背景 -->
   <rect width="1000" height="700" fill="#f8f9fa"/>
-  
-  <!-- タイトル -->
-  <text x="500" y="30" text-anchor="middle" font-size="24" font-weight="bold" fill="#2c3e50">
-    ソフトウェア構造の変化の追跡
-  </text>
-  
-  <!-- コミットポイント -->
+
+
   <text x="200" y="625" text-anchor="middle" font-size="12" fill="#7f8c8d">コミット1</text>
   <text x="350" y="625" text-anchor="middle" font-size="12" fill="#7f8c8d">コミット2</text>
   <text x="500" y="625" text-anchor="middle" font-size="12" fill="#7f8c8d">コミット3</text>
   <text x="650" y="625" text-anchor="middle" font-size="12" fill="#7f8c8d">コミット4</text>
   <text x="800" y="625" text-anchor="middle" font-size="12" fill="#7f8c8d">コミット5</text>
-  
-  <!-- バグ混入・修正のマーカー -->
+
   <rect x="340" y="55" width="20" height="565" fill="#e74c3c" fill-opacity="0.3"/>
   <text x="350" y="75" text-anchor="middle" font-size="12" fill="#c0392b" font-weight="bold">バグ混入</text>
-  
+
   <rect x="640" y="55" width="20" height="565" fill="#27ae60" fill-opacity="0.3"/>
   <text x="650" y="75" text-anchor="middle" font-size="12" fill="#229954" font-weight="bold">バグ修正</text>
-  
-  <!-- メトリクス1: コード行数 -->
+
   <g>
     <text x="50" y="150" font-size="14" font-weight="bold" fill="#2980b9">コード行数</text>
-    <polyline points="100,200 200,180 350,260 500,230 650,170 800,140" 
+    <polyline points="100,200 200,180 350,260 500,230 650,170 800,140"
               fill="none" stroke="#3498db" stroke-width="3"/>
     <circle cx="200" cy="180" r="4" fill="#3498db"/>
     <circle cx="350" cy="260" r="4" fill="#3498db"/>
@@ -32,11 +24,10 @@
     <circle cx="650" cy="170" r="4" fill="#3498db"/>
     <circle cx="800" cy="140" r="4" fill="#3498db"/>
   </g>
-  
-  <!-- メトリクス2: トークン数 -->
+
   <g>
     <text x="50" y="300" font-size="14" font-weight="bold" fill="#e67e22">トークン数</text>
-    <polyline points="100,340 200,330 350,400 500,380 650,320 800,310" 
+    <polyline points="100,340 200,330 350,400 500,380 650,320 800,310"
               fill="none" stroke="#f39c12" stroke-width="3"/>
     <circle cx="200" cy="330" r="4" fill="#f39c12"/>
     <circle cx="350" cy="400" r="4" fill="#f39c12"/>
@@ -44,11 +35,10 @@
     <circle cx="650" cy="320" r="4" fill="#f39c12"/>
     <circle cx="800" cy="310" r="4" fill="#f39c12"/>
   </g>
-  
-  <!-- メトリクス3: 循環的複雑度 -->
+
   <g>
     <text x="50" y="450" font-size="14" font-weight="bold" fill="#8e44ad">循環的複雑度</text>
-    <polyline points="100,500 200,498 350,515 500,510 650,495 800,490" 
+    <polyline points="100,500 200,498 350,515 500,510 650,495 800,490"
               fill="none" stroke="#9b59b6" stroke-width="3"/>
     <circle cx="200" cy="498" r="4" fill="#9b59b6"/>
     <circle cx="350" cy="515" r="4" fill="#9b59b6"/>
@@ -56,37 +46,33 @@
     <circle cx="650" cy="495" r="4" fill="#9b59b6"/>
     <circle cx="800" cy="490" r="4" fill="#9b59b6"/>
   </g>
-  
-  <!-- 変化量の矢印 -->
-  <!-- バグ混入前後 -->
+
   <g>
     <path d="M 280 205 Q 315 230 340 235" fill="none" stroke="#e74c3c" stroke-width="2" marker-end="url(#arrowhead-red)"/>
-    
+
     <path d="M 280 355 Q 315 377 340 375" fill="none" stroke="#e74c3c" stroke-width="2" marker-end="url(#arrowhead-red)"/>
-    
+
     <path d="M 280 523 Q 315 519 340 515" fill="none" stroke="#e74c3c" stroke-width="2" marker-end="url(#arrowhead-red)"/>
   </g>
-  
-  <!-- バグ修正前後 -->
+
   <g>
     <path d="M 580 255 Q 615 215 640 195" fill="none" stroke="#27ae60" stroke-width="2" marker-end="url(#arrowhead-green)"/>
-    
+
     <path d="M 580 405 Q 615 365 640 345" fill="none" stroke="#27ae60" stroke-width="2" marker-end="url(#arrowhead-green)"/>
-    
+
     <path d="M 580 535 Q 615 515 640 520" fill="none" stroke="#27ae60" stroke-width="2" marker-end="url(#arrowhead-green)"/>
   </g>
-  
-  <!-- 矢印マーカー定義 -->
+
   <defs>
-    <marker id="arrowhead-red" markerWidth="10" markerHeight="7" 
+    <marker id="arrowhead-red" markerWidth="10" markerHeight="7"
             refX="9" refY="3.5" orient="auto">
       <polygon points="0 0, 10 3.5, 0 7" fill="#e74c3c"/>
     </marker>
-    <marker id="arrowhead-green" markerWidth="10" markerHeight="7" 
+    <marker id="arrowhead-green" markerWidth="10" markerHeight="7"
             refX="9" refY="3.5" orient="auto">
       <polygon points="0 0, 10 3.5, 0 7" fill="#27ae60"/>
     </marker>
   </defs>
-  
+
 
 </svg>
