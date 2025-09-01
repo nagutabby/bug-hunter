@@ -22,7 +22,7 @@ _header: ""
 1. 背景
 2. 目的
 3. 関連研究
-4. 分析手法
+4. 分析手順
 5. 結果
 6. 考察
 7. 課題と展望
@@ -73,24 +73,25 @@ _paginate: false
 > [3] S.Romano et al., "Do Static Analysis Tools Affect Software Quality when Using Test-driven Development?"
 > [4] R.Ferenc et al., "An automatically created novel bug dataset and its validation in bug prediction"
 
-
-# 3. データ分析の流れ
+# 4. 分析手順
 <!--
 _class: lead
 _paginate: false
 -->
 
-## 3.1 概要
+## 4. 分析手順
 <figure style="max-width: 55vw; display: block; margin: 0 auto;">
   <img src="../images/data_analysis_flow.svg" width="100%">
   <figcaption style="text-align: center; font-size: 2rem;">図2 データ分析の流れ</figcaption>
 </figure>
 
 1. 時系列変化量を追加
-2. テキストデータをカテゴリカル変数に変換
-3. 特徴量の追加前と追加後のデータを用いて機械学習モデルを学習
+2. テキストデータを数値に変換
+3. 特徴量の追加前・追加後のデータを用いて機械学習モデルを訓練
+4. 各プロジェクトでモデルの性能を評価
 
-## 3.2 時系列変化量の追加
+
+## 4.1 時系列変化量の追加
 <figure style="max-width: 35vw; display: block; margin: 0 auto;">
   <img src="../images/software_structure_tracking.svg" width="100%">
   <figcaption style="text-align: center; font-size: 2rem;">図3 ソフトウェア構造の変化</figcaption>
@@ -98,13 +99,13 @@ _paginate: false
 
 - 単純な時系列データとして、コード行数・トークン数・循環的複雑度の変化量をデータセットに追加
 
-## 3.2 カテゴリカル変数の導入
+## 4.2　テキストデータの数値変換
 - クラスやメソッドの識別子を単語ごとに分解
   - 単語の出現率などの類似性に基づいて学習できるようにする
 - メソッドに対する操作（例: 追加、削除）を表す変数を導入
   - 変化量が欠損値であったときに、その理由を説明できるようにする
 
-## 3.3 機械学習モデルの構築
+## 4.3 機械学習モデルの訓練
 <figure style="max-width: 40vw; display: block; margin: 0 auto;">
   <img src="../images/random_forest_classification.svg" width="100%">
   <figcaption style="text-align: center; font-size: 2rem;">図4 バグの2値分類の概要</figcaption>
@@ -112,13 +113,7 @@ _paginate: false
 
 - 決定木を複数生成し、多数決で境界線を決定
 
-# 4. 分析手法
-<!--
-_class: lead
-_paginate: false
--->
-
-## 4.1 プロジェクトの選定
+## 4.4 プロジェクトごとの性能評価
 <table style="font-size: 2rem; margin: 0 auto;">
   <caption>表1 選定したプロジェクト</caption>
   <thead>
@@ -155,8 +150,7 @@ _paginate: false
   </tbody>
 </table>
 
-## 4.2 プロジェクトの分析
-### 分析手順
+## 4.4 プロジェクトごとの性能評価
 1. 特徴量重要度（Feature Importance）を算出
 2. ヒストグラムで特徴量分布を確認
 3. Partial Depedence Plot（PDP）を用いて分類傾向を把握
