@@ -43,7 +43,7 @@ _paginate: false
 
 ソフトウェア構造の変化に伴い、品質保証とバグの特定が困難に
 
-> [1] Microsoft Research, "An Empirical Study of Refactoring Challenges and Benefits at Microsoft"
+> [1] Microsoft Research, "An Empirical Study of Refactoring Challenges and Benefits at Microsoft",　2014
 
 # 2. 目的
 <!--
@@ -69,9 +69,9 @@ _paginate: false
 - 静的解析ツールを用いてコードの改善策を提示<sup>[3]</sup>
 - コードメトリクスを用いたバグ予測により、コード品質を改善<sup>[4]</sup>
 
-> [2] X.Han et al., "Understanding Code Smell Detection via Code Review: A Study of the OpenStack Community"
-> [3] S.Romano et al., "Do Static Analysis Tools Affect Software Quality when Using Test-driven Development?"
-> [4] R.Ferenc et al., "An automatically created novel bug dataset and its validation in bug prediction"
+> [2] X.Han et al., "Understanding Code Smell Detection via Code Review: A Study of the OpenStack Community", 2021
+> [3] S.Romano et al., "Do Static Analysis Tools Affect Software Quality when Using Test-driven Development?", 2022
+> [4] R.Ferenc et al., "An automatically created novel bug dataset and its validation in bug prediction", 2020
 
 # 4. 分析手順
 <!--
