@@ -106,10 +106,16 @@ _paginate: false
   - 変化量が欠損値であったときに、その理由を説明できるようにする
 
 ## 4.3 機械学習モデルの訓練
-<figure style="max-width: 40vw; display: block; margin: 0 auto;">
-  <img src="../images/random_forest_classification.svg" width="100%">
-  <figcaption style="text-align: center; font-size: 2rem;">図4 バグの2値分類の概要</figcaption>
-</figure>
+<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; align-items: end; width: 110vw; margin: 0 auto;">
+  <figure style="margin: 0;">
+    <img src="../images/decision_tree.svg" width="100%">
+    <figcaption style="text-align: center; font-size: 2rem;">図4 複数の決定木を用いた投票</figcaption>
+  </figure>
+  <figure style="margin: 0;">
+    <img src="../images/random_forest_classification.svg" width="100%">
+    <figcaption style="text-align: center; font-size: 2rem;">図5 決定境界による2値分類</figcaption>
+  </figure>
+</div>
 
 - 決定木を複数生成し、多数決で境界線を決定
 
@@ -179,7 +185,7 @@ _paginate: false
 ## 5.1 特徴量重要度
 <figure style="max-width: 35vw; display: block; margin: 0 auto;">
   <img src="../images/hazelcast/feature_importance_chart.png" width="100%">
-  <figcaption style="text-align: center; font-size: 2rem;">図5 hazelcastの特徴量重要度</figcaption>
+  <figcaption style="text-align: center; font-size: 2rem;">図6 Hazelcastの特徴量重要度</figcaption>
 </figure>
 
 - トークン数・コード行数の変化量、Halsteadメトリクス、Maintainability Indexの重要度が高い
@@ -187,7 +193,7 @@ _paginate: false
 ## 5.2 特徴量分布
 <figure style="max-width: 45vw;　display: block; margin: 0 auto;">
   <img src="../images/ceylon-ide-eclipse/feature_histograms.png" width="100%">
-  <figcaption style="text-align: center; font-size: 2rem;">図6 ceylon-ide-eclipseの特徴量分布</figcaption>
+  <figcaption style="text-align: center; font-size: 2rem;">図7 Eclipse plugin for Ceylonの特徴量分布</figcaption>
 </figure>
 
 - 変化量やHalstead系は分散が小さく、Maintainability Indexは<br>分散が大きい
@@ -195,7 +201,7 @@ _paginate: false
 ## 5.3 PDP分析
 <figure style="max-width: 45vw;　display: block; margin: 0 auto;">
   <img src="../images/elasticsearch/partial_dependence_plots.png" width="100%">
-  <figcaption style="text-align: center; font-size: 2rem;">図7 elasticsearchのPDP</figcaption>
+  <figcaption style="text-align: center; font-size: 2rem;">図8 ElasticsearchのPDP</figcaption>
 </figure>
 
 - ほとんどの特徴量において、陽性クラスの予測確率が0.5未満
@@ -203,7 +209,7 @@ _paginate: false
 ## 5.4 決定木分析
 <figure style="max-width: 45vw;　display: block; margin: 0 auto;">
   <img src="../images/elasticsearch/decision_tree_visualization.png"　 width="100%">
-  <figcaption style="text-align: center; font-size: 2rem;">図8 elasticsearchの決定木</figcaption>
+  <figcaption style="text-align: center; font-size: 2rem;">図9 Elasticsearchの決定木</figcaption>
 </figure>
 
 - 陰性クラスのノードのジニ不純度が比較的低い
@@ -220,27 +226,27 @@ _paginate: false
   </thead>
   <tbody>
     <tr>
-      <td>ceylon-ide-eclipse</td>
+      <td>Eclipse plugin for Ceylon</td>
       <td>0.39</td>
       <td>0.49</td>
     </tr>
     <tr>
-      <td>elasticsearch</td>
+      <td>Elasticsearch</td>
       <td>0.62</td>
       <td>0.72</td>
     </tr>
     <tr>
-      <td>hazelcast</td>
+      <td>Hazelcast</td>
       <td>0.67</td>
       <td>0.71</td>
     </tr>
     <tr>
-      <td>antlr4</td>
+      <td>ANTLR v4</td>
       <td>0.45</td>
       <td>0.48</td>
     </tr>
     <tr>
-      <td>oryx</td>
+      <td>Oryx</td>
       <td>0.33</td>
       <td>0.39</td>
     </tr>
