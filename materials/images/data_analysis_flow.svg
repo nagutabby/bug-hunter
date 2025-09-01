@@ -1,37 +1,40 @@
-<svg viewBox="0 0 1120 320" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <marker id="arrowhead" markerWidth="10" markerHeight="7"
-            refX="9" refY="3.5" orient="auto">
-      <polygon points="0 0, 10 3.5, 0 7" fill="#333" />
-    </marker>
-  </defs>
+<svg viewBox="0 0 1200 320" xmlns="http://www.w3.org/2000/svg">
+  <line x1="30" y1="140" x2="1160" y2="140" stroke="#333" stroke-width="3"/>
 
   <g>
-    <rect x="50" y="60" width="280" height="160" rx="15" fill="#E8F1FB" stroke="#B8D4F0" stroke-width="2"/>
-    <text x="190" y="95" text-anchor="middle" font-size="22" font-weight="bold" fill="#333">Step 1</text>
-    <text x="190" y="125" text-anchor="middle" font-size="18" fill="#333">時系列変化量の追加</text>
-    <text x="70" y="155" font-size="16" fill="#333">• コード行数、トークン数、</text>
-    <text x="80" y="180" font-size="16" fill="#333">循環的複雑度の変化量を追加</text>
+    <rect x="30" y="60" width="260" height="160" rx="15" fill="#E8F1FB" stroke="#B8D4F0" stroke-width="2"/>
+    <text x="160" y="95" text-anchor="middle" font-size="20" font-weight="bold" fill="#333">Step 1</text>
+    <text x="160" y="120" text-anchor="middle" font-size="16" fill="#333">時系列変化量を追加</text>
+    <text x="50" y="145" font-size="14" fill="#333">• コード行数、トークン数、</text>
+    <text x="60" y="165" font-size="14" fill="#333">循環的複雑度の変化量を追加</text>
+    <text x="50" y="185" font-size="14" fill="#333">• 単純な時系列データとして処理</text>
   </g>
-
-  <line x1="350" y1="140" x2="390" y2="140" stroke="#333" stroke-width="3" marker-end="url(#arrowhead)"/>
 
   <g>
-    <rect x="410" y="60" width="280" height="160" rx="15" fill="#E8F5E8" stroke="#B8E0B8" stroke-width="2"/>
-    <text x="550" y="95" text-anchor="middle" font-size="22" font-weight="bold" fill="#333">Step 2</text>
-    <text x="550" y="125" text-anchor="middle" font-size="18" fill="#333">カテゴリカル変数の導入</text>
-    <text x="430" y="155" font-size="16" fill="#333">• テキストを単語ごとに分割</text>
-    <text x="430" y="180" font-size="16" fill="#333">• メソッド操作の種類を追加</text>
+    <rect x="320" y="60" width="260" height="160" rx="15" fill="#E8F5E8" stroke="#B8E0B8" stroke-width="2"/>
+    <text x="450" y="95" text-anchor="middle" font-size="20" font-weight="bold" fill="#333">Step 2</text>
+    <text x="450" y="120" text-anchor="middle" font-size="16" fill="#333">テキストデータを数値に変換</text>
+    <text x="340" y="145" font-size="14" fill="#333">• クラス・メソッドの識別子を</text>
+    <text x="350" y="165" font-size="14" fill="#333">単語ごとに分解</text>
+    <text x="340" y="185" font-size="14" fill="#333">• メソッド操作の種類を追加</text>
   </g>
-
-  <line x1="710" y1="140" x2="750" y2="140" stroke="#333" stroke-width="3" marker-end="url(#arrowhead)"/>
 
   <g>
-    <rect x="770" y="60" width="280" height="160" rx="15" fill="#FDF2E8" stroke="#F5E0B8" stroke-width="2"/>
-    <text x="910" y="95" text-anchor="middle" font-size="22" font-weight="bold" fill="#333">Step 3</text>
-    <text x="910" y="125" text-anchor="middle" font-size="18" fill="#333">機械学習モデルの構築</text>
-    <text x="790" y="155" font-size="16" fill="#333">• 特徴量の追加前・追加後の</text>
-    <text x="800" y="180" font-size="16" fill="#333">データを用いてモデルを学習</text>
+    <rect x="610" y="60" width="260" height="160" rx="15" fill="#FDF2E8" stroke="#F5E0B8" stroke-width="2"/>
+    <text x="740" y="95" text-anchor="middle" font-size="20" font-weight="bold" fill="#333">Step 3</text>
+    <text x="740" y="120" text-anchor="middle" font-size="16" fill="#333">機械学習モデルの訓練</text>
+    <text x="630" y="145" font-size="14" fill="#333">• 特徴量の追加前・追加後の</text>
+    <text x="640" y="165" font-size="14" fill="#333">データを用いてモデルを学習</text>
+    <text x="630" y="185" font-size="14" fill="#333">• 決定木を複数生成し多数決</text>
   </g>
 
-  </svg>
+  <g>
+    <rect x="900" y="60" width="260" height="160" rx="15" fill="#F5E8FD" stroke="#D8B8F5" stroke-width="2"/>
+    <text x="1030" y="95" text-anchor="middle" font-size="20" font-weight="bold" fill="#333">Step 4</text>
+    <text x="1030" y="120" text-anchor="middle" font-size="16" fill="#333">モデルの性能評価</text>
+    <text x="920" y="145" font-size="14" fill="#333">• 特徴量重要度</text>
+    <text x="920" y="165" font-size="14" fill="#333">• PDP分析</text>
+    <text x="920" y="185" font-size="14" fill="#333">• 決定木可視化</text>
+  </g>
+
+</svg>
