@@ -34,7 +34,7 @@ _paginate: false
 -->
 
 ## 1. 背景
-<figure style="max-width: 50vw; display: block; margin: 0 auto;">
+<figure style="max-width: 40vw; display: block; margin: 0 auto;">
   <img src="../images/module_hierarchy.svg" width="100%">
   <figcaption style="text-align: center; font-size: 2rem;">図1 ソフトウェア構造の複雑化</figcaption>
 </figure>
@@ -106,7 +106,7 @@ _paginate: false
   - 変化量が欠損した理由を説明できるようにする
 
 ## 4.3 機械学習モデルの訓練
-<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; align-items: end; width: 110vw; margin: 0 auto;">
+<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; align-items: end; width: 80vw; margin: 0 auto;">
   <figure style="margin: 0;">
     <img src="../images/decision_tree.svg" width="100%">
     <figcaption style="text-align: center; font-size: 2rem;">図4 複数の決定木を用いた投票</figcaption>
@@ -191,7 +191,7 @@ _paginate: false
 - トークン数・コード行数の変化量、Halsteadメトリクス、Maintainability Indexの重要度が高い
 
 ## 5.2 特徴量分布
-<figure style="max-width: 45vw;　display: block; margin: 0 auto;">
+<figure style="max-width: 40vw;　display: block; margin: 0 auto;">
   <img src="../images/ceylon-ide-eclipse/feature_histograms.png" width="100%">
   <figcaption style="text-align: center; font-size: 2rem;">図7 Eclipse plugin for Ceylonの特徴量分布</figcaption>
 </figure>
