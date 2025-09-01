@@ -53,6 +53,4 @@
   <line x1="530" y1="240" x2="650" y2="240" stroke="#718096" stroke-width="1.5"/>
   <line x1="530" y1="300" x2="650" y2="300" stroke="#718096" stroke-width="1.5"/>
   <line x1="530" y1="360" x2="650" y2="360" stroke="#718096" stroke-width="1.5"/>
-
-  <text x="450" y="30" text-anchor="middle" fill="#2d3748" font-family="Arial, sans-serif" font-size="16" font-weight="bold">ソフトウェア構造の複雑化</text>
 </svg>
