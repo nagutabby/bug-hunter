@@ -30,7 +30,6 @@ _header: ""
 <!--
 _class: lead
 _paginate: false
-_header: ""
 -->
 
 ## 1.1 ソフトウェア開発における課題
@@ -59,7 +58,6 @@ _header: ""
 <!--
 _class: lead
 _paginate: false
-_header: ""
 -->
 
 ## 2 目的
@@ -73,7 +71,6 @@ _header: ""
 <!--
 _class: lead
 _paginate: false
-_header: ""
 -->
 
 ## 3.1 概要
@@ -112,7 +109,6 @@ _header: ""
 <!--
 _class: lead
 _paginate: false
-_header: ""
 -->
 
 ## 4.1 プロジェクトの選定
@@ -163,7 +159,6 @@ _header: ""
 <!--
 _class: lead
 _paginate: false
-_header: ""
 -->
 
 ## 5.1 特徴量重要度
@@ -243,7 +238,6 @@ _header: ""
 <!--
 _class: lead
 _paginate: false
-_header: ""
 -->
 
 ## 6 考察
@@ -260,7 +254,6 @@ PDPや決定木を見ると、陽性クラスの予測確率が低い
 <!--
 _class: lead
 _paginate: false
-_header: ""
 -->
 
 ## 7 課題と展望
