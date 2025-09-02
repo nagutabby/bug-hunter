@@ -27,12 +27,6 @@ _header: ""
 6. 考察
 7. 課題と展望
 
-# 1. 背景
-<!--
-_class: lead
-_paginate: false
--->
-
 ## 1. 背景
 <figure style="max-width: 40vw; display: block; margin: 0 auto;">
   <img src="../images/module_hierarchy.svg" width="100%">
@@ -45,24 +39,12 @@ _paginate: false
 
 > [1] Microsoft Research, "An Empirical Study of Refactoring Challenges and Benefits at Microsoft",　2014
 
-# 2. 目的
-<!--
-_class: lead
-_paginate: false
--->
-
 ## 2. 目的
 - 保守性指標の時系列変化量を品質改善に役立てる
   - これまで考慮されていなかった保守性の変化に着目
   - 例: メソッドの複雑度の変化、テストやドキュメント数の変化
 - 開発プロセスとコードメトリクスの関係性を解明
   - コード自体の変化と開発者の行動を対応付け、具体的な改善策を提示
-
-# 3. 関連研究
-<!--
-_class: lead
-_paginate: false
--->
 
 ## 3. 関連研究
 - レビューコメントを収集し、保守性の低下リスクを分析<sup>[2]</sup>
@@ -72,12 +54,6 @@ _paginate: false
 > [2] X.Han et al., "Understanding Code Smell Detection via Code Review: A Study of the OpenStack Community", 2021
 > [3] S.Romano et al., "Do Static Analysis Tools Affect Software Quality when Using Test-driven Development?", 2022
 > [4] R.Ferenc et al., "An automatically created novel bug dataset and its validation in bug prediction", 2020
-
-# 4. 分析手順
-<!--
-_class: lead
-_paginate: false
--->
 
 ## 4. 分析手順
 <figure style="max-width: 55vw; display: block; margin: 0 auto;">
@@ -176,12 +152,6 @@ _paginate: false
 3. Partial Depedence Plot（PDP）を用いて分類傾向を把握
 4. 決定木で分類の流れを可視化し、判断の基準と信頼性を確認
 
-# 5. 結果
-<!--
-_class: lead
-_paginate: false
--->
-
 ## 5.1 特徴量重要度
 <figure style="max-width: 35vw; display: block; margin: 0 auto;">
   <img src="../images/hazelcast/feature_importance_chart.png" width="100%">
@@ -255,12 +225,6 @@ _paginate: false
 
 モデルの予測性能が改善される傾向があることを確認
 
-# 6. 考察
-<!--
-_class: lead
-_paginate: false
--->
-
 ## 6. 考察
 ### 陰性クラス予測の改善
 リファクタリングによるメトリクスの減少傾向を確認できた
@@ -270,12 +234,6 @@ _paginate: false
 PDPや決定木を見ると、陽性クラスの予測確率が低い
 
 バグの混入理由が多様であることが影響している可能性
-
-# 7. 課題と展望
-<!--
-_class: lead
-_paginate: false
--->
 
 ## 7. 課題と展望
 ### 開発プロセスの理解
