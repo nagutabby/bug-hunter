@@ -28,27 +28,27 @@ _header: ""
 7. 課題と展望
 
 ## 1. 背景
+76%の開発者がリファクタリングによるバグ混入のリスクを認識 <sup>[1]</sup>
+
+モジュール内部や外部の構造が変化し、静的分析では品質改善が困難に
+
 <figure style="max-width: 50vw; display: block; margin: 0 auto;">
   <img src="../images/module_hierarchy.svg" width="100%">
   <figcaption style="text-align: center; font-size: 2rem;">図1 欠陥の混入と顕在化</figcaption>
 </figure>
 
-76%の開発者がリファクタリングによるバグ混入のリスクを認識 <sup>[1]</sup>
-
-モジュール内部や外部の構造が変化し、静的分析では品質改善が困難に
-
 > [1] Microsoft Research, "An Empirical Study of Refactoring Challenges and Benefits at Microsoft,"　2014
 
 ## 2. 目的
-<!-->ToDo: 理想の状態を図で示す<-->
 - ソフトウェアメトリクスの時間的変化を通じてバグ混入リスクを事前に特定
 - 保守性の低下傾向を早期に検出し、バグが発生する前に対策を<br>講じるための情報を提供
 
-
+<figure style="max-width: 50vw; display: block; margin: 0 auto;">
+  <img src="../images/defect_prediction.svg" width="100%">
+  <figcaption style="text-align: center; font-size: 2rem;">図2 欠陥の特定と修正</figcaption>
+</figure>
 
 ## 3. 関連研究
-<!--># ToDo: Just-in-Timeソフトウェア欠陥予測の研究を追記<-->
-<!--># ToDo: それぞれの研究の長所と短所を書く<-->
 - Hanらは、レビューの分析により欠陥の種類を調査したが、レビューのうち70%では明示的に欠陥が指摘されなかった<sup>[2]</sup>
 - Romanoらは、静的なしきい値に基づいた警告が欠陥修正作業を効率化することを示したが、動的なしきい値については検証していない<sup>[3]</sup>
 
