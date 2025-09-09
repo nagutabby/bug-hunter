@@ -113,10 +113,16 @@ _header: ""
 
 > Y. Zhao et al., "A Systematic Survey of Just-in-Time Software Defect Prediction," 2023
 
-<!-->## ToDo: ケーススタディを第5章として独立させる<-->
-## 5.1 プロジェクトごとの性能評価
-<!-->## ToDo: プロジェクトの規模の降順に並べる<-->
-<!-->## ToDo: 5.1と5.2の順番を入れ替える<-->
+## 5. ケーススタディ
+- プロジェクト内の適用可能性を調べるために、<br>BugHunter Datasetから6プロジェクトを選択し、欠陥の有無を予測
+
+## 5.1 分析手法
+1. 特徴量重要度（Feature Importance）を算出
+2. ヒストグラムで特徴量分布を確認
+3. Partial Depedence Plot（PDP）を用いて分類傾向を把握
+4. 決定木で分類の流れを可視化し、判断の基準と確信度を確認
+
+## 5.2 プロジェクト内分析
 <table style="font-size: 2rem; margin: 0 auto;">
   <caption>表1 選定したプロジェクト</caption>
   <thead>
@@ -129,10 +135,16 @@ _header: ""
   </thead>
   <tbody>
     <tr>
-      <td>ANTLR v4</td>
-      <td>68,000</td>
-      <td>6,526</td>
-      <td>179</td>
+      <td>Elasticsearch</td>
+      <td>995,000</td>
+      <td>28,815</td>
+      <td>4,494</td>
+    </tr>
+    <tr>
+      <td>Hazelcast</td>
+      <td>949,000</td>
+      <td>24,380</td>
+      <td>3,882</td>
     </tr>
     <tr>
       <td>Broadleaf Commerce</td>
@@ -147,16 +159,10 @@ _header: ""
       <td>923</td>
     </tr>
     <tr>
-      <td>Elasticsearch</td>
-      <td>995,000</td>
-      <td>28,815</td>
-      <td>4,494</td>
-    </tr>
-    <tr>
-      <td>Hazelcast</td>
-      <td>949,000</td>
-      <td>24,380</td>
-      <td>3,882</td>
+      <td>ANTLR v4</td>
+      <td>68,000</td>
+      <td>6,526</td>
+      <td>179</td>
     </tr>
     <tr>
       <td>Oryx</td>
@@ -167,19 +173,13 @@ _header: ""
   </tbody>
 </table>
 
-## 5.2 プロジェクトごとの性能評価
-1. 特徴量重要度（Feature Importance）を算出
-2. ヒストグラムで特徴量分布を確認
-3. Partial Depedence Plot（PDP）を用いて分類傾向を把握
-4. 決定木で分類の流れを可視化し、判断の基準と信頼性を確認
-
 ## 5.3 特徴量重要度
 
 - トークン数・コード行数の変化量、Halsteadメトリクス、Maintainability Indexの重要度が高い
 
 <figure style="max-width: 35vw; display: block; margin: 0 auto;">
   <img src="../images/hazelcast/feature_importance_chart.png" width="100%">
-  <figcaption style="text-align: center; font-size: 2rem;">図7 Hazelcastの特徴量重要度</figcaption>
+  <figcaption style="text-align: center; font-size: 2rem;">図8 代表的な特徴量重要度</figcaption>
 </figure>
 
 ## 5.4 特徴量分布
@@ -188,25 +188,25 @@ _header: ""
 
 <figure style="max-width: 40vw;　display: block; margin: 0 auto;">
   <img src="../images/ceylon-ide-eclipse/feature_histograms.png" width="100%">
-  <figcaption style="text-align: center; font-size: 2rem;">図8 Eclipse plugin for Ceylonの特徴量分布</figcaption>
+  <figcaption style="text-align: center; font-size: 2rem;">図9 代表的な特徴量分布</figcaption>
 </figure>
 
 ## 5.5 PDP分析
 
-- ほとんどの特徴量において、陽性クラスの予測確率が0.5未満
+- ほとんどの特徴量において、バグありの予測確率が0.5未満
 
 <figure style="max-width: 45vw;　display: block; margin: 0 auto;">
   <img src="../images/elasticsearch/partial_dependence_plots.png" width="100%">
-  <figcaption style="text-align: center; font-size: 2rem;">図9 ElasticsearchのPDP</figcaption>
+  <figcaption style="text-align: center; font-size: 2rem;">図10 代表的なPDP</figcaption>
 </figure>
 
 ## 5.6 決定木分析
 
-- 陰性クラスのノードのジニ不純度が比較的低い
+- バグなしと判断したときの確信度が比較的高い
 
 <figure style="max-width: 45vw;　display: block; margin: 0 auto;">
   <img src="../images/elasticsearch/decision_tree_visualization.png"　 width="100%">
-  <figcaption style="text-align: center; font-size: 2rem;">図10 Elasticsearchの決定木</figcaption>
+  <figcaption style="text-align: center; font-size: 2rem;">図11 代表的な決定木</figcaption>
 </figure>
 
 ## 5.7 評価指標の測定
@@ -251,24 +251,13 @@ _header: ""
 モデルの予測性能が改善される傾向があることを確認
 
 ## 6. 評価
-## ToDo: 達成できたこととできなかったことを書く
-### 陰性クラス予測の改善
-リファクタリングによるメトリクスの減少傾向を確認できた
-
-消去法的な分類がF1スコアの改善に寄与
-### さらなる精度向上に向けて
-PDPや決定木を見ると、陽性クラスの予測確率が低い
+- 達成できたこと
+  - ソフトウェアメトリクスのコミット間の変化量を活用することで<br>より精度の高い分類ができることを示した
+- 達成できなかったこと
+  -  欠陥混入の根本的な原因である開発プロセスについて分析していない
 
 ## 7. 課題と展望
-## ToDo: 達成できなかったことへの対処法だけでなく、最終目的の達成に向けた道のりを書く
-### 開発プロセスの定量的な分析
-レビュー記録や自動テストの内容からバグが生じる状況を説明
-### 陽性クラスの詳細な分類による因果関係の具体化
-開発プロセスやコードメトリクスの変化がバグにどのように影響するかを<br>明らかにする
-
-## まとめ
-半数のプロジェクトで有意差があり、F1スコアが最大0.1向上
-
-コードメトリクスの変化量を組み合わせることで、より効果的な<br>バグ分類ができるようになった
-
-今後は陽性クラスの分類精度を高め、品質改善に役立つ特徴を探す
+- 開発プロセスを定量的に分析
+  - VCS（Version Control System）を活用し、開発プロセス関連の情報を得る
+- 欠陥予測の確信度を改善
+  - タスクの優先順位付けを行いやすくし、リスクに基づいた意思決定を支援
