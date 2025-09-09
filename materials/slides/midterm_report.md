@@ -68,7 +68,7 @@ _header: ""
 3. 特徴量の追加前・追加後のデータを用いて機械学習モデルを訓練
 4. 各プロジェクトでモデルの性能を評価
 
-<figure style="max-width: 55vw; display: block; margin: 0 auto;">
+<figure style="max-width: 50vw; display: block; margin: 0 auto;">
   <img src="../images/data_analysis_flow.svg" width="100%">
   <figcaption style="text-align: center; font-size: 2rem;">図3 分析手順</figcaption>
 </figure>
@@ -90,7 +90,7 @@ _header: ""
 
 ## 4.3 機械学習モデルの訓練
 
-<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; align-items: end; width: 100vw; margin: 0 auto;">
+<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; align-items: end; width: 80vw; margin: 0 auto;">
   <figure style="margin: 0;">
     <img src="../images/bootstrap_sampling.svg" width="100%">
     <figcaption style="text-align: center; font-size: 2rem;">図5 ブートストラップ法</figcaption>
