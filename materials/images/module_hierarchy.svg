@@ -1,56 +1,56 @@
-<svg viewBox="0 0 900 420" xmlns="http://www.w3.org/2000/svg">
+<svg width="750" height="200" xmlns="http://www.w3.org/2000/svg">
+  <rect x="50" y="50" width="120" height="100" fill="#f0f0f0" stroke="#333" stroke-width="2" rx="5"/>
+
+  <rect x="62.5" y="70" width="25" height="25" fill="#90EE90" stroke="#333" stroke-width="1"/>
+  <rect x="97.5" y="70" width="25" height="25" fill="#90EE90" stroke="#333" stroke-width="1"/>
+  <rect x="132.5" y="70" width="25" height="25" fill="#90EE90" stroke="#333" stroke-width="1"/>
+
+  <rect x="62.5" y="105" width="25" height="25" fill="#90EE90" stroke="#333" stroke-width="1"/>
+  <rect x="97.5" y="105" width="25" height="25" fill="#90EE90" stroke="#333" stroke-width="1"/>
+  <rect x="132.5" y="105" width="25" height="25" fill="#90EE90" stroke="#333" stroke-width="1"/>
+
+  <rect x="200" y="50" width="120" height="100" fill="#f0f0f0" stroke="#333" stroke-width="2" rx="5"/>
+
+  <rect x="212.5" y="70" width="25" height="25" fill="#90EE90" stroke="#333" stroke-width="1"/>
+  <rect x="247.5" y="70" width="25" height="25" fill="#90EE90" stroke="#333" stroke-width="1"/>
+  <rect x="282.5" y="70" width="25" height="25" fill="#90EE90" stroke="#333" stroke-width="1"/>
+
+  <rect x="212.5" y="105" width="25" height="25" fill="#FFD700" stroke="#333" stroke-width="1"/>
+  <rect x="247.5" y="105" width="25" height="25" fill="#90EE90" stroke="#333" stroke-width="1"/>
+  <rect x="282.5" y="105" width="25" height="25" fill="#90EE90" stroke="#333" stroke-width="1"/>
+
+  <rect x="350" y="50" width="120" height="100" fill="#f0f0f0" stroke="#333" stroke-width="2" rx="5"/>
+
+  <rect x="362.5" y="70" width="25" height="25" fill="#90EE90" stroke="#333" stroke-width="1"/>
+  <rect x="397.5" y="70" width="25" height="25" fill="#90EE90" stroke="#333" stroke-width="1"/>
+  <rect x="432.5" y="70" width="25" height="25" fill="#90EE90" stroke="#333" stroke-width="1"/>
+
+  <rect x="362.5" y="105" width="25" height="25" fill="#FFD700" stroke="#333" stroke-width="1"/>
+  <rect x="397.5" y="105" width="25" height="25" fill="#90EE90" stroke="#333" stroke-width="1"/>
+  <rect x="432.5" y="105" width="25" height="25" fill="#90EE90" stroke="#333" stroke-width="1"/>
+
+  <rect x="500" y="50" width="120" height="100" fill="#f0f0f0" stroke="#333" stroke-width="2" rx="5"/>
+
+  <rect x="512.5" y="70" width="25" height="25" fill="#90EE90" stroke="#333" stroke-width="1"/>
+  <rect x="547.5" y="70" width="25" height="25" fill="#90EE90" stroke="#333" stroke-width="1"/>
+  <rect x="582.5" y="70" width="25" height="25" fill="#90EE90" stroke="#333" stroke-width="1"/>
+
+  <rect x="512.5" y="105" width="25" height="25" fill="#FF4444" stroke="#333" stroke-width="1"/>
+  <rect x="547.5" y="105" width="25" height="25" fill="#90EE90" stroke="#333" stroke-width="1"/>
+  <rect x="582.5" y="105" width="25" height="25" fill="#90EE90" stroke="#333" stroke-width="1"/>
+
   <defs>
-    <linearGradient id="mainGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#2c5282;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#1a365d;stop-opacity:1" />
-    </linearGradient>
-    <linearGradient id="moduleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#4299e1;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#2b6cb0;stop-opacity:1" />
-    </linearGradient>
-    <linearGradient id="subModuleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#90cdf4;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#63b3ed;stop-opacity:1" />
-    </linearGradient>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#333"/>
+    </marker>
   </defs>
 
-  <rect x="50" y="180" width="120" height="80" fill="url(#mainGrad)" stroke="#1a202c" stroke-width="2" rx="8"/>
+  <line x1="170" y1="100" x2="200" y2="100" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <line x1="320" y1="100" x2="350" y2="100" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <line x1="470" y1="100" x2="500" y2="100" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
 
-  <rect x="250" y="80" width="100" height="60" fill="url(#moduleGrad)" stroke="#2d3748" stroke-width="2" rx="6"/>
-  <rect x="250" y="180" width="100" height="60" fill="url(#moduleGrad)" stroke="#2d3748" stroke-width="2" rx="6"/>
-  <rect x="250" y="280" width="100" height="60" fill="url(#moduleGrad)" stroke="#2d3748" stroke-width="2" rx="6"/>
-
-  <rect x="450" y="40" width="80" height="40" fill="url(#subModuleGrad)" stroke="#2d3748" stroke-width="1" rx="4"/>
-  <rect x="450" y="100" width="80" height="40" fill="url(#subModuleGrad)" stroke="#2d3748" stroke-width="1" rx="4"/>
-  <rect x="450" y="160" width="80" height="40" fill="url(#subModuleGrad)" stroke="#2d3748" stroke-width="1" rx="4"/>
-  <rect x="450" y="220" width="80" height="40" fill="url(#subModuleGrad)" stroke="#2d3748" stroke-width="1" rx="4"/>
-  <rect x="450" y="280" width="80" height="40" fill="url(#subModuleGrad)" stroke="#2d3748" stroke-width="1" rx="4"/>
-  <rect x="450" y="340" width="80" height="40" fill="url(#subModuleGrad)" stroke="#2d3748" stroke-width="1" rx="4"/>
-
-  <rect x="650" y="40" width="80" height="40" fill="url(#subModuleGrad)" stroke="#2d3748" stroke-width="1" rx="4"/>
-  <rect x="650" y="100" width="80" height="40" fill="url(#subModuleGrad)" stroke="#2d3748" stroke-width="1" rx="4"/>
-  <rect x="650" y="160" width="80" height="40" fill="url(#subModuleGrad)" stroke="#2d3748" stroke-width="1" rx="4"/>
-  <rect x="650" y="220" width="80" height="40" fill="url(#subModuleGrad)" stroke="#2d3748" stroke-width="1" rx="4"/>
-  <rect x="650" y="280" width="80" height="40" fill="url(#subModuleGrad)" stroke="#2d3748" stroke-width="1" rx="4"/>
-  <rect x="650" y="340" width="80" height="40" fill="url(#subModuleGrad)" stroke="#2d3748" stroke-width="1" rx="4"/>
-
-  <line x1="170" y1="200" x2="250" y2="110" stroke="#718096" stroke-width="2"/>
-  <line x1="170" y1="220" x2="250" y2="210" stroke="#718096" stroke-width="2"/>
-  <line x1="170" y1="240" x2="250" y2="310" stroke="#718096" stroke-width="2"/>
-
-  <line x1="350" y1="90" x2="450" y2="60" stroke="#718096" stroke-width="1.5"/>
-  <line x1="350" y1="110" x2="450" y2="120" stroke="#718096" stroke-width="1.5"/>
-
-  <line x1="350" y1="190" x2="450" y2="180" stroke="#718096" stroke-width="1.5"/>
-  <line x1="350" y1="210" x2="450" y2="240" stroke="#718096" stroke-width="1.5"/>
-
-  <line x1="350" y1="300" x2="450" y2="300" stroke="#718096" stroke-width="1.5"/>
-  <line x1="350" y1="320" x2="450" y2="360" stroke="#718096" stroke-width="1.5"/>
-
-  <line x1="530" y1="60" x2="650" y2="60" stroke="#718096" stroke-width="1.5"/>
-  <line x1="530" y1="120" x2="650" y2="120" stroke="#718096" stroke-width="1.5"/>
-  <line x1="530" y1="180" x2="650" y2="180" stroke="#718096" stroke-width="1.5"/>
-  <line x1="530" y1="240" x2="650" y2="240" stroke="#718096" stroke-width="1.5"/>
-  <line x1="530" y1="300" x2="650" y2="300" stroke="#718096" stroke-width="1.5"/>
-  <line x1="530" y1="360" x2="650" y2="360" stroke="#718096" stroke-width="1.5"/>
+  <text x="110" y="40" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold">A</text>
+  <text x="260" y="40" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold">B</text>
+  <text x="410" y="40" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold">C</text>
+  <text x="560" y="40" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold">D</text>
 </svg>

@@ -23,42 +23,51 @@ _header: ""
 2. 目的
 3. 関連研究
 4. 分析手順
-5. 結果
-6. 考察
+5. ケーススタディ
+6. 評価
 7. 課題と展望
 
 ## 1. 背景
-<figure style="max-width: 40vw; display: block; margin: 0 auto;">
+<figure style="max-width: 50vw; display: block; margin: 0 auto;">
   <img src="../images/module_hierarchy.svg" width="100%">
-  <figcaption style="text-align: center; font-size: 2rem;">図1 ソフトウェア構造の複雑化</figcaption>
+  <figcaption style="text-align: center; font-size: 2rem;">図1 欠陥の混入と顕在化</figcaption>
 </figure>
 
 76%の開発者がリファクタリングによるバグ混入のリスクを認識 <sup>[1]</sup>
 
-ソフトウェア構造が常に変化し、一時的な分析では品質改善が困難に
+モジュール内部や外部の構造が変化し、静的分析では品質改善が困難に
 
-> [1] Microsoft Research, "An Empirical Study of Refactoring Challenges and Benefits at Microsoft",　2014
+> [1] Microsoft Research, "An Empirical Study of Refactoring Challenges and Benefits at Microsoft,"　2014
 
 ## 2. 目的
-- 保守性指標の時系列変化量を品質改善に役立てる
-  - これまで考慮されていなかった保守性の変化に着目
-  - 例: メソッドの複雑度の変化、テストやドキュメント数の変化
-- 開発プロセスとコードメトリクスの関係性を解明
-  - コード自体の変化と開発者の行動を対応付け、具体的な改善策を提示
+<!-->ToDo: 理想の状態を図で示す<-->
+- ソフトウェアメトリクスの時間的変化を通じてバグ混入リスクを事前に特定
+- 保守性の低下傾向を早期に検出し、バグが発生する前に対策を<br>講じるための情報を提供
+
+
 
 ## 3. 関連研究
-- レビューコメントを収集し、保守性の低下リスクを分析<sup>[2]</sup>
-- 静的解析ツールを用いてコードの改善策を提示<sup>[3]</sup>
-- コードメトリクスを用いたバグ予測により、コード品質を改善<sup>[4]</sup>
+<!--># ToDo: Just-in-Timeソフトウェア欠陥予測の研究を追記<-->
+<!--># ToDo: それぞれの研究の長所と短所を書く<-->
+- Hanらは、レビューの分析により欠陥の種類を調査したが、レビューのうち70%では明示的に欠陥が指摘されなかった<sup>[2]</sup>
+- Romanoらは、静的なしきい値に基づいた警告が欠陥修正作業を効率化することを示したが、動的なしきい値については検証していない<sup>[3]</sup>
 
-> [2] X.Han et al., "Understanding Code Smell Detection via Code Review: A Study of the OpenStack Community", 2021
-> [3] S.Romano et al., "Do Static Analysis Tools Affect Software Quality when Using Test-driven Development?", 2022
-> [4] R.Ferenc et al., "An automatically created novel bug dataset and its validation in bug prediction", 2020
+> [2] X.Han et al., "Understanding Code Smell Detection via Code Review: A Study of the OpenStack Community," 2021
+> [3] S.Romano et al., "Do Static Analysis Tools Affect Software Quality when Using Test-driven Development?," 2022
+
+## 3. 関連研究
+- Ferencらは、コミットごとのソフトウェアメトリクスを用いて<br>欠陥予測を実施したが、メトリクスの変化量を導入しなかった<sup>[4]</sup>
+- Kameiらは、コミットデータに基づく14の変更メトリクスを提案しているが、ソフトウェアメトリクスとの関連付けが不十分<sup>[5]</sup>
+
+> [4] R.Ferenc et al., "An automatically created novel bug dataset and its validation in bug prediction," 2020
+> [5] Y. Kamei et al., "A large-scale empirical study of just-in-time quality assurance," 2013
 
 ## 4. 分析手順
+<!-->ToDo: 2を削除、1にデータセットの用意を追加、図からテキストを除去して視覚的な表現を追加<-->
+<!-->ToDo:　新規性のあるステップを強調する<-->
 <figure style="max-width: 55vw; display: block; margin: 0 auto;">
   <img src="../images/data_analysis_flow.svg" width="100%">
-  <figcaption style="text-align: center; font-size: 2rem;">図2 データ分析の流れ</figcaption>
+  <figcaption style="text-align: center; font-size: 2rem;">図2 分析手順</figcaption>
 </figure>
 
 1. 時系列変化量を追加
@@ -68,20 +77,23 @@ _header: ""
 
 
 ## 4.1 時系列変化量の追加
+<!-->ToDo: 変化量がどのように測定され（原因）、どのような結果になるのか（結果）を表す図に変更<-->
 <figure style="max-width: 35vw; display: block; margin: 0 auto;">
   <img src="../images/software_structure_tracking.svg" width="100%">
-  <figcaption style="text-align: center; font-size: 2rem;">図3 ソフトウェア構造の変化</figcaption>
+  <figcaption style="text-align: center; font-size: 2rem;">図3 コードメトリクスの時系列変化</figcaption>
 </figure>
 
 - 単純な時系列データとして、コード行数・トークン数・循環的複雑度の変化量をデータセットに追加
 
 ## 4.2　テキストデータの数値変換
+## ToDo: 削除できるならこのページごと削除する
 - クラスやメソッドの識別子を単語ごとに分解
   - 単語の出現率などの類似性に基づいて学習できるようにする
 - メソッドの変更履歴（例: 新規追加、変更、削除）を表す変数を導入
   - 変化量が欠損した理由を説明できるようにする
 
 ## 4.3 機械学習モデルの訓練
+## ToDo: 手順を入力からより具体的に説明
 <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; align-items: end; width: 80vw; margin: 0 auto;">
   <figure style="margin: 0;">
     <img src="../images/decision_tree.svg" width="100%">
@@ -95,7 +107,10 @@ _header: ""
 
 - 決定木を複数生成し、多数決で境界線を決定
 
-## 4.4 プロジェクトごとの性能評価
+## ToDo: ケーススタディとして第5章として独立させる
+## 5.1 プロジェクトごとの性能評価
+## ToDo: プロジェクトの規模の降順に並べる
+## ToDo: 5.1と5.2の順番を入れ替える
 <table style="font-size: 2rem; margin: 0 auto;">
   <caption>表1 選定したプロジェクト</caption>
   <thead>
@@ -146,13 +161,13 @@ _header: ""
   </tbody>
 </table>
 
-## 4.4 プロジェクトごとの性能評価
+## 5.2 プロジェクトごとの性能評価
 1. 特徴量重要度（Feature Importance）を算出
 2. ヒストグラムで特徴量分布を確認
 3. Partial Depedence Plot（PDP）を用いて分類傾向を把握
 4. 決定木で分類の流れを可視化し、判断の基準と信頼性を確認
 
-## 5.1 特徴量重要度
+## 5.3 特徴量重要度
 <figure style="max-width: 35vw; display: block; margin: 0 auto;">
   <img src="../images/hazelcast/feature_importance_chart.png" width="100%">
   <figcaption style="text-align: center; font-size: 2rem;">図6 Hazelcastの特徴量重要度</figcaption>
@@ -160,7 +175,7 @@ _header: ""
 
 - トークン数・コード行数の変化量、Halsteadメトリクス、Maintainability Indexの重要度が高い
 
-## 5.2 特徴量分布
+## 5.4 特徴量分布
 <figure style="max-width: 40vw;　display: block; margin: 0 auto;">
   <img src="../images/ceylon-ide-eclipse/feature_histograms.png" width="100%">
   <figcaption style="text-align: center; font-size: 2rem;">図7 Eclipse plugin for Ceylonの特徴量分布</figcaption>
@@ -168,7 +183,7 @@ _header: ""
 
 - 変化量やHalstead系は分散が小さく、Maintainability Indexは<br>分散が大きい
 
-## 5.3 PDP分析
+## 5.5 PDP分析
 <figure style="max-width: 45vw;　display: block; margin: 0 auto;">
   <img src="../images/elasticsearch/partial_dependence_plots.png" width="100%">
   <figcaption style="text-align: center; font-size: 2rem;">図8 ElasticsearchのPDP</figcaption>
@@ -176,7 +191,7 @@ _header: ""
 
 - ほとんどの特徴量において、陽性クラスの予測確率が0.5未満
 
-## 5.4 決定木分析
+## 5.6 決定木分析
 <figure style="max-width: 45vw;　display: block; margin: 0 auto;">
   <img src="../images/elasticsearch/decision_tree_visualization.png"　 width="100%">
   <figcaption style="text-align: center; font-size: 2rem;">図9 Elasticsearchの決定木</figcaption>
@@ -184,7 +199,7 @@ _header: ""
 
 - 陰性クラスのノードのジニ不純度が比較的低い
 
-## 5.5 評価指標の測定
+## 5.7 評価指標の測定
 <table style="font-size: 2rem; margin: 0 auto;">
   <caption>表2 評価指標の値の変化</caption>
   <thead>
@@ -225,7 +240,8 @@ _header: ""
 
 モデルの予測性能が改善される傾向があることを確認
 
-## 6. 考察
+## 6. 評価
+## ToDo: 達成できたこととできなかったことを書く
 ### 陰性クラス予測の改善
 リファクタリングによるメトリクスの減少傾向を確認できた
 
@@ -233,12 +249,11 @@ _header: ""
 ### さらなる精度向上に向けて
 PDPや決定木を見ると、陽性クラスの予測確率が低い
 
-バグの混入理由が多様であることが影響している可能性
-
 ## 7. 課題と展望
-### 開発プロセスの理解
+## ToDo: 達成できなかったことへの対処法だけでなく、最終目的の達成に向けた道のりを書く
+### 開発プロセスの定量的な分析
 レビュー記録や自動テストの内容からバグが生じる状況を説明
-### 陽性クラスの詳細な分類による因果関係の解明
+### 陽性クラスの詳細な分類による因果関係の具体化
 開発プロセスやコードメトリクスの変化がバグにどのように影響するかを<br>明らかにする
 
 ## まとめ
