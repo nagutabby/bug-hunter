@@ -75,18 +75,32 @@ _header: ""
 
 ## 4.1 データセットの構築
 
-## 4.2　ソフトウェアメトリクスの変化量を追加
+<figure style="max-width: 55vw; display: block; margin: 0 auto;">
+  <img src="../images/data_analysis_flow_step1.svg" width="100%">
+  <figcaption style="text-align: center; font-size: 2rem;">図4 ステップ1の概要</figcaption>
+</figure>
+
+- Ferencらが作成したBugHunter Dataset<sup>[4]</sup>を使用
+- 欠損値を削除し、テキストデータをベクトル化
+
+## 4.2　メトリクスの変化量の追加
 <!-->ToDo: 変化量がどのように測定され（原因）、どのような結果になるのか（結果）を表す図に変更<-->
 
-- 単純な時系列データとして、コード行数・トークン数・循環的複雑度の変化量をデータセットに追加
-
 <figure style="max-width: 35vw; display: block; margin: 0 auto;">
-  <img src="../images/software_structure_tracking.svg" width="100%">
-  <figcaption style="text-align: center; font-size: 2rem;">図4 コードメトリクスの時系列変化</figcaption>
+  <img src="../images/data_analysis_flow_step2.svg" width="100%">
+  <figcaption style="text-align: center; font-size: 2rem;">図5 ステップ2の概要</figcaption>
 </figure>
+
+- 比較的単純な特徴量として、コード行数・トークン数・循環的複雑度の変化量を追加
+- 直前のコミットとの差分を用いて変化量を計算
 
 ## 4.3 機械学習モデルの訓練
 <!-->ToDo: 手順を入力からより具体的に説明<-->
+
+<figure style="max-width: 35vw; display: block; margin: 0 auto;">
+  <img src="../images/data_analysis_flow_step3.svg" width="100%">
+  <figcaption style="text-align: center; font-size: 2rem;">図6 ステップ3の概要</figcaption>
+</figure>
 
 - 決定木を複数生成し、多数決で境界線を決定
 
@@ -100,6 +114,19 @@ _header: ""
     <figcaption style="text-align: center; font-size: 2rem;">図6 決定境界による2値分類</figcaption>
   </figure>
 </div>
+
+## 4.4　プロジェクト内評価
+
+- Zhaoらによれば、欠陥予測ではF1スコアによる評価が一般的<sup>[6]</sup>
+- この研究でも同様に、F1スコアによる評価を行う
+- 評価の確信度を測るために有意性検定も実施
+
+> Y. Zhao et al., "A Systematic Survey of Just-in-Time Software Defect Prediction," 2023
+
+<figure style="max-width: 35vw; display: block; margin: 0 auto;">
+  <img src="../images/data_analysis_flow_step4.svg" width="100%">
+  <figcaption style="text-align: center; font-size: 2rem;">図7 ステップ4の概要</figcaption>
+</figure>
 
 <!-->## ToDo: ケーススタディとして第5章として独立させる<-->
 ## 5.1 プロジェクトごとの性能評価
