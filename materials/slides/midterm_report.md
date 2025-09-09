@@ -63,54 +63,48 @@ _header: ""
 > [5] Y. Kamei et al., "A large-scale empirical study of just-in-time quality assurance," 2013
 
 ## 4. 分析手順
-<!-->ToDo: 2を削除、1にデータセットの用意を追加、図からテキストを除去して視覚的な表現を追加<-->
-<!-->ToDo:　新規性のあるステップを強調する<-->
-<figure style="max-width: 55vw; display: block; margin: 0 auto;">
-  <img src="../images/data_analysis_flow.svg" width="100%">
-  <figcaption style="text-align: center; font-size: 2rem;">図2 分析手順</figcaption>
-</figure>
-
-1. 時系列変化量を追加
-2. テキストデータを数値に変換
+1. データセットを構築
+2. ソフトウェアメトリクスの変化量を追加
 3. 特徴量の追加前・追加後のデータを用いて機械学習モデルを訓練
 4. 各プロジェクトでモデルの性能を評価
 
-
-## 4.1 時系列変化量の追加
-<!-->ToDo: 変化量がどのように測定され（原因）、どのような結果になるのか（結果）を表す図に変更<-->
-<figure style="max-width: 35vw; display: block; margin: 0 auto;">
-  <img src="../images/software_structure_tracking.svg" width="100%">
-  <figcaption style="text-align: center; font-size: 2rem;">図3 コードメトリクスの時系列変化</figcaption>
+<figure style="max-width: 55vw; display: block; margin: 0 auto;">
+  <img src="../images/data_analysis_flow.svg" width="100%">
+  <figcaption style="text-align: center; font-size: 2rem;">図3 分析手順</figcaption>
 </figure>
+
+## 4.1 データセットの構築
+
+## 4.2　ソフトウェアメトリクスの変化量を追加
+<!-->ToDo: 変化量がどのように測定され（原因）、どのような結果になるのか（結果）を表す図に変更<-->
 
 - 単純な時系列データとして、コード行数・トークン数・循環的複雑度の変化量をデータセットに追加
 
-## 4.2　テキストデータの数値変換
-## ToDo: 削除できるならこのページごと削除する
-- クラスやメソッドの識別子を単語ごとに分解
-  - 単語の出現率などの類似性に基づいて学習できるようにする
-- メソッドの変更履歴（例: 新規追加、変更、削除）を表す変数を導入
-  - 変化量が欠損した理由を説明できるようにする
+<figure style="max-width: 35vw; display: block; margin: 0 auto;">
+  <img src="../images/software_structure_tracking.svg" width="100%">
+  <figcaption style="text-align: center; font-size: 2rem;">図4 コードメトリクスの時系列変化</figcaption>
+</figure>
 
 ## 4.3 機械学習モデルの訓練
-## ToDo: 手順を入力からより具体的に説明
-<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; align-items: end; width: 80vw; margin: 0 auto;">
-  <figure style="margin: 0;">
-    <img src="../images/decision_tree.svg" width="100%">
-    <figcaption style="text-align: center; font-size: 2rem;">図4 複数の決定木を用いた投票</figcaption>
-  </figure>
-  <figure style="margin: 0;">
-    <img src="../images/random_forest_classification.svg" width="100%">
-    <figcaption style="text-align: center; font-size: 2rem;">図5 決定境界による2値分類</figcaption>
-  </figure>
-</div>
+<!-->ToDo: 手順を入力からより具体的に説明<-->
 
 - 決定木を複数生成し、多数決で境界線を決定
 
-## ToDo: ケーススタディとして第5章として独立させる
+<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; align-items: end; width: 80vw; margin: 0 auto;">
+  <figure style="margin: 0;">
+    <img src="../images/decision_tree.svg" width="100%">
+    <figcaption style="text-align: center; font-size: 2rem;">図5 複数の決定木を用いた投票</figcaption>
+  </figure>
+  <figure style="margin: 0;">
+    <img src="../images/random_forest_classification.svg" width="100%">
+    <figcaption style="text-align: center; font-size: 2rem;">図6 決定境界による2値分類</figcaption>
+  </figure>
+</div>
+
+<!-->## ToDo: ケーススタディとして第5章として独立させる<-->
 ## 5.1 プロジェクトごとの性能評価
-## ToDo: プロジェクトの規模の降順に並べる
-## ToDo: 5.1と5.2の順番を入れ替える
+<!-->## ToDo: プロジェクトの規模の降順に並べる<-->
+<!-->## ToDo: 5.1と5.2の順番を入れ替える<-->
 <table style="font-size: 2rem; margin: 0 auto;">
   <caption>表1 選定したプロジェクト</caption>
   <thead>
@@ -168,36 +162,40 @@ _header: ""
 4. 決定木で分類の流れを可視化し、判断の基準と信頼性を確認
 
 ## 5.3 特徴量重要度
-<figure style="max-width: 35vw; display: block; margin: 0 auto;">
-  <img src="../images/hazelcast/feature_importance_chart.png" width="100%">
-  <figcaption style="text-align: center; font-size: 2rem;">図6 Hazelcastの特徴量重要度</figcaption>
-</figure>
 
 - トークン数・コード行数の変化量、Halsteadメトリクス、Maintainability Indexの重要度が高い
 
-## 5.4 特徴量分布
-<figure style="max-width: 40vw;　display: block; margin: 0 auto;">
-  <img src="../images/ceylon-ide-eclipse/feature_histograms.png" width="100%">
-  <figcaption style="text-align: center; font-size: 2rem;">図7 Eclipse plugin for Ceylonの特徴量分布</figcaption>
+<figure style="max-width: 35vw; display: block; margin: 0 auto;">
+  <img src="../images/hazelcast/feature_importance_chart.png" width="100%">
+  <figcaption style="text-align: center; font-size: 2rem;">図7 Hazelcastの特徴量重要度</figcaption>
 </figure>
+
+## 5.4 特徴量分布
 
 - 変化量やHalstead系は分散が小さく、Maintainability Indexは<br>分散が大きい
 
-## 5.5 PDP分析
-<figure style="max-width: 45vw;　display: block; margin: 0 auto;">
-  <img src="../images/elasticsearch/partial_dependence_plots.png" width="100%">
-  <figcaption style="text-align: center; font-size: 2rem;">図8 ElasticsearchのPDP</figcaption>
+<figure style="max-width: 40vw;　display: block; margin: 0 auto;">
+  <img src="../images/ceylon-ide-eclipse/feature_histograms.png" width="100%">
+  <figcaption style="text-align: center; font-size: 2rem;">図8 Eclipse plugin for Ceylonの特徴量分布</figcaption>
 </figure>
+
+## 5.5 PDP分析
 
 - ほとんどの特徴量において、陽性クラスの予測確率が0.5未満
 
-## 5.6 決定木分析
 <figure style="max-width: 45vw;　display: block; margin: 0 auto;">
-  <img src="../images/elasticsearch/decision_tree_visualization.png"　 width="100%">
-  <figcaption style="text-align: center; font-size: 2rem;">図9 Elasticsearchの決定木</figcaption>
+  <img src="../images/elasticsearch/partial_dependence_plots.png" width="100%">
+  <figcaption style="text-align: center; font-size: 2rem;">図9 ElasticsearchのPDP</figcaption>
 </figure>
 
+## 5.6 決定木分析
+
 - 陰性クラスのノードのジニ不純度が比較的低い
+
+<figure style="max-width: 45vw;　display: block; margin: 0 auto;">
+  <img src="../images/elasticsearch/decision_tree_visualization.png"　 width="100%">
+  <figcaption style="text-align: center; font-size: 2rem;">図10 Elasticsearchの決定木</figcaption>
+</figure>
 
 ## 5.7 評価指標の測定
 <table style="font-size: 2rem; margin: 0 auto;">
