@@ -1,0 +1,101 @@
+<svg width="900" height="470" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif">
+  <style>
+    .table-header { font-weight: bold; fill: #333; }
+    .table-cell { fill: #555; }
+    .highlight-rect { fill: #e0f7fa; stroke: #00796b; stroke-width: 1.5; }
+    .avg-rect { fill: #fffde7; stroke: #fbc02d; stroke-width: 1.5; }
+
+    .axis { stroke: #333; stroke-width: 2; }
+    .grid-line { stroke: #ccc; stroke-dasharray: 2,2; }
+    .pdp-line { stroke: #1e88e5; stroke-width: 3; fill: none; }
+    .pdp-point { fill: #1e88e5; }
+    .label { font-size: 14px; fill: #333; }
+    .axis-label { font-size: 16px; fill: #333; font-weight: bold; }
+    .title { font-size: 18px; font-weight: bold; fill: #222; }
+  </style>
+
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="0" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#e53935" />
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="900" height="470" fill="#f9f9f9"/>
+
+  <g transform="translate(20, 80)">
+    <rect x="0" y="0" width="420" height="40" fill="#f0f0f0"/>
+    <text x="40" y="25" class="table-header" font-size="16px">x1</text>
+    <text x="140" y="25" class="table-header" font-size="16px">x2</text>
+    <text x="240" y="25" class="table-header" font-size="16px">x3</text>
+    <text x="330" y="25" class="table-header" font-size="16px">予測確率</text>
+
+    <g class="table-cell">
+      <rect x="0" y="40" width="420" height="40" fill="white"/>
+      <rect x="18" y="48" width="60" height="24" class="highlight-rect" />
+      <text x="48" y="65" font-size="16px" text-anchor="middle">10</text>
+      <text x="145" y="65" font-size="16px">5</text>
+      <text x="245" y="65" font-size="16px">A</text>
+      <text x="350" y="65" font-size="16px">0.20</text>
+
+      <rect x="0" y="80" width="420" height="40" fill="white"/>
+      <rect x="18" y="88" width="60" height="24" class="highlight-rect" />
+      <text x="48" y="105" font-size="16px" text-anchor="middle">10</text>
+      <text x="145" y="105" font-size="16px">8</text>
+      <text x="245" y="105" font-size="16px">B</text>
+      <text x="350" y="105" font-size="16px">0.35</text>
+
+      <rect x="0" y="120" width="420" height="40" fill="white"/>
+      <rect x="18" y="128" width="60" height="24" class="highlight-rect" />
+      <text x="48" y="145" font-size="16px" text-anchor="middle">10</text>
+      <text x="145" y="145" font-size="16px">2</text>
+      <text x="245" y="145" font-size="16px">A</text>
+      <text x="350" y="145" font-size="16px">0.15</text>
+    </g>
+
+    <rect x="290" y="170" width="130" height="50" class="avg-rect"/>
+    <text x="305" y="200" font-weight="bold" font-size="20px">平均: 0.23</text>
+  </g>
+
+  <path d="M 380 200 L 450 280" class="arrow"/>
+
+  <g transform="translate(520, 50)">
+    <line x1="80" y1="50" x2="80" y2="350" class="axis"/>
+    <g class="label" text-anchor="end">
+      <text x="75" y="355">0.0</text>
+      <line x1="80" y1="350" x2="75" y2="350" class="axis"/>
+      <text x="75" y="295">0.2</text>
+      <line x1="80" y1="290" x2="75" y2="290" class="axis"/>
+      <line x1="350" y1="290" x2="80" y2="290" class="grid-line"/>
+      <text x="75" y="215">0.5</text>
+      <line x1="80" y1="200" x2="75" y2="200" class="axis"/>
+      <line x1="350" y1="200" x2="80" y2="200" class="grid-line"/>
+      <text x="75" y="135">0.8</text>
+      <line x1="80" y1="110" x2="75" y2="110" class="axis"/>
+      <line x1="350" y1="110" x2="80" y2="110" class="grid-line"/>
+      <text x="75" y="55">1.0</text>
+      <line x1="80" y1="50" x2="75" y2="50" class="axis"/>
+    </g>
+
+    <line x1="80" y1="350" x2="350" y2="350" class="axis"/>
+     <g class="label" text-anchor="middle">
+      <text x="130" y="365">10</text>
+      <line x1="130" y1="350" x2="130" y2="355" class="axis"/>
+      <line x1="130" y1="50" x2="130" y2="350" class="grid-line"/>
+      <text x="215" y="365">20</text>
+      <line x1="215" y1="350" x2="215" y2="355" class="axis"/>
+       <line x1="215" y1="50" x2="215" y2="350" class="grid-line"/>
+      <text x="300" y="365">30</text>
+      <line x1="300" y1="350" x2="300" y2="355" class="axis"/>
+       <line x1="300" y1="50" x2="300" y2="350" class="grid-line"/>
+    </g>
+
+    <path d="M 130 281 L 215 194 L 300 134" class="pdp-line"/>
+    <circle cx="130" cy="281" r="5" class="pdp-point"/>
+    <circle cx="215" cy="194" r="5" class="pdp-point"/>
+    <circle cx="300" cy="134" r="5" class="pdp-point"/>
+
+    <text x="215" y="395" text-anchor="middle" class="axis-label">x1</text>
+
+    <text x="25" y="200" text-anchor="middle" class="axis-label" transform="rotate(-90, 25, 200)">予測確率</text>
+  </g>
+</svg>

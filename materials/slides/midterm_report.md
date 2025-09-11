@@ -71,15 +71,62 @@ _paginate: false
 ## 4.1 データセットの構築
 - Ferencらが作成した、コミットごと、ソフトウェアの構成要素ごとのメトリクスを含むデータセットを使用
   - 正解ラベル: メソッドに含まれるバグの数を二値化
-- モデルの精度向上のために前処理が必要
-  - 値が全て0であるカラムを削除
-  - クラスやメソッドの識別子をベクトル化
+  - 値が全て同じであるカラムを削除、メソッドの識別子をベクトルに変換
+
+<table style="font-size: 2rem; margin: 0 auto;">
+    <thead>
+        <tr>
+            <th>コミット</th>
+            <th>メソッド名</th>
+            <th>複雑度</th>
+            <th>コード行数</th>
+            <th>バグの数</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>A</td>
+            <td>method_A</td>
+            <td>8</td>
+            <td>45</td>
+            <td>2</td>
+        </tr>
+        <tr>
+            <td>A</td>
+            <td>method_B</td>
+            <td>12</td>
+            <td>67</td>
+            <td>2</td>
+        </tr>
+        <tr>
+            <td>B</td>
+            <td>method_A</td>
+            <td>8</td>
+            <td>48</td>
+            <td>1</td>
+        </tr>
+        <tr>
+            <td>C</td>
+            <td>method_B</td>
+            <td>10</td>
+            <td>63</td>
+            <td>0</td>
+        </tr>
+    </tbody>
+</table>
 
 ## 4.2　特徴量の変化量の追加
 - コード行数・トークン数・循環的複雑度の変化量を追加
+  - ソフトウェアのサイズが欠陥の有無に影響を与えるため
+
+<figure style="max-width: 30vw; display: block; margin: 0 auto;">
+  <img src="../images/control_flow.svg" width="100%">
+</figure>
+
+## 4.2　特徴量の変化量の追加
 - **直前の**コミットとの差分を用いて変化量を計算
 
-<figure style="max-width: 80vw; display: block; margin: 0 auto;">
+<figure style="max-width: 70vw; display: block; margin: 0 auto;">
   <img src="../images/change_metrics.svg" width="100%">
 </figure>
 
@@ -157,9 +204,12 @@ _paginate: false
 ## 5.1 分析手法
 1. 特徴量重要度（Feature Importance）を算出
 2. ヒストグラムで特徴量分布を確認
-3. ある特徴量の効果を調べるために、他の特徴量の効果を取り除く手法（Partial Depedence Plot、PDP）を用いて分類傾向を把握
+3. Partial Depedence Plot（PDP）を用いて分類傾向を把握
 4. 決定木で分類の流れを可視化し、判断の基準と確信度を確認
 
+<figure style="max-width: 45vw; display: block; margin: 0 auto;">
+  <img src="../images/partial_dependence_plot.svg" width="100%">
+</figure>
 
 ## 5.3 特徴量重要度
 
@@ -191,7 +241,7 @@ _paginate: false
 ## 5.6 決定木分析
 
 - バグなしと判断したときの確信度が比較的高い
-  - オレンジはバグなし、青はバグありを表す
+  - 青はバグなし、オレンジはバグありを表す
 <figure style="max-width: 55vw;　display: block; margin: 0 auto;">
   <img src="../images/elasticsearch/decision_tree_visualization.png"　 width="100%">
 </figure>
