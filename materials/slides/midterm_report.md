@@ -17,9 +17,9 @@ _paginate: false
 鈴木研究室 2410064
 笹川 尋翔
 
-## 目次
+## 内容
 1. 背景
-2. 目的
+2. 目的と手法
 3. 関連研究
 4. 分析手順
 5. ケーススタディ
@@ -37,7 +37,7 @@ _paginate: false
 
 > [1] Microsoft Research, "An Empirical Study of Refactoring Challenges and Benefits at Microsoft,"　2014
 
-## 2. 目的
+## 2. 目的と手法
 - 保守性の低下傾向を早期に検出し、バグが発生する前に対策を<br>講じるための情報を提供
   - ソフトウェア特徴量の時間的変化を通じてバグ混入リスクを事前に特定
 <figure style="max-width: 70vw; display: block; margin: 0 auto;">
@@ -45,19 +45,19 @@ _paginate: false
 </figure>
 
 ## 3. 関連研究
-- Hanらは、レビューの分析により欠陥の種類を調査<sup>[2]</sup>
-  - レビューのうち70%では明示的に欠陥が指摘されなかった
-- Romanoらは、文脈非依存のしきい値が欠陥修正作業を効率化する<br>ことを示した<sup>[3]</sup>
+- Hanらは、レビューテキストの自然言語処理により欠陥を調査<sup>[2]</sup>
+  - およそ1,200件のうち、70%では明示的に欠陥が指摘されなかった
+- Romanoらは、静的解析ツールを用いたコード分析が欠陥を減少させる<br>ことを示した<sup>[3]</sup>
   - 文脈依存のしきい値については検証していない
 
 > [2] X.Han et al., "Understanding Code Smell Detection via Code Review: A Study of the OpenStack Community," 2021
 > [3] S.Romano et al., "Do Static Analysis Tools Affect Software Quality when Using Test-driven Development?," 2022
 
 ## 3. 関連研究
-- Ferencらは、コミットごとのソフトウェアメトリクスを用いて<br>欠陥予測を実施<sup>[4]</sup>
-  - メトリクスの変化量を導入しなかった
-- Kameiらは、コミットデータに基づく14の変更メトリクスを提案<sup>[5]</sup>
-  - ソフトウェアメトリクスとの関連付けが不十分
+- Ferencらは、各コミットの特性値の欠陥予測を実施<sup>[4]</sup>
+  - コミット間の変化量は対象外
+- Kameiらは、コミット間の特性値に基づいて14の変更メトリクスを<br>提案<sup>[5]</sup>
+  - 特性値同士の関連性を分析していない
 
 > [4] R.Ferenc et al., "An automatically created novel bug dataset and its validation in bug prediction," 2020
 > [5] Y. Kamei et al., "A large-scale empirical study of just-in-time quality assurance," 2013
@@ -65,11 +65,12 @@ _paginate: false
 ## 4. 分析手順
 1. データセットを構築
 2. 特徴量の変化量を追加
-3. 変化量の追加前・追加後のデータを用いてモデルを訓練
+3. 機械学習によるバグ予測精度向上のため、変化量の追加前・追加後の<br>データを用いてモデルを訓練
 4. モデルの性能を評価
 
 ## 4.1 データセットの構築
-- Ferencらが作成した、コミットごと、ソフトウェアの単位ごとの<br>メトリクスを含むデータセットを使用
+- Ferencらが作成した、コミットごと、ソフトウェアの構成要素ごとのメトリクスを含むデータセットを使用
+  - 正解ラベル: メソッドに含まれるバグの数を二値化
 - モデルの精度向上のために前処理が必要
   - 値が全て0であるカラムを削除
   - クラスやメソッドの識別子をベクトル化
@@ -96,6 +97,7 @@ _paginate: false
 
 ## 4.4　プロジェクト内評価
 - F1スコアによる評価を行う
+  - F1スコア = 2 × (適合率 × 再現率) / (適合率 + 再現率)
   - Zhaoらによれば、欠陥予測ではF1スコアによる評価が効果的<sup>[6]</sup>
 - 評価の確信度を測るために有意性検定を実施
 
@@ -162,7 +164,7 @@ _paginate: false
 ## 5.3 特徴量重要度
 
 - コード行数・トークン数の変化量、Halsteadメトリクス、Maintainability Index（MI）の重要度が高い
-  - MI: プログラムのサイズが大きく、構造が複雑になるほど値が低くなる
+  - MI: コード行数が多く循環的複雑度が高いほど、値が低くなる
 
 <figure style="max-width: 45vw; display: block; margin: 0 auto;">
   <img src="../images/hazelcast/feature_importance_chart.png" width="100%">
@@ -241,12 +243,12 @@ _paginate: false
 
 ## 6. 評価
 - 達成できたこと
-  - ソフトウェアメトリクスのコミット間の変化量を活用することで<br>より精度の高い分類ができることを示した
+  - 時系列データとしてコミット間の変化量を活用することで<br>より精度の高い分類ができることを示した
 - 不十分なこと
   -  欠陥混入の根本的な原因である変更要求について分析していない
 
 ## 7. 課題と展望
-- 変更要求を定量的に分析
-  - VCS（Version Control System）を活用し、開発プロセス関連の情報を得る
+- 変更要求と特性値の変化の分析
+  - VCS（Version Control System）を活用し、変更要求の分類に必要な情報を得る
 - 欠陥予測の確信度を改善
-  - 欠陥修正に必要な労力を削減
+  - 欠陥修正に必要なコストを削減

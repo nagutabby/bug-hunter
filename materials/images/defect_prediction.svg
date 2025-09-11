@@ -1,48 +1,37 @@
-<svg width="650" height="250" xmlns="http://www.w3.org/2000/svg">
-  <rect x="50" y="50" width="120" height="100" fill="#f0f0f0" stroke="#333" stroke-width="2" rx="5"/>
-
-  <rect x="75" y="75" width="35" height="50" fill="#90EE90" stroke="#333" stroke-width="1"/>
-  <rect x="115" y="75" width="35" height="50" fill="#90EE90" stroke="#333" stroke-width="1"/>
-
-  <rect x="200" y="50" width="120" height="100" fill="#fff8dc" stroke="#ff9900" stroke-width="2" rx="5"/>
-
-  <rect x="225" y="75" width="35" height="50" fill="url(#defectGradient1)" stroke="#333" stroke-width="1"/>
-  <line x1="225" y1="100" x2="260" y2="100" stroke="#333" stroke-width="1"/>
-  <rect x="265" y="75" width="35" height="50" fill="#90EE90" stroke="#333" stroke-width="1"/>
-
-  <rect x="350" y="50" width="120" height="100" fill="#e8f5e8" stroke="#00aa00" stroke-width="3" rx="5"/>
-
-  <rect x="375" y="75" width="35" height="50" fill="#90EE90" stroke="#333" stroke-width="1"/>
-  <rect x="415" y="75" width="35" height="50" fill="#90EE90" stroke="#333" stroke-width="1"/>
-
-  <rect x="500" y="50" width="120" height="100" fill="#e8f5e8" stroke="#00aa00" stroke-width="2" rx="5"/>
-
-  <rect x="525" y="75" width="35" height="50" fill="#90EE90" stroke="#333" stroke-width="1"/>
-  <rect x="565" y="75" width="35" height="50" fill="#90EE90" stroke="#333" stroke-width="1"/>
-
-  <defs>
-    <linearGradient id="defectGradient1" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="50%" style="stop-color:#90EE90;stop-opacity:1" />
-      <stop offset="50%" style="stop-color:#FFD700;stop-opacity:1" />
-    </linearGradient>
-    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
-      <polygon points="0 0, 10 3.5, 0 7" fill="#333"/>
-    </marker>
-  </defs>
-
-  <line x1="170" y1="100" x2="200" y2="100" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
-  <line x1="320" y1="100" x2="350" y2="100" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
-  <line x1="470" y1="100" x2="500" y2="100" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
-
-  <text x="110" y="40" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold">A</text>
-  <text x="260" y="40" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold">B</text>
-  <text x="410" y="40" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold">C</text>
-  <text x="560" y="40" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold">D</text>
-
-  <path d="M 260 160 L 270 175 L 250 175 Z" fill="#ff9900" stroke="#333" stroke-width="2"/>
-  <text x="260" y="195" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="#ff9900">欠陥混入</text>
-
-  <path d="M 410 160 L 420 175 L 400 175 Z" fill="#00aa00" stroke="#333" stroke-width="2"/>
-  <text x="410" y="195" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="#00aa00">リスク評価・修正</text>
-
+<svg width="650" height="280" xmlns="http://www.w3.org/2000/svg">
+ <rect x="50" y="50" width="120" height="100" fill="#f0f0f0" stroke="#333" stroke-width="2" rx="5"/>
+ <rect x="75" y="75" width="35" height="50" fill="#90EE90" stroke="#333" stroke-width="1"/>
+ <rect x="115" y="75" width="35" height="50" fill="#90EE90" stroke="#333" stroke-width="1"/>
+ <rect x="200" y="50" width="120" height="100" fill="#fff8dc" stroke="#ff9900" stroke-width="2" rx="5"/>
+ <rect x="225" y="75" width="35" height="50" fill="url(#defectGradient1)" stroke="#333" stroke-width="1"/>
+ <line x1="225" y1="100" x2="260" y2="100" stroke="#333" stroke-width="1"/>
+ <rect x="265" y="75" width="35" height="50" fill="#90EE90" stroke="#333" stroke-width="1"/>
+ <rect x="350" y="50" width="120" height="100" fill="#e8f5e8" stroke="#00aa00" stroke-width="3" rx="5"/>
+ <rect x="375" y="75" width="35" height="50" fill="#90EE90" stroke="#333" stroke-width="1"/>
+ <rect x="415" y="75" width="35" height="50" fill="#90EE90" stroke="#333" stroke-width="1"/>
+ <rect x="500" y="50" width="120" height="100" fill="#e8f5e8" stroke="#00aa00" stroke-width="2" rx="5"/>
+ <rect x="525" y="75" width="35" height="50" fill="#90EE90" stroke="#333" stroke-width="1"/>
+ <rect x="565" y="75" width="35" height="50" fill="#90EE90" stroke="#333" stroke-width="1"/>
+ <defs>
+ <linearGradient id="defectGradient1" x1="0%" y1="0%" x2="0%" y2="100%">
+ <stop offset="50%" style="stop-color:#90EE90;stop-opacity:1" />
+ <stop offset="50%" style="stop-color:#FFD700;stop-opacity:1" />
+ </linearGradient>
+ <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+ <polygon points="0 0, 10 3.5, 0 7" fill="#333"/>
+ </marker>
+ </defs>
+ <line x1="170" y1="100" x2="200" y2="100" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+ <line x1="320" y1="100" x2="350" y2="100" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+ <line x1="470" y1="100" x2="500" y2="100" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+ <text x="110" y="40" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold">A</text>
+ <text x="260" y="40" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold">B</text>
+ <text x="410" y="40" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold">C</text>
+ <text x="560" y="40" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold">D</text>
+ <path d="M 260 160 L 270 175 L 250 175 Z" fill="#ff9900" stroke="#333" stroke-width="2"/>
+ <text x="260" y="195" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="#ff9900">欠陥混入</text>
+ <path d="M 410 160 L 420 175 L 400 175 Z" fill="#00aa00" stroke="#333" stroke-width="2"/>
+ <text x="410" y="195" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="#00aa00">リスク評価・修正</text>
+ <rect x="340" y="155" width="140" height="25" fill="#e6f3ff" stroke="#0066cc" stroke-width="1" rx="3"/>
+ <text x="410" y="170" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="#0066cc">機械学習によるバグ予測</text>
 </svg>
