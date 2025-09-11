@@ -31,8 +31,8 @@ _paginate: false
 
 モジュール内部や外部の構造が変化し、静的分析では品質改善が困難に
 
-<figure style="max-width: 60vw; display: block; margin: 0 auto;">
-  <img src="../images/module_hierarchy.svg" width="100%">
+<figure style="max-width: 70vw; display: block; margin: 0 auto;">
+  <img src="../images/defect_detection.svg" width="100%">
 </figure>
 
 > [1] Microsoft Research, "An Empirical Study of Refactoring Challenges and Benefits at Microsoft,"　2014
@@ -40,7 +40,7 @@ _paginate: false
 ## 2. 目的
 - 保守性の低下傾向を早期に検出し、バグが発生する前に対策を<br>講じるための情報を提供
   - ソフトウェア特徴量の時間的変化を通じてバグ混入リスクを事前に特定
-<figure style="max-width: 60vw; display: block; margin: 0 auto;">
+<figure style="max-width: 70vw; display: block; margin: 0 auto;">
   <img src="../images/defect_prediction.svg" width="100%">
 </figure>
 

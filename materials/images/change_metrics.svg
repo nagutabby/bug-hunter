@@ -1,61 +1,70 @@
-<svg viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg">
-  <rect width="800" height="400" fill="#f8f9fa"/>
+<svg viewBox="0 0 900 400" xmlns="http://www.w3.org/2000/svg">
+  <rect width="900" height="400" fill="#ffffff"/>
 
-  <g transform="translate(320, 30)">
+  <!-- 変化量の説明 -->
+  <g transform="translate(420, 30)">
     <rect width="160" height="100" fill="#fff3e0" stroke="#f57c00" stroke-width="2" rx="8"/>
-
     <text x="80" y="25" text-anchor="middle" font-family="Arial" font-size="14" fill="#333" font-weight="bold">変化量</text>
-
     <rect x="20" y="35" width="60" height="12" fill="#4caf50"/>
     <text x="90" y="45" font-family="Arial" font-size="12" fill="#4caf50">+20行</text>
-
     <rect x="20" y="50" width="15" height="12" fill="#f44336"/>
     <text x="90" y="60" font-family="Arial" font-size="12" fill="#f44336">-5行</text>
-
     <rect x="20" y="70" width="50" height="15" fill="#1976d2" opacity="0.8"/>
     <text x="90" y="82" font-family="Arial" font-size="12" fill="black" font-weight="bold">+15行</text>
   </g>
 
-  <g transform="translate(220, 180)">
-    <rect width="160" height="80" fill="#e3f2fd" stroke="#1976d2" stroke-width="2" rx="5"/>
-    <rect x="10" y="10" width="120" height="6" fill="#1976d2" opacity="0.4"/>
-    <rect x="10" y="18" width="90" height="6" fill="#1976d2" opacity="0.4"/>
-    <rect x="10" y="26" width="110" height="6" fill="#1976d2" opacity="0.4"/>
-    <rect x="10" y="34" width="80" height="6" fill="#1976d2" opacity="0.4"/>
-    <rect x="10" y="42" width="100" height="6" fill="#1976d2" opacity="0.4"/>
-    <rect x="10" y="50" width="85" height="6" fill="#1976d2" opacity="0.4"/>
-    <rect x="10" y="58" width="95" height="6" fill="#1976d2" opacity="0.4"/>
-    <text x="80" y="75" text-anchor="middle" font-family="Arial" font-size="12" fill="#1976d2" font-weight="bold">120行</text>
+  <!-- 前々回のコミット -->
+  <g transform="translate(150, 180)">
+    <rect width="140" height="70" fill="#f5f5f5" stroke="#666" stroke-width="1" rx="5"/>
+    <rect x="10" y="10" width="100" height="6" fill="#666" opacity="0.3"/>
+    <rect x="10" y="18" width="90" height="6" fill="#666" opacity="0.3"/>
+    <rect x="10" y="26" width="105" height="6" fill="#666" opacity="0.3"/>
+    <rect x="10" y="34" width="80" height="6" fill="#666" opacity="0.3"/>
+    <rect x="10" y="42" width="95" height="6" fill="#666" opacity="0.3"/>
+    <text x="70" y="60" text-anchor="middle" font-family="Arial" font-size="12" fill="#666">100行</text>
   </g>
 
-  <g transform="translate(420, 180)">
-    <rect width="160" height="80" fill="#e8f5e8" stroke="#2e7d32" stroke-width="2" rx="5"/>
-    <rect x="10" y="10" width="120" height="6" fill="#2e7d32" opacity="0.4"/>
-    <rect x="10" y="18" width="130" height="6" fill="#4caf50" opacity="0.7"/>
-    <rect x="10" y="26" width="110" height="6" fill="#2e7d32" opacity="0.4"/>
-    <rect x="10" y="34" width="100" height="6" fill="#4caf50" opacity="0.7"/>
-    <rect x="10" y="42" width="115" height="6" fill="#2e7d32" opacity="0.4"/>
-    <rect x="10" y="50" width="105" height="6" fill="#4caf50" opacity="0.7"/>
-    <rect x="10" y="58" width="95" height="6" fill="#2e7d32" opacity="0.4"/>
-    <text x="80" y="75" text-anchor="middle" font-family="Arial" font-size="12" fill="#2e7d32" font-weight="bold">135行</text>
+  <!-- 前回のコミット（強調） -->
+  <g transform="translate(340, 180)">
+    <rect width="140" height="70" fill="#e3f2fd" stroke="#1976d2" stroke-width="3" rx="5"/>
+    <rect x="10" y="10" width="100" height="6" fill="#1976d2" opacity="0.4"/>
+    <rect x="10" y="18" width="80" height="6" fill="#1976d2" opacity="0.4"/>
+    <rect x="10" y="26" width="90" height="6" fill="#1976d2" opacity="0.4"/>
+    <rect x="10" y="34" width="70" height="6" fill="#1976d2" opacity="0.4"/>
+    <rect x="10" y="42" width="85" height="6" fill="#1976d2" opacity="0.4"/>
+    <text x="70" y="60" text-anchor="middle" font-family="Arial" font-size="12" fill="#1976d2" font-weight="bold">120行</text>
   </g>
 
-  <line x1="200" y1="320" x2="600" y2="320" stroke="#333" stroke-width="3"/>
+  <!-- 今回のコミット（強調） -->
+  <g transform="translate(530, 180)">
+    <rect width="140" height="70" fill="#e8f5e8" stroke="#2e7d32" stroke-width="3" rx="5"/>
+    <rect x="10" y="10" width="100" height="6" fill="#2e7d32" opacity="0.4"/>
+    <rect x="10" y="18" width="110" height="6" fill="#4caf50" opacity="0.7"/>
+    <rect x="10" y="26" width="90" height="6" fill="#2e7d32" opacity="0.4"/>
+    <rect x="10" y="34" width="85" height="6" fill="#4caf50" opacity="0.7"/>
+    <rect x="10" y="42" width="95" height="6" fill="#2e7d32" opacity="0.4"/>
+    <text x="70" y="60" text-anchor="middle" font-family="Arial" font-size="12" fill="#2e7d32" font-weight="bold">135行</text>
+  </g>
 
-  <circle cx="300" cy="320" r="20" fill="#4285f4" stroke="#333" stroke-width="2"/>
-  <text x="300" y="350" text-anchor="middle" font-family="monospace" font-size="14" fill="#333">A</text>
+  <!-- コミット間の矢印 -->
+  <path d="M 290 215 L 330 215" stroke="#999" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <path d="M 480 215 L 520 215" stroke="#999" stroke-width="2" marker-end="url(#arrowhead)"/>
 
-  <circle cx="500" cy="320" r="20" fill="#34a853" stroke="#333" stroke-width="2"/>
-  <text x="500" y="350" text-anchor="middle" font-family="monospace" font-size="14" fill="#333">B</text>
+  <!-- 変化量のテキスト -->
+  <text x="410" y="285" text-anchor="middle" font-family="Arial" font-size="12" fill="#333" font-weight="bold">+20行</text>
+  <text x="600" y="285" text-anchor="middle" font-family="Arial" font-size="12" fill="#ff5722" font-weight="bold">+15行</text>
 
-  <path d="M 320 320 L 480 320" stroke="#666" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <!-- コミットラベル -->
+  <text x="220" y="310" text-anchor="middle" font-family="monospace" font-size="12" fill="#666">前々回</text>
+  <text x="410" y="310" text-anchor="middle" font-family="monospace" font-size="12" fill="#1976d2" font-weight="bold">前回</text>
+  <text x="600" y="310" text-anchor="middle" font-family="monospace" font-size="12" fill="#2e7d32" font-weight="bold">今回</text>
 
-  <path d="M 300 300 L 300 260" stroke="#4285f4" stroke-width="2" stroke-dasharray="5,5"/>
-  <path d="M 500 300 L 500 260" stroke="#34a853" stroke-width="2" stroke-dasharray="5,5"/>
+  <!-- 対象期間の強調 -->
+  <rect x="330" y="160" width="350" height="100" fill="none" stroke="#ff5722" stroke-width="2" stroke-dasharray="8,4" rx="10"/>
 
   <defs>
     <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-      <polygon points="0 0, 10 3.5, 0 7" fill="#666"/>
+      <polygon points="0 0, 10 3.5, 0 7" fill="#999"/>
     </marker>
     <marker id="arrowhead2" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
       <polygon points="0 0, 10 3.5, 0 7" fill="#ff5722"/>

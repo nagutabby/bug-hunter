@@ -1,45 +1,30 @@
-<svg width="750" height="250" xmlns="http://www.w3.org/2000/svg">
+<svg width="650" height="250" xmlns="http://www.w3.org/2000/svg">
   <rect x="50" y="50" width="120" height="100" fill="#f0f0f0" stroke="#333" stroke-width="2" rx="5"/>
 
-  <rect x="62.5" y="70" width="25" height="25" fill="#90EE90" stroke="#333" stroke-width="1"/>
-  <rect x="97.5" y="70" width="25" height="25" fill="#90EE90" stroke="#333" stroke-width="1"/>
-  <rect x="132.5" y="70" width="25" height="25" fill="#90EE90" stroke="#333" stroke-width="1"/>
-
-  <rect x="62.5" y="105" width="25" height="25" fill="#90EE90" stroke="#333" stroke-width="1"/>
-  <rect x="97.5" y="105" width="25" height="25" fill="#90EE90" stroke="#333" stroke-width="1"/>
-  <rect x="132.5" y="105" width="25" height="25" fill="#90EE90" stroke="#333" stroke-width="1"/>
+  <rect x="75" y="75" width="35" height="50" fill="#90EE90" stroke="#333" stroke-width="1"/>
+  <rect x="115" y="75" width="35" height="50" fill="#90EE90" stroke="#333" stroke-width="1"/>
 
   <rect x="200" y="50" width="120" height="100" fill="#fff8dc" stroke="#ff9900" stroke-width="2" rx="5"/>
 
-  <rect x="212.5" y="70" width="25" height="25" fill="#90EE90" stroke="#333" stroke-width="1"/>
-  <rect x="247.5" y="70" width="25" height="25" fill="#90EE90" stroke="#333" stroke-width="1"/>
-  <rect x="282.5" y="70" width="25" height="25" fill="#90EE90" stroke="#333" stroke-width="1"/>
-
-  <rect x="212.5" y="105" width="25" height="25" fill="#FFD700" stroke="#333" stroke-width="1"/>
-  <rect x="247.5" y="105" width="25" height="25" fill="#90EE90" stroke="#333" stroke-width="1"/>
-  <rect x="282.5" y="105" width="25" height="25" fill="#90EE90" stroke="#333" stroke-width="1"/>
+  <rect x="225" y="75" width="35" height="50" fill="url(#defectGradient1)" stroke="#333" stroke-width="1"/>
+  <line x1="225" y1="100" x2="260" y2="100" stroke="#333" stroke-width="1"/>
+  <rect x="265" y="75" width="35" height="50" fill="#90EE90" stroke="#333" stroke-width="1"/>
 
   <rect x="350" y="50" width="120" height="100" fill="#e8f5e8" stroke="#00aa00" stroke-width="3" rx="5"/>
 
-  <rect x="362.5" y="70" width="25" height="25" fill="#90EE90" stroke="#333" stroke-width="1"/>
-  <rect x="397.5" y="70" width="25" height="25" fill="#90EE90" stroke="#333" stroke-width="1"/>
-  <rect x="432.5" y="70" width="25" height="25" fill="#90EE90" stroke="#333" stroke-width="1"/>
-
-  <rect x="362.5" y="105" width="25" height="25" fill="#90EE90" stroke="#333" stroke-width="1"/>
-  <rect x="397.5" y="105" width="25" height="25" fill="#90EE90" stroke="#333" stroke-width="1"/>
-  <rect x="432.5" y="105" width="25" height="25" fill="#90EE90" stroke="#333" stroke-width="1"/>
+  <rect x="375" y="75" width="35" height="50" fill="#90EE90" stroke="#333" stroke-width="1"/>
+  <rect x="415" y="75" width="35" height="50" fill="#90EE90" stroke="#333" stroke-width="1"/>
 
   <rect x="500" y="50" width="120" height="100" fill="#e8f5e8" stroke="#00aa00" stroke-width="2" rx="5"/>
 
-  <rect x="512.5" y="70" width="25" height="25" fill="#90EE90" stroke="#333" stroke-width="1"/>
-  <rect x="547.5" y="70" width="25" height="25" fill="#90EE90" stroke="#333" stroke-width="1"/>
-  <rect x="582.5" y="70" width="25" height="25" fill="#90EE90" stroke="#333" stroke-width="1"/>
-
-  <rect x="512.5" y="105" width="25" height="25" fill="#90EE90" stroke="#333" stroke-width="1"/>
-  <rect x="547.5" y="105" width="25" height="25" fill="#90EE90" stroke="#333" stroke-width="1"/>
-  <rect x="582.5" y="105" width="25" height="25" fill="#90EE90" stroke="#333" stroke-width="1"/>
+  <rect x="525" y="75" width="35" height="50" fill="#90EE90" stroke="#333" stroke-width="1"/>
+  <rect x="565" y="75" width="35" height="50" fill="#90EE90" stroke="#333" stroke-width="1"/>
 
   <defs>
+    <linearGradient id="defectGradient1" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="50%" style="stop-color:#90EE90;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#FFD700;stop-opacity:1" />
+    </linearGradient>
     <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
       <polygon points="0 0, 10 3.5, 0 7" fill="#333"/>
     </marker>
