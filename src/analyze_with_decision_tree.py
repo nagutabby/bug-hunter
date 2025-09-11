@@ -223,24 +223,85 @@ class DecisionTreeAnalyzer:
         return display_tree
 
     def plot_decision_tree_clean(self, save_path: Optional[str] = None, max_depth_display: int = 3):
-        """(...）ノードを完全に除去した決定木表示"""
         print(f"\n=== 決定木可視化（クリーン版） ===")
 
-        # 表示用に深さ制限した決定木を作成
         display_tree = self.build_simple_decision_tree_for_display(max_depth=max_depth_display)
 
         feature_names = self.X_processed.columns.tolist()
         short_feature_names = [self._shorten_feature_name(name) for name in feature_names]
 
-        plt.figure(figsize=(20, 12))
-        plot_tree(
-            display_tree,  # 深さ制限された決定木を使用
+        def get_node_color(node_id, tree_obj):
+            """ノードIDに基づいて色を決定する関数"""
+            if node_id >= len(tree_obj.value):
+                print(f"警告: ノードID {node_id} が範囲外です（最大: {len(tree_obj.value)-1}）")
+                return "lightgray"  # デフォルト色
+
+            value = tree_obj.value[node_id]
+            impurity = tree_obj.impurity[node_id]
+
+            # value[0]は各クラスのサンプル数 [陰性のサンプル数, 陽性のサンプル数]
+            negative_samples = value[0][0]  # 陰性クラス（バグなし）
+            positive_samples = value[0][1]  # 陽性クラス（バグあり）
+
+            # デバッグ情報
+            print(f"ノード{node_id}: 陰性={negative_samples:.1f}, 陽性={positive_samples:.1f}, 不純度={impurity:.3f}")
+
+            # 多数派クラスを決定
+            majority_class = 1 if positive_samples > negative_samples else 0
+
+            if majority_class == 0:  # 陰性クラス（バグなし）→ 青系
+                if impurity < 0.1:
+                    color = "dodgerblue"
+                elif impurity < 0.3:
+                    color = "lightblue"
+                else:
+                    color = "lightcyan"
+            else:  # 陽性クラス（バグあり）→ オレンジ系
+                if impurity < 0.1:
+                    color = "darkorange"
+                elif impurity < 0.3:
+                    color = "orange"
+                else:
+                    color = "moccasin"
+
+            print(f"  → 多数派クラス: {'陽性' if majority_class == 1 else '陰性'}, 色: {color}")
+            return color
+
+        fig, ax = plt.subplots(figsize=(25, 15))
+
+        artists = plot_tree(
+            display_tree,
             feature_names=short_feature_names,
             class_names=['陰性', '陽性'],
             filled=True,
             rounded=True,
-            fontsize=10
+            fontsize=14,
+            ax=ax
         )
+
+        tree_obj = display_tree.tree_
+        print(f"決定木のノード数: {len(tree_obj.value)}")
+        print(f"アーティストオブジェクト数: {len(artists)}")
+
+        # 各ノードに手動で色を適用
+        tree_obj = display_tree.tree_
+        node_count = 0
+
+        for i, artist in enumerate(artists):
+            if hasattr(artist, 'get_bbox_patch') and artist.get_bbox_patch() is not None:
+                # このアーティストがノードである場合のみ処理
+                if node_count < len(tree_obj.value):
+                    color = get_node_color(node_count, tree_obj)
+                    artist.get_bbox_patch().set_facecolor(color)
+                    artist.get_bbox_patch().set_edgecolor('black')
+                    artist.get_bbox_patch().set_linewidth(1.5)
+                    node_count += 1
+                else:
+                    # 範囲外の場合は処理をスキップ
+                    print(f"アーティスト{i}: ノード範囲外のためスキップ")
+            else:
+                # bbox_patchがないアーティスト（エッジラベルなど）
+                print(f"アーティスト{i}: bbox_patchなし（エッジラベルまたはテキスト要素）")
 
         plt.tight_layout()
 
@@ -426,7 +487,7 @@ class DecisionTreeAnalyzer:
 
 def main():
     try:
-        project_name = "oryx"
+        project_name = "antlr4"
         base_dir = f"../data/remove/{project_name}/"
         output_dir = f"../materials/images/{project_name}/"
 

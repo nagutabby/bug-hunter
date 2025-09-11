@@ -849,10 +849,9 @@ class ComprehensiveBugHunterAnalyzer:
             print("  - partial_dependence_plots.png (PDP)")
         print("="*80)
 
-
 def main():
     try:
-        project_name = "oryx"
+        project_name = "antlr4"
         base_dir = f"../data/remove/{project_name}/"
         output_dir = f"../materials/images/{project_name}/"
 
