@@ -45,36 +45,40 @@ _paginate: false
 </figure>
 
 ## 3. 関連研究
-- Hanらは、レビューの分析により欠陥の種類を調査したが、レビューのうち70%では明示的に欠陥が指摘されなかった<sup>[2]</sup>
-- Romanoらは、文脈に非依存のしきい値が欠陥修正作業を効率化することを示したが、文脈依存のしきい値については検証していない<sup>[3]</sup>
+- Hanらは、レビューの分析により欠陥の種類を調査<sup>[2]</sup>
+  - レビューのうち70%では明示的に欠陥が指摘されなかった
+- Romanoらは、文脈非依存のしきい値が欠陥修正作業を効率化する<br>ことを示した<sup>[3]</sup>
+  - 文脈依存のしきい値については検証していない
 
 > [2] X.Han et al., "Understanding Code Smell Detection via Code Review: A Study of the OpenStack Community," 2021
 > [3] S.Romano et al., "Do Static Analysis Tools Affect Software Quality when Using Test-driven Development?," 2022
 
 ## 3. 関連研究
-- Ferencらは、コミットごとのソフトウェアメトリクスを用いて<br>欠陥予測を実施したが、メトリクスの変化量を導入しなかった<sup>[4]</sup>
-- Kameiらは、コミットデータに基づく14の変更メトリクスを提案しているが、ソフトウェアメトリクスとの関連付けが不十分<sup>[5]</sup>
+- Ferencらは、コミットごとのソフトウェアメトリクスを用いて<br>欠陥予測を実施<sup>[4]</sup>
+  - メトリクスの変化量を導入しなかった
+- Kameiらは、コミットデータに基づく14の変更メトリクスを提案<sup>[5]</sup>
+  - ソフトウェアメトリクスとの関連付けが不十分
 
 > [4] R.Ferenc et al., "An automatically created novel bug dataset and its validation in bug prediction," 2020
 > [5] Y. Kamei et al., "A large-scale empirical study of just-in-time quality assurance," 2013
 
 ## 4. 分析手順
 1. データセットを構築
-2. 特徴量の変化を追加
-3. 特徴量の追加前・追加後のデータを用いてモデルを訓練
+2. 特徴量の変化量を追加
+3. 変化量の追加前・追加後のデータを用いてモデルを訓練
 4. モデルの性能を評価
 
 ## 4.1 データセットの構築
-- Ferencらが作成した「コミットごと、ソフトウェアの単位（例: クラス、メソッド）ごと」のソフトウェアメトリクスが含まれる
+- Ferencらが作成した、コミットごと、ソフトウェアの単位ごとの<br>メトリクスを含むデータセットを使用
 - モデルの精度向上のために前処理が必要
   - 値が全て0であるカラムを削除
   - クラスやメソッドの識別子をベクトル化
 
-## 4.2　メトリクスの変化量の追加
+## 4.2　特徴量の変化量の追加
 - コード行数・トークン数・循環的複雑度の変化量を追加
 - **直前の**コミットとの差分を用いて変化量を計算
 
-<figure style="max-width: 50vw; display: block; margin: 0 auto;">
+<figure style="max-width: 80vw; display: block; margin: 0 auto;">
   <img src="../images/change_metrics.svg" width="100%">
 </figure>
 
@@ -98,7 +102,7 @@ _paginate: false
 > Y. Zhao et al., "A Systematic Survey of Just-in-Time Software Defect Prediction," 2023
 
 ## 5. ケーススタディ
-- プロジェクト内評価の適用可能性を調べるために、<br>データセットから6プロジェクトを選択し、欠陥の有無を予測
+- データセットから以下の6プロジェクトを選定
 <table style="font-size: 2rem; margin: 0 auto;">
   <thead>
     <tr>
@@ -169,31 +173,30 @@ _paginate: false
 - 特徴量の変化量、Halsteadメトリクス: データのばらつきが小さい
 - MI: ばらつきが大きい（実際に取りうる値の範囲が広い）
 
-<figure style="max-width: 50vw;　display: block; margin: 0 auto;">
+<figure style="max-width: 55vw;　display: block; margin: 0 auto;">
   <img src="../images/ceylon-ide-eclipse/feature_histograms.png" width="100%">
 </figure>
 
 ## 5.5 PDP分析
 
-- ほとんどの特徴量において、バグありの予測確率が0.5未満
-  - バグなしと判断するための根拠が多い
-  - クラス分布が不均衡
+- ほとんどの特徴量においてバグありの予測確率が0.5未満
+  - クラス分布が不均衡であるため、バグなしと判断されやすい
 
-
-<figure style="max-width: 55vw;　display: block; margin: 0 auto;">
+<figure style="max-width: 60vw;　display: block; margin: 0 auto;">
   <img src="../images/elasticsearch/partial_dependence_plots.png" width="100%">
 </figure>
 
 ## 5.6 決定木分析
 
 - バグなしと判断したときの確信度が比較的高い
-  - オレンジ: バグなしと判断したノード
-  - 青: バグありと判断したノード
+  - オレンジはバグなし、青はバグありを表す
 <figure style="max-width: 55vw;　display: block; margin: 0 auto;">
   <img src="../images/elasticsearch/decision_tree_visualization.png"　 width="100%">
 </figure>
 
 ## 5.7 評価指標の測定
+- 5件のプロジェクトにおいてモデルの予測性能が改善され、<br>3件の改善が有意であることを確認
+
 <table style="font-size: 2rem; margin: 0 auto;">
   <thead>
     <tr>
@@ -235,8 +238,6 @@ _paginate: false
     </tr>
   </tbody>
 </table>
-
-- 5件のプロジェクトにおいてモデルの予測性能が改善され、<br>3件の改善が有意であることを確認
 
 ## 6. 評価
 - 達成できたこと
