@@ -47,7 +47,7 @@ _paginate: false
 ## 3. 関連研究
 - Hanらは、レビューテキストの自然言語処理により欠陥を調査<sup>[2]</sup>
   - およそ1,200件のうち、70%では明示的に欠陥が指摘されなかった
-- Romanoらは、静的解析ツールを用いたコード分析が欠陥を減少させる<br>ことを示した<sup>[3]</sup>
+- Romanoらは、静的解析ツールを用いたコード分析が欠陥を<br>減少させることを示した<sup>[3]</sup>
   - 文脈依存のしきい値については検証していない
 
 > [2] X.Han et al., "Understanding Code Smell Detection via Code Review: A Study of the OpenStack Community," 2021
@@ -146,7 +146,7 @@ _paginate: false
 - F1スコア（適合率と再現率の調和平均）による評価を行う
   - F1スコア = 2 × (適合率 × 再現率) / (適合率 + 再現率)
   - Zhaoらによれば、欠陥予測ではF1スコアによる評価が効果的<sup>[6]</sup>
-- 評価の確信度を測るために有意性検定を実施
+- 改善の有意差を測るためにマクネマー検定を実施
 
 > Y. Zhao et al., "A Systematic Survey of Just-in-Time Software Defect Prediction," 2023
 
@@ -247,7 +247,7 @@ _paginate: false
 </figure>
 
 ## 5.7 評価指標の測定
-- 5件のプロジェクトにおいてモデルの予測性能が改善され、<br>3件の改善が有意であることを確認
+- 5件のプロジェクトにおいてモデルの予測性能が改善され、3件は<br>有意差があり、2件はサンプルサイズの不足により有意差がなかった
 
 <table style="font-size: 2rem; margin: 0 auto;">
   <thead>

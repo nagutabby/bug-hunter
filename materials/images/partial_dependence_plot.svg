@@ -56,8 +56,6 @@
     <text x="305" y="200" font-weight="bold" font-size="20px">平均: 0.23</text>
   </g>
 
-  <path d="M 380 200 L 450 280" class="arrow"/>
-
   <g transform="translate(520, 50)">
     <line x1="80" y1="50" x2="80" y2="350" class="axis"/>
     <g class="label" text-anchor="end">
