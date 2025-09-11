@@ -92,7 +92,7 @@ _paginate: false
 
 ## 4.4　プロジェクト内評価
 - F1スコアによる評価を行う
-  - Zhaoらによれば、欠陥予測ではF1スコアによる評価が<sup>[6]</sup>
+  - Zhaoらによれば、欠陥予測ではF1スコアによる評価が効果的<sup>[6]</sup>
 - 評価の確信度を測るために有意性検定を実施
 
 > Y. Zhao et al., "A Systematic Survey of Just-in-Time Software Defect Prediction," 2023
