@@ -180,9 +180,8 @@ _paginate: false
   - クラス分布が不均衡
 
 
-<figure style="max-width: 45vw;　display: block; margin: 0 auto;">
+<figure style="max-width: 55vw;　display: block; margin: 0 auto;">
   <img src="../images/elasticsearch/partial_dependence_plots.png" width="100%">
-  <figcaption style="text-align: center; font-size: 2rem;">図10 代表的なPDP</figcaption>
 </figure>
 
 ## 5.6 決定木分析
