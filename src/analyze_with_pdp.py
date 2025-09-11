@@ -850,7 +850,7 @@ class ComprehensiveBugHunterAnalyzer:
 
 def main():
     try:
-        project_name = "antlr4"
+        project_name = "oryx"
         base_dir = f"../data/remove/{project_name}/"
         output_dir = f"../materials/images/{project_name}/"
 
