@@ -357,7 +357,6 @@ class ComprehensiveBugHunterAnalyzer:
                     short_name = self._shorten_feature_name(feature_name, 20)
                     importance_idx = all_features.index(feature_name)
                     importance = feature_scores[importance_idx]
-                    ax.set_title(f'{short_name}\n重要度: {importance:.3f}', fontsize=11, pad=10)
 
                 else:
                     self._plot_no_data_message(ax, feature_name)
@@ -370,8 +369,6 @@ class ComprehensiveBugHunterAnalyzer:
             row = i // n_cols
             col = i % n_cols
             axes[row, col].set_visible(False)
-
-        fig.suptitle(f'ヒストグラム（上位{len(top_features)}特徴量）', fontsize=16, y=0.98)
 
         plt.tight_layout(rect=[0, 0, 1, 0.96])
 
@@ -486,7 +483,6 @@ class ComprehensiveBugHunterAnalyzer:
         ax.set_yticks(y_pos)
         ax.set_yticklabels(short_names)
         ax.set_xlabel('Feature Importance', fontsize=12)
-        ax.set_title(f'ランダムフォレスト 特徴量重要度 Top {len(top_features)}', fontsize=14, pad=20)
 
         for i, (bar, importance) in enumerate(zip(bars, importances)):
             width = bar.get_width()
@@ -603,7 +599,6 @@ class ComprehensiveBugHunterAnalyzer:
                 short_name = self._shorten_feature_name(feature_name)
                 importance_idx = all_features.index(feature_name)
                 importance = feature_scores[importance_idx]
-                ax.set_title(f'{short_name}\n(重要度: {importance:.3f})', fontsize=10, pad=10)
 
                 ax.tick_params(axis='both', which='major', labelsize=8)
                 ax.set_ylabel('Partial Dependence', fontsize=9)
@@ -616,9 +611,6 @@ class ComprehensiveBugHunterAnalyzer:
             row = i // n_cols
             col = i % n_cols
             axes[row, col].set_visible(False)
-
-        fig.suptitle(f'Partial Dependence Plots（上位{len(top_features)}特徴量）',
-                    fontsize=16, y=0.98)
 
         plt.tight_layout(rect=[0, 0, 1, 0.96])
 
@@ -771,7 +763,6 @@ class ComprehensiveBugHunterAnalyzer:
 
             ax.set_xlabel('Fold')
             ax.set_ylabel(f'{name} Score')
-            ax.set_title(f'{name} - 交差検証結果', fontsize=12, pad=10)
             ax.legend()
             ax.grid(True, alpha=0.3)
             ax.set_xticks(folds)
@@ -859,7 +850,7 @@ class ComprehensiveBugHunterAnalyzer:
 
 def main():
     try:
-        project_name = "oryx"
+        project_name = "antlr4"
         base_dir = f"../data/remove/{project_name}/"
         output_dir = f"../materials/images/{project_name}/"
 

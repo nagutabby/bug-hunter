@@ -196,7 +196,6 @@ class DecisionTreeAnalyzer:
             proportion=True  # サンプル数を割合で表示
         )
 
-        plt.title(f'決定木 (深さ{max_depth_display})', fontsize=16, pad=20)
         plt.tight_layout()
 
         if save_path is None:
@@ -243,7 +242,6 @@ class DecisionTreeAnalyzer:
             fontsize=10
         )
 
-        plt.title(f'決定木 (深さ{max_depth_display})', fontsize=16, pad=20)
         plt.tight_layout()
 
         if save_path is None:
@@ -284,7 +282,6 @@ class DecisionTreeAnalyzer:
 
         plt.yticks(y_pos, short_names)
         plt.xlabel('特徴量重要度', fontsize=12)
-        plt.title(f'決定木 特徴量重要度 Top {len(top_features)}', fontsize=14, pad=20)
 
         for i, (bar, importance) in enumerate(zip(bars, top_features['重要度'])):
             width = bar.get_width()
@@ -429,7 +426,7 @@ class DecisionTreeAnalyzer:
 
 def main():
     try:
-        project_name = "oryx"
+        project_name = "antlr4"
         base_dir = f"../data/remove/{project_name}/"
         output_dir = f"../materials/images/{project_name}/"
 
