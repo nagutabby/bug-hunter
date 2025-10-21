@@ -119,8 +119,8 @@ _paginate: false
 - コード行数・トークン数・循環的複雑度の変化量を追加
   - ソフトウェアのサイズが欠陥の有無に影響を与えるため
 
-<figure style="max-width: 30vw; display: block; margin: 0 auto;">
-  <img src="../images/control_flow.svg" width="100%">
+<figure style="max-width: 35vw; display: block; margin: 0 auto;">
+  <img src="../images/fig.jpg" width="100%">
 </figure>
 
 ## 4.2　特徴量の変化量の追加
