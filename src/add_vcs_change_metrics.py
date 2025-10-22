@@ -125,10 +125,10 @@ def prepare_enhanced_csv_output(original_df, metrics_results):
     return enhanced_df
 
 def main():
-    base_dir = "../data/remove/elasticsearch/"
+    base_dir = "../data/remove/neo4j/"
     input_path = base_dir + "method-p_add_change_metrics.csv"
     output_path = base_dir + "method-p_add_vcs_change_metrics.csv"
-    repo_path = "/Users/nagutabby/elasticsearch"
+    repo_path = "/Users/nagutabby/neo4j/"
     max_records = 3000
 
     if not os.path.exists(input_path):

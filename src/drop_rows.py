@@ -50,7 +50,7 @@ def filter_csv_file(input_path, output_path):
         return False
 
 def main():
-    base_dir = "../data/remove/ceylon-ide-eclipse/"
+    base_dir = "../data/remove/neo4j/"
     input_path = base_dir + "method-p_drop_columns.csv"
     output_path = base_dir + "method-p_drop_columns_rows.csv"
 
