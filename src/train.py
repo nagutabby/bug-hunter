@@ -4,7 +4,6 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import StratifiedKFold, train_test_split
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, roc_auc_score
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.preprocessing import StandardScaler
 from imblearn.under_sampling import RandomUnderSampler
 import pickle
 import os
@@ -158,7 +157,6 @@ class BugHunterTrainer:
         self.best_model = None
         self.tfidf_vectorizer_longname = None
         self.tfidf_vectorizer_parent = None
-        self.scaler = None
         self.operation_type_columns = None
 
         self.all_feature_names = None
@@ -243,7 +241,7 @@ class BugHunterTrainer:
             return operation_type_df
 
     def prepare_data(self, data: pd.DataFrame, is_training: bool = True) -> tuple:
-        print("\n=== データ前処理（カスタムJavaトークナイザー + TF-IDF + operation_type One-Hot + 正規化）===")
+        print("\n=== データ前処理（カスタムJavaトークナイザー + TF-IDF + operation_type One-Hot）===")
 
         y = (data["Number of Bugs"] > 0.5).astype(int) if "Number of Bugs" in data.columns and is_training else None
 
@@ -256,15 +254,7 @@ class BugHunterTrainer:
         if missing_count > 0:
             print(f"数値特徴量の欠損値: {missing_count}個（RandomForestで自動処理）")
 
-        if is_training:
-            self.scaler = StandardScaler()
-            X_numerical_scaled = self.scaler.fit_transform(X_numerical)
-        else:
-            if self.scaler is None:
-                raise ValueError("Scalerが学習されていません。")
-            X_numerical_scaled = self.scaler.transform(X_numerical)
-
-        X_numerical_scaled_df = pd.DataFrame(X_numerical_scaled, columns=numerical_feature_columns, index=X_numerical.index)
+        X_numerical_df = X_numerical.copy()
 
         X_operation_type_df = self._prepare_operation_type_features(data, is_training)
 
@@ -306,7 +296,7 @@ class BugHunterTrainer:
                                         columns=[f'Parent_tfidf_{i}' for i in range(X_parent_tfidf.shape[1])],
                                         index=parent_data.index)
 
-        X_parts = [X_numerical_scaled_df, X_longname_tfidf_df, X_parent_tfidf_df]
+        X_parts = [X_numerical_df, X_longname_tfidf_df, X_parent_tfidf_df]
         if len(X_operation_type_df.columns) > 0:
             X_parts.append(X_operation_type_df)
 
@@ -494,7 +484,6 @@ class BugHunterTrainer:
             'model': self.best_model,
             'tfidf_vectorizer_longname': self.tfidf_vectorizer_longname,
             'tfidf_vectorizer_parent': self.tfidf_vectorizer_parent,
-            'scaler': self.scaler,
             'operation_type_columns': self.operation_type_columns,
             'all_feature_names': self.all_feature_names,
             'selected_features': self.selected_features,
