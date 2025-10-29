@@ -487,20 +487,20 @@ class DecisionTreeAnalyzer:
 
 def main():
     try:
-        project_name = "antlr4"
+        project_name = "orientdb"
         base_dir = f"../data/remove/{project_name}/"
         output_dir = f"../materials/images/{project_name}/"
 
         analyzer = DecisionTreeAnalyzer(
-            model_path=base_dir + "predictions_add_change_metrics.pkl"
+            model_path=base_dir + "predictions_add_vcs_change_metrics.pkl"
         )
 
-        data_path = base_dir + "method-p_add_change_metrics.csv"
+        data_path = base_dir + "method-p_add_vcs_change_metrics.csv"
 
         results = analyzer.generate_decision_tree_report(
             data_path=data_path,
             output_dir=output_dir,
-            max_rows=5000
+            max_rows=3000
         )
 
         print("\n" + "="*60)

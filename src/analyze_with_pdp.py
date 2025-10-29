@@ -186,7 +186,6 @@ class ComprehensiveBugHunterAnalyzer:
 
             temp_trainer.tfidf_vectorizer_longname = self.model_data['tfidf_vectorizer_longname']
             temp_trainer.tfidf_vectorizer_parent = self.model_data['tfidf_vectorizer_parent']
-            temp_trainer.scaler = self.model_data['scaler']
             temp_trainer.operation_type_columns = self.model_data['operation_type_columns']
             temp_trainer.all_feature_names = self.model_data['all_feature_names']
             temp_trainer.has_operation_type = self.model_data['has_operation_type']
@@ -821,7 +820,7 @@ class ComprehensiveBugHunterAnalyzer:
                 data_path=data_path,
                 top_n=10,
                 save_path=histogram_path,
-                max_rows=10000
+                max_rows=3000
             )
 
             pdp_path = os.path.join(output_dir, "partial_dependence_plots.png")
@@ -829,7 +828,7 @@ class ComprehensiveBugHunterAnalyzer:
                 data_path=data_path,
                 top_n=10,
                 save_path=pdp_path,
-                max_rows=10000
+                max_rows=3000
             )
 
         else:
@@ -851,12 +850,12 @@ class ComprehensiveBugHunterAnalyzer:
 
 def main():
     try:
-        project_name = "antlr4"
+        project_name = "orientdb"
         base_dir = f"../data/remove/{project_name}/"
         output_dir = f"../materials/images/{project_name}/"
 
-        analyzer = ComprehensiveBugHunterAnalyzer(base_dir + "predictions_add_change_metrics.pkl")
-        data_path = base_dir + "method-p_add_change_metrics.csv"
+        analyzer = ComprehensiveBugHunterAnalyzer(base_dir + "predictions_add_vcs_change_metrics.pkl")
+        data_path = base_dir + "method-p_add_vcs_change_metrics.csv"
 
         os.makedirs(output_dir, exist_ok=True)
 
