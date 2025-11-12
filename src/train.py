@@ -561,13 +561,13 @@ def main():
     )
 
     try:
-        base_dir = "../data/remove/neo4j/"
-        data_path = base_dir + "method-p_add_vcs_change_metrics.csv"
-        model_save_path = base_dir + "predictions_add_vcs_change_metrics.pkl"
+        base_dir = "../data/remove/orientdb/"
+        data_path = base_dir + "method-p_add_method_commit_level_metrics.csv"
+        model_save_path = base_dir + "predictions_add_method_commit_level_metrics.pkl"
 
         cv_results, test_results = trainer.run_training_pipeline(
             data_path=data_path,
-            max_rows=3000,
+            max_rows=5000,
             model_save_path=model_save_path
         )
 

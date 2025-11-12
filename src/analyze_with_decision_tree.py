@@ -492,15 +492,15 @@ def main():
         output_dir = f"../materials/images/{project_name}/"
 
         analyzer = DecisionTreeAnalyzer(
-            model_path=base_dir + "predictions_add_vcs_change_metrics.pkl"
+            model_path=base_dir + "predictions_add_method_commit_level_metrics.pkl"
         )
 
-        data_path = base_dir + "method-p_add_vcs_change_metrics.csv"
+        data_path = base_dir + "method-p_add_method_commit_level_metrics.csv"
 
         results = analyzer.generate_decision_tree_report(
             data_path=data_path,
             output_dir=output_dir,
-            max_rows=3000
+            max_rows=5000
         )
 
         print("\n" + "="*60)
