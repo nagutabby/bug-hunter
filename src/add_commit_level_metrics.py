@@ -111,28 +111,21 @@ def calculate_vcs_metrics(stats):
     if stats is None:
         return {
             'num_files': None,
-            'lines_added_ratio': None,
-            'lines_deleted_ratio': None,
-            'lines_per_file': None,
+            'lines_added': None,
+            'lines_deleted': None,
             'entropy': None
         }
 
     nf = stats['files_changed']
     la = stats['lines_added']
     ld = stats['lines_deleted']
-    lt = stats['total_lines_before']
-
-    la_lt = la / lt if lt > 0 else None
-    ld_lt = ld / lt if lt > 0 else None
-    lt_nf = lt / nf if nf > 0 else None
 
     entropy = calculate_entropy(stats['lines_per_file'])
 
     return {
         'num_files': nf,
-        'lines_added_ratio': la_lt,
-        'lines_deleted_ratio': ld_lt,
-        'lines_per_file': lt_nf,
+        'lines_added': la,
+        'lines_deleted': ld,
         'entropy': entropy
     }
 
@@ -141,9 +134,8 @@ def prepare_enhanced_csv_output(original_df, metrics_results):
 
     new_columns = [
         'num_files',
-        'lines_added_ratio',
-        'lines_deleted_ratio',
-        'lines_per_file',
+        'lines_added',
+        'lines_deleted',
         'entropy'
     ]
 
@@ -155,9 +147,8 @@ def prepare_enhanced_csv_output(original_df, metrics_results):
 
         if metrics is not None:
             enhanced_df.loc[row_index, 'num_files'] = metrics['num_files']
-            enhanced_df.loc[row_index, 'lines_added_ratio'] = metrics['lines_added_ratio']
-            enhanced_df.loc[row_index, 'lines_deleted_ratio'] = metrics['lines_deleted_ratio']
-            enhanced_df.loc[row_index, 'lines_per_file'] = metrics['lines_per_file']
+            enhanced_df.loc[row_index, 'lines_added'] = metrics['lines_added']
+            enhanced_df.loc[row_index, 'lines_deleted'] = metrics['lines_deleted']
             enhanced_df.loc[row_index, 'entropy'] = metrics['entropy']
 
     return enhanced_df
@@ -215,13 +206,10 @@ def main():
             metrics = calculate_vcs_metrics(stats)
 
             if stats:
-                print(f"  [DEBUG] LA (追加行数): {stats['lines_added']}")
-                print(f"  [DEBUG] LD (削除行数): {stats['lines_deleted']}")
-                print(f"  [DEBUG] LT (変更前総行数): {stats['total_lines_before']}")
                 print(f"  NF (変更ファイル数): {metrics['num_files']}")
-                print(f"  LA/LT (追加行数比): {metrics['lines_added_ratio']:.4f}" if metrics['lines_added_ratio'] is not None else "  LA/LT: N/A")
-                print(f"  LD/LT (削除行数比): {metrics['lines_deleted_ratio']:.4f}" if metrics['lines_deleted_ratio'] is not None else "  LD/LT: N/A")
-                print(f"  LT/NF (ファイル毎行数): {metrics['lines_per_file']:.2f}" if metrics['lines_per_file'] is not None else "  LT/NF: N/A")
+                print(f"  LA (追加行数): {metrics['lines_added']}")
+                print(f"  LD (削除行数): {metrics['lines_deleted']}")
+                print(f"  Code Churn: {metrics['lines_added'] + metrics['lines_deleted']}")
                 print(f"  Entropy (変更分散度): {metrics['entropy']:.4f}" if metrics['entropy'] is not None else "  Entropy: N/A")
 
             metrics_results[record_id] = metrics
