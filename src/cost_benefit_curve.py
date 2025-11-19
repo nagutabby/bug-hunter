@@ -20,13 +20,7 @@ def calculate_effort(code_churn, num_files, entropy):
     else:
         raw_effort = code_churn * (num_files ** entropy)
 
-    # 【変更点】対数変換を適用
-    # np.log(x + 1) を使用して値を圧縮する
     effort = np.log(raw_effort + 1)
-
-    # 念のため負の値にならないよう制御（通常は発生しませんが安全策として）
-    if effort <= 0:
-        effort = 0.001
 
     return effort
 
