@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 import os
 import sys
 from git import Repo
@@ -18,12 +19,15 @@ def get_commit_change_stats(repo_path, commit_hash):
         lines_added = 0
         lines_deleted = 0
         total_lines_before = 0
+        lines_per_file = []
 
         diff_index = parent.diff(commit)
 
         for diff_item in diff_index:
             if diff_item.change_type in ['A', 'M', 'D', 'R']:
                 files_changed += 1
+
+            file_lines_changed = 0
 
             if diff_item.change_type == 'M':
                 try:
@@ -41,8 +45,10 @@ def get_commit_change_stats(repo_path, commit_hash):
                     for line in diff:
                         if line.startswith('+') and not line.startswith('+++'):
                             lines_added += 1
+                            file_lines_changed += 1
                         elif line.startswith('-') and not line.startswith('---'):
                             lines_deleted += 1
+                            file_lines_changed += 1
                 except Exception as e:
                     print(f"  警告: ファイル比較中にエラー: {e}")
                     pass
@@ -52,6 +58,7 @@ def get_commit_change_stats(repo_path, commit_hash):
                     b_content = diff_item.b_blob.data_stream.read().decode('utf-8', errors='ignore')
                     b_lines = b_content.splitlines()
                     lines_added += len(b_lines)
+                    file_lines_changed += len(b_lines)
                 except:
                     pass
 
@@ -61,19 +68,44 @@ def get_commit_change_stats(repo_path, commit_hash):
                     a_lines = a_content.splitlines()
                     total_lines_before += len(a_lines)
                     lines_deleted += len(a_lines)
+                    file_lines_changed += len(a_lines)
                 except:
                     pass
+
+            if file_lines_changed > 0:
+                lines_per_file.append(file_lines_changed)
 
         return {
             'files_changed': files_changed,
             'lines_added': lines_added,
             'lines_deleted': lines_deleted,
-            'total_lines_before': total_lines_before
+            'total_lines_before': total_lines_before,
+            'lines_per_file': lines_per_file
         }
 
     except Exception as e:
         print(f"  エラー: コミット {commit_hash} の統計取得中に例外が発生しました: {e}")
         return None
+
+def calculate_entropy(lines_per_file):
+    if not lines_per_file or len(lines_per_file) == 0:
+        return None
+
+    if len(lines_per_file) == 1:
+        return 0.0
+
+    total_lines = sum(lines_per_file)
+    if total_lines == 0:
+        return None
+
+    entropy = 0.0
+    for lines in lines_per_file:
+        if lines > 0:
+            pk = lines / total_lines
+            entropy -= pk * np.log2(pk)
+
+    normalized_entropy = entropy / np.log2(len(lines_per_file))
+    return normalized_entropy
 
 def calculate_vcs_metrics(stats):
     if stats is None:
@@ -81,7 +113,8 @@ def calculate_vcs_metrics(stats):
             'num_files': None,
             'lines_added_ratio': None,
             'lines_deleted_ratio': None,
-            'lines_per_file': None
+            'lines_per_file': None,
+            'entropy': None
         }
 
     nf = stats['files_changed']
@@ -93,11 +126,14 @@ def calculate_vcs_metrics(stats):
     ld_lt = ld / lt if lt > 0 else None
     lt_nf = lt / nf if nf > 0 else None
 
+    entropy = calculate_entropy(stats['lines_per_file'])
+
     return {
         'num_files': nf,
         'lines_added_ratio': la_lt,
         'lines_deleted_ratio': ld_lt,
-        'lines_per_file': lt_nf
+        'lines_per_file': lt_nf,
+        'entropy': entropy
     }
 
 def prepare_enhanced_csv_output(original_df, metrics_results):
@@ -107,7 +143,8 @@ def prepare_enhanced_csv_output(original_df, metrics_results):
         'num_files',
         'lines_added_ratio',
         'lines_deleted_ratio',
-        'lines_per_file'
+        'lines_per_file',
+        'entropy'
     ]
 
     for col in new_columns:
@@ -121,6 +158,7 @@ def prepare_enhanced_csv_output(original_df, metrics_results):
             enhanced_df.loc[row_index, 'lines_added_ratio'] = metrics['lines_added_ratio']
             enhanced_df.loc[row_index, 'lines_deleted_ratio'] = metrics['lines_deleted_ratio']
             enhanced_df.loc[row_index, 'lines_per_file'] = metrics['lines_per_file']
+            enhanced_df.loc[row_index, 'entropy'] = metrics['entropy']
 
     return enhanced_df
 
@@ -184,6 +222,7 @@ def main():
                 print(f"  LA/LT (追加行数比): {metrics['lines_added_ratio']:.4f}" if metrics['lines_added_ratio'] is not None else "  LA/LT: N/A")
                 print(f"  LD/LT (削除行数比): {metrics['lines_deleted_ratio']:.4f}" if metrics['lines_deleted_ratio'] is not None else "  LD/LT: N/A")
                 print(f"  LT/NF (ファイル毎行数): {metrics['lines_per_file']:.2f}" if metrics['lines_per_file'] is not None else "  LT/NF: N/A")
+                print(f"  Entropy (変更分散度): {metrics['entropy']:.4f}" if metrics['entropy'] is not None else "  Entropy: N/A")
 
             metrics_results[record_id] = metrics
             processed_count += 1
