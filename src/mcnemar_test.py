@@ -9,7 +9,8 @@ from train import JavaCodeTokenizer
 warnings.filterwarnings('ignore')
 
 class McNemarTest:
-    def __init__(self, alpha=0.05):
+    # デフォルトの有意水準を0.01に変更
+    def __init__(self, alpha=0.01):
         self.alpha = alpha
 
     def _extract_predictions(self, model_data):
@@ -93,14 +94,16 @@ class McNemarTest:
         return result
 
 def main():
-    test = McNemarTest(alpha=0.05)
+    # インスタンス作成時に alpha=0.01 を指定
+    test = McNemarTest(alpha=0.01)
 
-    base_dir = "../data/remove/ceylon-ide-eclipse/"
-    file_1 = base_dir + "predictions_add_current_metrics.pkl"
-    file_2 = base_dir + "predictions_add_change_metrics.pkl"
+    base_dir = "../data/remove/orientdb/"
+    file_1 = base_dir + "predictions_base.pkl"
+    file_2 = base_dir + "predictions_add_method_commit_level_metrics.pkl"
 
     if not os.path.exists(file_1) or not os.path.exists(file_2):
         print("予測結果ファイルが見つかりません")
+        # 実行環境でファイルがない場合はここで終了します
         return
 
     try:
