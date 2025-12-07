@@ -92,10 +92,13 @@ def find_key_points(df_metrics, model_name):
     key_points = []
 
     for _, row in df_metrics.iterrows():
-        if row['capacity_ratio'] > 0:
+        # 浮動小数点の誤差を考慮し、%単位の整数に丸める
+        ratio_pct = round(row['capacity_ratio'] * 100)
+
+        if ratio_pct > 0 and ratio_pct % 20 == 0:
             key_points.append({
                 'model': model_name,
-                'target': f"{row['capacity_ratio']*100:.1f}%労力",
+                'target': f"{ratio_pct}%労力",
                 'commits_reviewed': int(row['commits_reviewed']),
                 'bugs_found': int(row['bugs_found']),
                 'review_effort_ratio': row['review_effort_ratio'],
@@ -403,7 +406,7 @@ def compare_models(base_model_path, improved_model_path, commit_metrics_path, ou
                          save_path=f'{output_dir}/comparison_cost_benefit_curve.png')
 
 def main():
-    project_name = "elasticsearch"
+    project_name = "orientdb"
 
     base_model_path = f"../data/remove/{project_name}/predictions_base.pkl"
     improved_model_path = f"../data/remove/{project_name}/predictions_add_method_commit_level_metrics.pkl"
