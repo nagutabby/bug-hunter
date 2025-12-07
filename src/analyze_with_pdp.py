@@ -282,105 +282,116 @@ class ComprehensiveBugHunterAnalyzer:
         return pd.DataFrame(sample_data)
 
     def plot_feature_histograms(self, data_path: str, top_n: int = 10,
-                               save_path: Optional[str] = None, max_rows: int = 10000):
-        print(f"\n=== 上位{top_n}特徴量のヒストグラム分析 ===")
+                                  save_path: Optional[str] = None, max_rows: int = 10000):
+            print(f"\n=== 上位{top_n}特徴量のヒストグラム分析 ===")
 
-        X_processed = self._get_real_data_statistics(data_path, max_rows)
-        if X_processed is None:
-            return
+            X_processed = self._get_real_data_statistics(data_path, max_rows)
+            if X_processed is None:
+                return
 
-        feature_scores = self.model_data['feature_importance_scores']
-        all_features = self.model_data['all_feature_names']
-        selected_features = self.model_data['selected_features']
+            feature_scores = self.model_data['feature_importance_scores']
+            all_features = self.model_data['all_feature_names']
+            selected_features = self.model_data['selected_features']
 
-        selected_features_df = pd.DataFrame({
-            '特徴量': all_features,
-            'Feature Importance': feature_scores
-        })
+            selected_features_df = pd.DataFrame({
+                '特徴量': all_features,
+                'Feature Importance': feature_scores
+            })
 
-        selected_features_df = selected_features_df[
-            selected_features_df['特徴量'].isin(selected_features)
-        ].sort_values('Feature Importance', ascending=False)
+            selected_features_df = selected_features_df[
+                selected_features_df['特徴量'].isin(selected_features)
+            ].sort_values('Feature Importance', ascending=False)
 
-        top_features = selected_features_df.head(top_n)['特徴量'].tolist()
+            top_features = selected_features_df.head(top_n)['特徴量'].tolist()
 
-        print(f"ヒストグラム（上位{len(top_features)}特徴量）")
-        for i, feature in enumerate(top_features, 1):
-            importance_idx = all_features.index(feature)
-            importance = feature_scores[importance_idx]
-            feature_type = self._get_feature_type(feature)
-            print(f"  {i:2d}. {feature} ({feature_type}) - 重要度: {importance:.4f}")
+            print(f"ヒストグラム（上位{len(top_features)}特徴量）")
+            for i, feature in enumerate(top_features, 1):
+                importance_idx = all_features.index(feature)
+                importance = feature_scores[importance_idx]
+                feature_type = self._get_feature_type(feature)
+                print(f"  {i:2d}. {feature} ({feature_type}) - 重要度: {importance:.4f}")
 
-        sns.set_style("whitegrid")
-        sns.set_palette("husl")
-        sns.set(font='IPAexGothic')
+            sns.set_style("whitegrid")
+            sns.set_palette("husl")
+            # 日本語フォントの設定（環境に合わせて適宜変更してください）
+            sns.set(font='IPAexGothic')
 
-        plt.rcParams['font.size'] = 10
-        plt.rcParams['axes.titlesize'] = 12
-        plt.rcParams['axes.labelsize'] = 10
-        plt.rcParams['figure.titlesize'] = 16
+            plt.rcParams['font.size'] = 10
+            plt.rcParams['axes.titlesize'] = 12
+            plt.rcParams['axes.labelsize'] = 10
+            plt.rcParams['figure.titlesize'] = 16
 
-        n_cols = 4
-        n_rows = (len(top_features) + n_cols - 1) // n_cols
+            n_cols = 4
+            n_rows = (len(top_features) + n_cols - 1) // n_cols
 
-        fig_width = n_cols * 5
-        fig_height = n_rows * 4
+            fig_width = n_cols * 5
+            fig_height = n_rows * 4
 
-        print(f"ヒストグラム描画中... ({n_rows}行 × {n_cols}列のグリッド)")
+            print(f"ヒストグラム描画中... ({n_rows}行 × {n_cols}列のグリッド)")
 
-        fig, axes = plt.subplots(n_rows, n_cols, figsize=(fig_width, fig_height))
+            fig, axes = plt.subplots(n_rows, n_cols, figsize=(fig_width, fig_height))
 
-        if n_rows == 1:
-            axes = axes.reshape(1, -1)
-        if n_cols == 1:
-            axes = axes.reshape(-1, 1)
+            if n_rows == 1:
+                axes = axes.reshape(1, -1)
+            if n_cols == 1:
+                axes = axes.reshape(-1, 1)
 
-        for i, feature_name in enumerate(top_features):
-            row = i // n_cols
-            col = i % n_cols
-            ax = axes[row, col]
+            for i, feature_name in enumerate(top_features):
+                row = i // n_cols
+                col = i % n_cols
+                ax = axes[row, col]
 
-            try:
-                if feature_name in X_processed.columns:
-                    feature_data = X_processed[feature_name].dropna()
+                try:
+                    if feature_name in X_processed.columns:
+                        feature_data = X_processed[feature_name].dropna()
 
-                    if len(feature_data) == 0:
-                        self._plot_no_data_message(ax, feature_name)
-                        continue
+                        if len(feature_data) == 0:
+                            self._plot_no_data_message(ax, feature_name)
+                            continue
 
-                    if feature_name.startswith('operation_type_'):
-                        self._plot_binary_histogram(ax, feature_data, feature_name)
+                        # ==========================================
+                        # 【追加】 統計情報の出力
+                        # ==========================================
+                        print(f"\n[{feature_name}] の統計情報:")
+                        print(f"  最小値: {feature_data.min():.4f}")
+                        print(f"  最大値: {feature_data.max():.4f}")
+                        print(f"  平均値: {feature_data.mean():.4f}")
+                        print(f"  中央値: {feature_data.median():.4f}")
+                        # ==========================================
+
+                        if feature_name.startswith('operation_type_'):
+                            self._plot_binary_histogram(ax, feature_data, feature_name)
+                        else:
+                            self._plot_continuous_histogram(ax, feature_data, feature_name)
+
+                        short_name = self._shorten_feature_name(feature_name, 20)
+                        importance_idx = all_features.index(feature_name)
+                        importance = feature_scores[importance_idx]
+                        ax.set_title(f'{short_name}', fontsize=11, pad=10)
+
                     else:
-                        self._plot_continuous_histogram(ax, feature_data, feature_name)
+                        self._plot_no_data_message(ax, feature_name)
 
-                    short_name = self._shorten_feature_name(feature_name, 20)
-                    importance_idx = all_features.index(feature_name)
-                    importance = feature_scores[importance_idx]
-                    ax.set_title(f'{short_name}', fontsize=11, pad=10)
+                except Exception as e:
+                    print(f"特徴量 '{feature_name}' のヒストグラム描画でエラー: {e}")
+                    self._plot_error_message(ax, feature_name, str(e))
 
-                else:
-                    self._plot_no_data_message(ax, feature_name)
+            for i in range(len(top_features), n_rows * n_cols):
+                row = i // n_cols
+                col = i % n_cols
+                axes[row, col].set_visible(False)
 
-            except Exception as e:
-                print(f"特徴量 '{feature_name}' のヒストグラム描画でエラー: {e}")
-                self._plot_error_message(ax, feature_name, str(e))
+            plt.tight_layout(rect=[0, 0, 1, 0.96])
 
-        for i in range(len(top_features), n_rows * n_cols):
-            row = i // n_cols
-            col = i % n_cols
-            axes[row, col].set_visible(False)
+            if save_path is None:
+                save_path = "feature_histograms.png"
 
-        plt.tight_layout(rect=[0, 0, 1, 0.96])
+            plt.savefig(save_path, dpi=300, bbox_inches='tight',
+                      facecolor='white', edgecolor='none')
+            print(f"特徴量ヒストグラムを '{save_path}' に保存しました")
 
-        if save_path is None:
-            save_path = "feature_histograms.png"
-
-        plt.savefig(save_path, dpi=300, bbox_inches='tight',
-                   facecolor='white', edgecolor='none')
-        print(f"特徴量ヒストグラムを '{save_path}' に保存しました")
-
-        plt.show()
-        print("特徴量ヒストグラム描画完了")
+            plt.show()
+            print("特徴量ヒストグラム描画完了")
 
     def _plot_binary_histogram(self, ax, feature_data: pd.Series, feature_name: str):
         unique_values = sorted(feature_data.unique())
