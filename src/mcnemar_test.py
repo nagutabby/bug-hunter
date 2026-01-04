@@ -9,8 +9,7 @@ from train import JavaCodeTokenizer
 warnings.filterwarnings('ignore')
 
 class McNemarTest:
-    # デフォルトの有意水準を0.01に変更
-    def __init__(self, alpha=0.01):
+    def __init__(self, alpha=0.05):
         self.alpha = alpha
 
     def _extract_predictions(self, model_data):
@@ -72,44 +71,91 @@ class McNemarTest:
             'total_disagreements': total_disagreements
         }
 
-    def compare_models(self, file_path_1, file_path_2, model_name_1="モデル1", model_name_2="モデル2"):
+    def compare_models(self, file_path_1, file_path_2, model_name_1="Base", model_name_2="Improved"):
         self.load_predictions(file_path_1, file_path_2)
         result = self.perform_test()
 
-        print(f"=== マクネマー検定結果 ===")
-        print(f"比較対象: {model_name_1} vs {model_name_2}")
-        print(f"使用検定: {result['test_type']}")
+        print(f"\n使用検定: {result['test_type']}")
+        print(f"不一致数: {result['total_disagreements']} ({model_name_1}のみ正解: {result['model1_only_correct']}, {model_name_2}のみ正解: {result['model2_only_correct']})")
         print(f"p値: {result['p_value']:.6f}")
-        print(f"有意水準: {self.alpha}")
-        print(f"統計的有意差: {'あり' if result['is_significant'] else 'なし'}")
+        print(f"有意水準α={self.alpha}: {'有意' if result['is_significant'] else '有意差なし'}")
 
         if result['is_significant']:
             if result['model2_only_correct'] > result['model1_only_correct']:
-                print(f"結論: {model_name_2}が{model_name_1}より有意に優れています")
+                print(f"→ {model_name_2}が{model_name_1}より有意に優れている")
             else:
-                print(f"結論: {model_name_1}が{model_name_2}より有意に優れています")
-        else:
-            print(f"結論: 両モデルの性能に有意差はありません")
+                print(f"→ {model_name_1}が{model_name_2}より有意に優れている")
 
         return result
 
-def main():
-    # インスタンス作成時に alpha=0.01 を指定
-    test = McNemarTest(alpha=0.01)
+def analyze_project(test, project_name, base_model_path, improved_model_path):
+    print(f"\n{'='*60}")
+    print(f"プロジェクト: {project_name}")
+    print('='*60)
 
-    base_dir = "../data/remove/orientdb/"
-    file_1 = base_dir + "predictions_base.pkl"
-    file_2 = base_dir + "predictions_add_method_commit_level_metrics.pkl"
-
-    if not os.path.exists(file_1) or not os.path.exists(file_2):
+    if not os.path.exists(base_model_path) or not os.path.exists(improved_model_path):
         print("予測結果ファイルが見つかりません")
-        # 実行環境でファイルがない場合はここで終了します
-        return
+        return None
 
     try:
-        result = test.compare_models(file_1, file_2)
+        result = test.compare_models(base_model_path, improved_model_path,
+                                     model_name_1="Base", model_name_2="Improved")
+        result['project'] = project_name
+        return result
     except Exception as e:
         print(f"エラー: {e}")
+        return None
+
+def main():
+    projects = [
+        {
+            'name': 'elasticsearch',
+            'base_model': '../data/remove/elasticsearch/predictions_base.pkl',
+            'improved_model': '../data/remove/elasticsearch/predictions_add_method_commit_level_metrics.pkl'
+        },
+        {
+            'name': 'hazelcast',
+            'base_model': '../data/remove/hazelcast/predictions_base.pkl',
+            'improved_model': '../data/remove/hazelcast/predictions_add_method_commit_level_metrics.pkl'
+        },
+        {
+            'name': 'neo4j',
+            'base_model': '../data/remove/neo4j/predictions_base.pkl',
+            'improved_model': '../data/remove/neo4j/predictions_add_method_commit_level_metrics.pkl'
+        },
+        {
+            'name': 'netty',
+            'base_model': '../data/remove/netty/predictions_base.pkl',
+            'improved_model': '../data/remove/netty/predictions_add_method_commit_level_metrics.pkl'
+        },
+        {
+            'name': 'orientdb',
+            'base_model': '../data/remove/orientdb/predictions_base.pkl',
+            'improved_model': '../data/remove/orientdb/predictions_add_method_commit_level_metrics.pkl'
+        }
+    ]
+
+    test = McNemarTest(alpha=0.05)
+
+    print("=" * 80)
+    print("全プロジェクトに対するマクネマー検定（有意水準α=0.05）")
+    print("=" * 80)
+
+    results = []
+    for project in projects:
+        result = analyze_project(
+            test=test,
+            project_name=project['name'],
+            base_model_path=project['base_model'],
+            improved_model_path=project['improved_model']
+        )
+        if result is not None:
+            results.append(result)
+
+    if results:
+        df_results = pd.DataFrame(results)
+        df_results = df_results[['project', 'test_type', 'p_value', 'is_significant',
+                                 'model1_only_correct', 'model2_only_correct', 'total_disagreements']]
 
 if __name__ == "__main__":
     main()
