@@ -1,17 +1,18 @@
 # アブストラクト
-ソフトウェア開発において、継続的な変更は欠陥混入のリスクを伴う。静的メトリクスに依存する既存の欠陥予測手法では、変更頻度やパターンといった動的なリスク要因を捉えられず、予測精度に限界がある。本研究では、コードの時系列変化を考慮した欠陥予測手法を提案する。
+In software development, continuous code changes introduce defect risks. Existing defect prediction methods rely on static code metrics, which fail to capture features of the changes. Recent research has explored change metrics from version control history, showing that change-related features correlate more strongly with defects than static metrics alone. However, these approaches typically aggregate change data over time windows without explicitly modeling the irregular temporal structure of commits, and focus on either method-level or commit-level metrics in isolation without integrating insights from different granularities.
 
-提案手法では、コミットを不規則なタイミングで発生するイベントとして扱い、直前のコミットとの差分に基づく変化を特徴量として活用する。メソッド単位やコミット単位で計測される、異なる構成要素の変更メトリクスを統合することで、局所的な変化とプロジェクト全体の動向を捉える。また、レビュー対象のコミットの選択をナップサック問題として定式化し、限られた労力でより多くの欠陥を発見できるようにする。
+This research proposes a defect prediction method that differs from existing approaches in three key aspects. First, unlike conventional methods that impose artificial time windows or assume regular intervals, the proposed method treats commits as irregularly-timed events, deriving features from differences between consecutive commits. This formulation captures the irregular development frequency in software projects. Second, while existing research focuses on single granularity, the proposed method integrates method-level metrics tracking localized modifications with commit-level metrics reflecting overall scope, capturing both local changes and global trends simultaneously. Third, the method formulates commit selection in reviews as a knapsack problem that explicitly accounts for review effort based on change volume, modification complexity, and change scope to provide better resource allocation under constraints.
 
-5つのオープンソースプロジェクトを用いた実験により、提案手法の有効性を検証した。全プロジェクトでF1スコアの向上が確認され、平均改善幅は0.21であった。レビュー労力に対する欠陥発見数の分析では、Neo4jプロジェクトでレビュー労力40\%時点で17.0\%、Nettyプロジェクトで20\%時点で19.8\%の改善が見られた。本手法は、限られたレビューリソースの効率的な配分を支援し、ソフトウェア開発における品質保証活動の実用性向上に貢献する。
+Experiments on five open-source projects validate the method's effectiveness, demonstrating consistent improvements in prediction accuracy across all projects and outperforming baseline methods using only static metrics. The knapsack-based review strategy shows improvements in defect discovery rates at various effort levels. This research contributes by presenting a method for analyzing commits as irregular time-series data, developing a method for integrating multi-granularity change metrics, and providing evidence of applicability in real-world quality assurance.
+
 
 # 1. はじめに
 ## 1.1 背景
-ソフトウェア開発において、継続的な変更は避けられない。各変更は既存コードとの整合性を崩し、副作用を引き起こすリスクを伴う。Microsoft Researchの調査では、76\%の開発者がリファクタリングによる欠陥混入を懸念している\cite{kim2014}。
+ソフトウェア開発プロセスは、従来のウォーターフォール型から、アジャイル開発やCI/CD（継続的インテグレーション / 継続的デリバリー）を中心としたプロセスへと変化してきた。これは、ユーザーニーズの多様化に伴い、リリース後も市場の要求に対応し続けることがビジネス上の課題となったためである。
 
-ソフトウェアライフサイクルにおいて、保守フェーズはコスト全体の大部分を占める\cite{jisx0161}。特に是正保守では、限られたリソースで重大な欠陥を早期に発見・修正することがコスト削減の鍵となる。しかし、コードが継続的に変化する環境では、静的な分析だけでは予測精度に限界がある。
+このような環境においては、ソフトウェアへの継続的な変更は避けられない。しかし、頻繁に行われるソフトウェア変更は、既存のコードとの整合性を損なうリスクを常に孕んでおり、副作用として新たな欠陥を混入させる要因となる。
 
-機械学習による欠陥予測の研究が進められているが、既存手法の多くはコードの静的特徴量に依存している。静的特徴量では、変更頻度や変更パターンといった動的なリスク要因を捉えられない。コードの時系列的な変化は開発プロセスの動的な側面を反映し、欠陥との強い相関が期待されるが、十分に活用されていない。
+従来、機械学習を用いた欠陥予測の研究が多く行われてきたが、その多くはコードの静的な構造に依存している。しかし、ソフトウェアの構造が絶えず変化する現代の開発現場においては、静的な分析だけではその構造を反映するコード変更の特徴を十分に捉えきれず、さらなる予測精度の向上が難しい。
 
 ## 1.2 動機
 欠陥の事後修正は高コストである。開発後期の修正コストは初期段階の数倍に達し、本番環境での発見はユーザー体験を損なう。これは、欠陥が他のモジュールに波及し、テストケースの再実行やデプロイプロセスの繰り返しが必要となるためである。
@@ -118,13 +119,23 @@ Kameiらは、Just-In-Time（JIT）欠陥予測モデルを提案した\cite{kam
 不均衡データへの対処として、サンプリング技術が用いられる。アンダーサンプリングは多数クラスのサンプル数を削減し、オーバーサンプリングは少数クラスのサンプル数を増加させる。アンダーサンプリングは計算コストが低いが情報が失われる可能性があり、オーバーサンプリングは情報を保持できるが計算コストが増加し、過学習のリスクがある。
 
 ## 2.5 レビュー効率化とコスト分析
-ソフトウェア開発において、コードレビューは品質保証プロセスにおいて重要な活動であるが、リソースの制約により全てのコードをレビューすることは困難である。Ostrandらは、欠陥密度が最も高い構成要素の20\%に平均83\%の欠陥が集中することを示し、限られたリソースを効果的に配分する戦略の重要性を示唆した\cite{ostrand2005}。
+ソフトウェア開発において、コードレビューは品質保証プロセスにおいて重要な活動であるが、リソースの制約により全てのコードを詳細にレビューすることは困難である。Ostrandらは、欠陥密度が最も高い構成要素の20\%に平均83\%の欠陥が集中することを示し、限られたリソースを効果的に配分する戦略の重要性を示唆した \cite{ostrand2005}。
 
-MendeとKoschkeは、欠陥予測を労力を考慮した順位付け問題として捉え直し、Effort-Aware Defect Prediction（レビュー労力に基づいた欠陥予測）の概念を提案した\cite{mende2010}。従来手法は各構成要素のレビュー労力が同一であると暗黙的に仮定していたが、実際には規模や複雑度によって必要な労力が異なる。彼らは循環的複雑度を用いてレビュー労力を計算し、少ない労力でレビューでき、かつ欠陥混入率も高い構成要素を優先的にレビューする戦略を提案した。
+コードレビューはソフトウェアライフサイクルにおける保守作業の1つであるが、保守フェーズはコスト全体の大部分を占めており、特に不具合を修正する「是正保守」の効率化はコスト削減の鍵となる \cite{jisx0161}。Microsoft Researchの調査では、76\%の開発者がリファクタリングによる欠陥混入を懸念していると報告されており、変更に伴うリスク管理が重要である \cite{kim2014}。
 
-Kameiらは、このMendeとKoschkeらの手法をJust-In-Time欠陥予測に適用した\cite{kamei2013}。Effort-Aware Linear Regression（EALR）モデルは、欠陥混入の有無を予測した上でコード行数に基づいて変更の優先度を順位付けし、20\%の労力で全欠陥の約35\%を発見できることを実証した。
+欠陥の事後修正は開発者にとっては大きな負担である。開発後期の修正コストは初期段階の数倍に達することもあり、本番環境での発見はユーザー体験を損なう可能性がある。これは、欠陥が他のモジュールに波及し、テストケースの再実行やデプロイプロセスの繰り返しが必要となるためである。
 
-しかし、既存手法はレビュー労力がコード行数や循環的複雑度に比例するという仮定に基づいており、変更が複数の構成要素に分散する場合の影響を十分に考慮していない。このような変更の広がりも含めてレビュー労力を計算する必要がある。
+\begin{figure}[tb] \centering \begin{subfigure}[b]{0.9\textwidth} \centering \includegraphics[width=\textwidth]{figures/defect_detection.pdf} \caption{欠陥予測を行わない場合の欠陥の広がり} \label{fig:defect_detection} \end{subfigure}
+
+\vspace{1em}
+
+\begin{subfigure}[b]{0.9\textwidth} \centering \includegraphics[width=\textwidth]{figures/defect_prediction.pdf} \caption{欠陥予測を用いた場合の早期対応} \label{fig:defect_prediction} \end{subfigure} \caption{欠陥予測の有無による欠陥の広がりの比較} \label{fig:defect_comparison} \end{figure}
+
+図 \ref{fig:defect_comparison} に示すように、欠陥予測による早期対応は、欠陥の波及を防ぎ、修正コストを削減できる。
+
+MendeとKoschkeは、欠陥予測を労力を考慮した順位付け問題として捉え直し、Effort-Aware Defect Prediction（レビュー労力に基づいた欠陥予測）の概念を提案した \cite{mende2010}。従来手法は各構成要素のレビュー労力が同一であると暗黙的に仮定していたが、実際には規模や複雑度によって必要な労力が異なる。彼らは循環的複雑度を用いてレビュー労力を計算し、少ない労力でレビューでき、かつ欠陥混入率も高い構成要素を優先的にレビューする戦略を提案した。
+
+Kameiらは、このMendeとKoschkeらの手法をJust-In-Time欠陥予測に適用した \cite{kamei2013}。彼らは6つのオープンソースプロジェクトと5つの商用プロジェクトを用いた実証研究により、平均正解率68\%、平均再現率64\%で欠陥誘発コミットを予測できることを示し、レビュー労力の20\%で全欠陥誘発コミットの35\%を特定できることを実証した。
 
 # 3. 提案手法
 ## 3.1 コミットの不規則性を考慮した時系列情報の活用
