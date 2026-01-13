@@ -146,7 +146,7 @@ _paginate: false
 - F1スコア（適合率と再現率の調和平均）による評価を行う
   - F1スコア = 2 × (適合率 × 再現率) / (適合率 + 再現率)
   - Zhaoらによれば、欠陥予測ではF1スコアによる評価が効果的<sup>[6]</sup>
-- 改善の有意差を測るためにマクネマー検定を実施
+- 改善の有意差を測るためにMcNemar検定を実施
 
 > Y. Zhao et al., "A Systematic Survey of Just-in-Time Software Defect Prediction," 2023
 

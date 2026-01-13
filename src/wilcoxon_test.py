@@ -127,7 +127,7 @@ def analyze_project(project_name, base_model_path, improved_model_path,
 
 def perform_wilcoxon_test(all_base_results, all_improved_results, effort_levels, alpha=0.01):
     print(f"\n{'='*80}")
-    print("ウィルコクソンの符号順位検定（有意水準α={:.2f}）".format(alpha))
+    print("Wilcoxonの符号順位検定（有意水準α={:.2f}）".format(alpha))
     print('='*80)
 
     n_projects = len(all_base_results)

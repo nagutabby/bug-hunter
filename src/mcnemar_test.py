@@ -138,7 +138,7 @@ def main():
     test = McNemarTest(alpha=0.05)
 
     print("=" * 80)
-    print("全プロジェクトに対するマクネマー検定（有意水準α=0.05）")
+    print("全プロジェクトに対するMcNemar検定（有意水準α=0.05）")
     print("=" * 80)
 
     results = []
