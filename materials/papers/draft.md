@@ -810,16 +810,16 @@ BugHunterデータセットに含まれる各コミットについて、上記�
 \paragraph{Partial Dependence Plot（PDP）の生成手順}
 各特徴量と欠陥混入確率の関係を可視化するため、PDPを生成する。PDPは、特定の特徴量の値を変化させたときに、モデルの予測値がどのように変化するかを示すグラフである。
 
-\textbf{計算方法}: 特徴量$x_s$に対するPartial Dependence関数$\hat{f}_{x_s}$は、以下の手順で計算される。
+\textbf{計算方法}: 特徴量$x_s$に対するPartial Dependence関数$f_{\text{PD}}(x_s)$は、以下の手順で計算される。
 
 \begin{enumerate}
-    \item 特徴量$x_s$の値を固定値$x_s^*$に設定する
-    \item 他の全ての特徴量$\mathbf{x}_{\backslash s}$は、各サンプルの実際の値を使用する
+    \item 特徴量$x_s$の値を固定値に設定する
+    \item 他の全ての特徴量$x_{-s}$は、各サンプルの実際の値を使用する
     \item 全サンプルについて予測値を計算し、その平均を取る
     \[
-    \hat{f}_{x_s}(x_s^*) = \frac{1}{n}\sum_{i=1}^{n}\hat{f}(x_s^*, \mathbf{x}_{\backslash s}^{(i)})
+      f_{\text{PD}}(x_s) = \frac{1}{n}\sum_{i=1}^{n}\hat{f}(x_s, x_{-s}^{(i)})
     \]
-    \item $x_s^*$を変化させながらこの計算を繰り返す
+    \item 特徴量$x_s$の値を変化させながらこの計算を繰り返す
 \end{enumerate}
 
 この結果、横軸を特徴量$x_s$の値、縦軸を予測確率とするグラフが得られる。このグラフにより、特定の特徴量が増加すると欠陥混入確率がどのように変化するかを視覚的に理解できる。
