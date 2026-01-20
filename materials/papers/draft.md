@@ -525,12 +525,12 @@ HTTP通信 & \texttt{sendHttpRequest()} & ["send", "http", "request"] \\
 \begin{figure}[tb]
   \centering
   \includegraphics[width=0.95\linewidth]{figures/random_forest_classification.pdf}
-  \caption{ランダムフォレストによる分類プロセス}
+  \caption{ランダムフォレストによる分類}
   \label{fig:random_forest}
 \end{figure}
 
 \paragraph{モデル構築の段階的アプローチ}
-提案する特徴量の有効性を検証するため、段階的にモデルを構築する。この手法はablation studyと呼ばれ、機械学習研究において標準的な評価手法である。各ステップで特徴量を追加することにより、その特徴量群が予測性能にどの程度寄与するかを定量的に評価できる。
+提案する特徴量の有効性を検証するため、段階的にモデルを構築する。各ステップで特徴量を追加することにより、その特徴量群が予測性能にどの程度寄与するかを定量的に評価できる。
 
 以下の3段階でモデルを構築する。
 
