@@ -472,7 +472,21 @@ HTTP通信 & \texttt{sendHttpRequest()} & ["send", "http", "request"] \\
 これらを組み合わせることで、コードの構造の特徴、時系列変化、操作の種類、意味的な情報を包括的に捉えた特徴量セットを構築する。
 
 \paragraph{データ前処理とメトリクス計算の実装手順}
-上述した特徴量を実際のデータセットに適用するため、以下の手順でデータの前処理とメトリクスの計算を実施する。
+上述した特徴量を実際のデータセットに適用するため、データの前処理とメトリクスの計算を実施する。データセット構築のために実行した一連のプログラムとその処理内容を表\ref{tab:data_processing_summary} に示す。
+
+\begin{table}[htbp]
+  \centering
+  \caption{データセット構築に使用したプログラムとその処理内容}
+  \label{tab:data_processing_summary}
+  \begin{tabular}{|l|p{8cm}|}
+    \hline
+    \textbf{プログラム名} & \textbf{処理内容} \\ \hline
+    drop\_columns.py & 全ての値が0であるカラムを削除する \\ \hline
+    drop\_rows.py & 外部ライブラリに属するメソッドなど、分析対象外のレコードを削除する \\ \hline
+    add\_method\_level\_metrics.py & メソッド単位のメトリクスを計算し、直前コミットとの差分を計算する \\ \hline
+    add\_commit\_level\_metrics.py & コミット単位のメトリクスを計算し、直前コミットとの差分を計算する \\ \hline
+  \end{tabular}
+\end{table}
 
 まず、BugHunterデータセットから取得した生データに対して前処理を行う。drop\_columns.pyを用いて全ての値が0であるカラムを削除し、drop\_rows.pyを用いて分析対象外のレコード（例えば、外部ライブラリに属するメソッド）を削除する。
 
