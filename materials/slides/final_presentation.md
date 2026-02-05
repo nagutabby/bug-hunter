@@ -45,7 +45,7 @@ _paginate: false
   - 例：現在の行数ではなく何行増えたか、構造がどれほど複雑化したかを重視
 * 短期間での急激な複雑化など、静的な解析では捉えきれない欠陥の予兆を識別可能にする
 
-<figure style="max-width: 45vw; display: block; margin: 0 auto;">
+<figure style="max-width: 50vw; display: block; margin: 0 auto;">
   <img src="../images/defect_prediction.svg" width="100%">
 </figure>
 
@@ -53,14 +53,14 @@ _paginate: false
 * 局所的視点（メソッド単位）: コード行数、トークン数、循環的複雑度の各変化量を用いる
 * 全体的視点（コミット単位）: 変更ファイル数、追加・削除行数、およびエントロピーを用いた変更の分散度を用いる
 
-<figure style="max-width: 50vw; display: block; margin: 0 auto;">
+<figure style="max-width: 40vw; display: block; margin: 0 auto;">
   <img src="../images/research_approach_overview.svg" width="100%">
 </figure>
 
 ## 2.3 特徴量設計: メソッド識別子の処理
 * 機能を表す識別子は欠陥発生率と関連が深いため、これを特徴量化する
 * キャメルケース等に基づき分解し、単語レベルでの類似性を認識可能に
-  - 例：getUserName は user と name に分解。
+  - 例：getUserName は user と name に分解
 * TF-IDFによるベクトル化: 頻出語を抑制しつつ、特定の機能を示す重要なキーワードに重みを付与し、汎化性能を高める
 
 ## 2.4 労力を考慮したレビュー優先度付け
@@ -70,11 +70,10 @@ _paginate: false
 * 貪欲法による求解: 単位労力あたりの欠陥混入確率が高い順に選定する
 
 ## 3.1 実験環境と対象プロジェクト
-* データセット: 欠陥の混入から修正までの対応関係を含むBugHunterデータセット<sup>[5]</sup>を採用
-* 機械学習アルゴリズム: 非線形関係の抽出と解釈性に優れたランダムフォレストを使用
-* 評価手法: 10分割交差検証、F1スコア、AUC、および McNemar 検定等による有意性検証を行う
+* 欠陥混入から修正までの対応関係を持つBugHunterデータセット<sup>[5]</sup>
+* 非線形関係の抽出と解釈性に優れたランダムフォレストを使用し、F1スコアとAUCによる評価、McNemar検定による有意性検定を行う
 
-<figure style="max-width: 45vw; display: block; margin: 0 auto;">
+<figure style="max-width: 35vw; display: block; margin: 0 auto;">
   <img src="../images/random_forest_classification.svg" width="100%">
 </figure>
 
@@ -90,7 +89,7 @@ _paginate: false
 * 労力40%時点での欠陥発見率は平均87.0%に達し、既存手法（75.8%）から11.3%改善
 * 労力40%時点において、既存手法に対し統計的に有意な改善を確認した
 
-<figure style="max-width: 45vw; display: block; margin: 0 auto;">
+<figure style="max-width: 30vw; display: block; margin: 0 auto;">
   <img src="../images/neo4j/comparison_cost_benefit_curve.png" width="100%">
 </figure>
 
