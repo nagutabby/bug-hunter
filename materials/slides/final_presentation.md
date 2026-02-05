@@ -82,7 +82,56 @@ _paginate: false
 ## 3.2 実験結果1: 予測性能の向上
 * 全てのプロジェクトで性能が向上し、F1スコアの平均改善幅は0.21を達成した
 * 最終的なAUCは全プロジェクトで0.91を超え、高い識別能力を確認した
+
+<table style="font-size: 2rem; margin: 0 auto;">
+    <thead>
+        <tr>
+            <th>プロジェクト</th>
+            <th>既存手法 (F1)</th>
+            <th>提案手法 (F1)</th>
+            <th>改善幅</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Elasticsearch</td>
+            <td style="text-align:right;">0.575</td>
+            <td style="text-align:right;">0.767</td>
+            <td style="text-align:right;">+0.192</td>
+        </tr>
+        <tr>
+            <td>Hazelcast</td>
+            <td style="text-align:right;">0.678</td>
+            <td style="text-align:right;">0.790</td>
+            <td style="text-align:right;">+0.112</td>
+        </tr>
+        <tr>
+            <td>Neo4j</td>
+            <td style="text-align:right;">0.478</td>
+            <td style="text-align:right;">0.742</td>
+            <td style="text-align:right;">+0.264</td>
+        </tr>
+        <tr>
+            <td>Netty</td>
+            <td style="text-align:right;">0.455</td>
+            <td style="text-align:right;">0.747</td>
+            <td style="text-align:right;">+0.292</td>
+        </tr>
+        <tr>
+            <td>OrientDB</td>
+            <td style="text-align:right;">0.483</td>
+            <td style="text-align:right;">0.701</td>
+            <td style="text-align:right;">+0.218</td>
+        </tr>
+    </tbody>
+</table>
+
+## 実験結果1: 予測性能の向上
 * 特徴量重要度の分析により、コミット単位の追加行数や変更ファイル数が特に予測に寄与することが判明した
+
+<figure style="max-width: 50vw; display: block; margin: 0 auto;">
+  <img src="../images/neo4j/feature_importance_chart.png" width="100%">
+</figure>
 
 ## 3.3 実験結果2: レビュー効率の改善
 * 提案手法により、欠陥の70〜75%を20%のレビュー労力で特定
