@@ -442,7 +442,7 @@ class ComprehensiveBugHunterAnalyzer:
         ax.grid(True, alpha=0.3)
         ax.legend(fontsize=8)
 
-    def plot_feature_importance_chart(self, top_n: int = 10, save_path: Optional[str] = None):
+    def plot_feature_importance_chart(self, top_n: int = 5, save_path: Optional[str] = None):
         feature_scores = self.model_data['feature_importance_scores']
         selected_features = self.model_data['selected_features']
         all_features = self.model_data['all_feature_names']
@@ -858,7 +858,7 @@ class ComprehensiveBugHunterAnalyzer:
         print(f"{'='*80}")
 
         importance_path = os.path.join(output_dir, "feature_importance_chart.png")
-        self.plot_feature_importance_chart(top_n=10, save_path=importance_path)
+        self.plot_feature_importance_chart(top_n=5, save_path=importance_path)
 
         cv_performance_path = os.path.join(output_dir, "cv_performance_chart.png")
         self.plot_cv_performance_chart(save_path=cv_performance_path)
@@ -903,7 +903,7 @@ class ComprehensiveBugHunterAnalyzer:
 
 def main():
     try:
-        project_name = "orientdb"
+        project_name = "neo4j"
         base_dir = f"../data/remove/{project_name}/"
         output_dir = f"../materials/images/{project_name}/"
 
