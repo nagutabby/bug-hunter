@@ -49,7 +49,18 @@ _paginate: false
 > [3] T. L. Graves et al., "Predicting fault incidence using software change history," 2000
 > [4] Y. Kamei et al., "A large-scale empirical study of just-in-time quality assurance," 2013
 
-## 提案手法: 時系列情報の活用
+## データ収集: BugHunterデータセットの活用
+* 欠陥の混入から修正までの対応関係を特定可能なBugHunterデータセット<sup>[5]</sup>を使用
+* データセットに収録されている活発なOSSプロジェクト5件を選定
+* 統計的検定力を確保するため、解決済みのバグレポート数が多いプロジェクトを優先的に採用
+
+<figure style="max-width: 60vw; display: block; margin: 0 auto;">
+  <img src="../images/experiments_workflow.svg" width="100%">
+</figure>
+
+> [5] R. Ferenc et al., "An automatically created novel bug dataset and its validation in bug prediction," 2020'
+
+## 特徴量抽出: 時系列情報の活用
 * 絶対値ではなく、直前の状態からの変化量に着目する
   - 例：現在の行数ではなく何行増えたか、構造がどれほど複雑化したかを重視
   - コミットを不規則に発生するイベントと定義し、発生タイミングが持つリスク情報を活用する
@@ -58,7 +69,7 @@ _paginate: false
   <img src="../images/defect_prediction.svg" width="100%">
 </figure>
 
-## 提案手法: 複数要素の変更メトリクスの活用
+## 特徴量抽出: 複数要素の変更メトリクスの活用
 * 局所的視点（メソッド単位）: コード行数、トークン数、循環的複雑度の各変化量を用いる
 * 全体的視点（コミット単位）: 変更ファイル数、追加・削除行数、およびエントロピーを用いた変更の分散度を用いる
 
@@ -66,25 +77,29 @@ _paginate: false
   <img src="../images/research_approach_overview.svg" width="100%">
 </figure>
 
-## 特徴量設計: メソッド識別子の処理
+## メソッド識別子の処理
 * 目的:
-   機能を表す識別子は欠陥発生率と関連が深いため、これを特徴量化する
+   機能を表す識別子は欠陥発生率と関連が深いため、これを特徴量化
 * 手法:
   - キャメルケース等に基づき分解し、単語レベルでの類似性を認識可能に
   - 例：getUserName は user と name に分解
   - 頻出語を抑制しつつ、特定の機能を示す重要なキーワードに重みを付与し、汎化性能を高める
 
+## 機械学習モデルの学習・評価
+* ランダムフォレスト: 特徴量間の非線形な相互作用を捉え、予測結果の透明性に優れたアルゴリズム
+* 交差検証: データの分割に依存しない頑健な性能評価を行う
+* F1スコア、AUCによる評価: データの不均衡の影響を受けにくい指標
+* McNemar検定:  既存手法との性能差の統計的有意性を確認
+
 ## 労力を考慮したレビュー優先度付け
 * 少ない労力で高い欠陥発見率を達成できるレビュー対象の選定
-  - 補正済みレビュー労力: 変更行数と広がりを統合し、対数変換により巨大な変更の影響を緩和した指標を定義する
+  - 補正済みレビュー労力: 変更の規模と分散度を活用し、対数変換により巨大な変更の影響を緩和した指標を定義
     - $W_{i}=log_{2}(C_{i}\times N_{i}^{\overline{H}_{i}}+1)$
-  - 貪欲法による求解: 単位労力あたりの欠陥混入確率が高い順に選定する
-
-## 実験環境
-* 欠陥混入から修正までの対応関係を持つBugHunterデータセット<sup>[5]</sup>
-* 非線形関係の抽出と解釈性に優れたランダムフォレストを使用し、F1スコアとAUCによる評価、McNemar検定による有意性検定を行う
-
-> [5] R. Ferenc et al., "An automatically created novel bug dataset and its validation in bug prediction," 2020'
+      - $C_{i}$: 変更行数
+      - $N_{i}$: 変更ファイル数
+      - $\overline{H}_{i}$: 変更の分散度
+    - 貪欲法による求解: 単位労力あたりの欠陥混入確率が高い順に選定する
+- Wilcoxonの符号順位検定: 既存手法との性能差の統計的有意性を確認
 
 ## 実験結果: 予測性能の向上
 * 全てのプロジェクトで性能が向上し、F1スコアの平均改善幅は0.21を達成した
