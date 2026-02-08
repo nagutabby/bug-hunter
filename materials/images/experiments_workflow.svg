@@ -1,47 +1,47 @@
-<svg width="695" height="180" xmlns="http://www.w3.org/2000/svg">
+<svg width="695" height="110" viewBox="0 0 695 110" xmlns="http://www.w3.org/2000/svg">
   <style>
     .node { fill: #f8f9fa; stroke: #343a40; stroke-width: 1.5; rx: 8; ry: 8; }
-    .label { font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif; font-size: 13px; font-weight: bold; fill: #212529; }
-    .detail { font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif; font-size: 10px; fill: #6c757d; }
-    .arrow { stroke: #495057; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+    .label { font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif; font-size: 13px; font-weight: bold; fill: #000000; }
+    .detail { font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif; font-size: 10px; fill: #212529; }
+    .arrow { stroke: #212529; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
   </style>
 
   <defs>
     <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="0" refY="3.5" orient="auto">
-      <polygon points="0 0, 10 3.5, 0 7" fill="#495057" />
+      <polygon points="0 0, 10 3.5, 0 7" fill="#212529" />
     </marker>
   </defs>
 
-  <rect x="20" y="40" width="110" height="90" class="node" />
-  <text x="75" y="65" text-anchor="middle" class="label">1. データ収集</text>
-  <text x="75" y="85" text-anchor="middle" class="detail">BugHunter</text>
-  <text x="75" y="100" text-anchor="middle" class="detail">（メソッド単位）</text>
+  <rect x="20" y="10" width="110" height="90" class="node" />
+  <text x="75" y="35" text-anchor="middle" class="label">1. データ収集</text>
+  <text x="75" y="55" text-anchor="middle" class="detail">BugHunter</text>
+  <text x="75" y="70" text-anchor="middle" class="detail">（メソッド単位）</text>
 
-  <line x1="130" y1="85" x2="145" y2="85" class="arrow" />
+  <line x1="130" y1="55" x2="145" y2="55" class="arrow" />
 
-  <rect x="145" y="40" width="125" height="90" class="node" />
-  <text x="207.5" y="65" text-anchor="middle" class="label">2. 特徴量抽出</text>
-  <text x="207.5" y="85" text-anchor="middle" class="detail">時系列変化量の算出</text>
-  <text x="207.5" y="100" text-anchor="middle" class="detail">分散度の算出</text>
+  <rect x="145" y="10" width="125" height="90" class="node" />
+  <text x="207.5" y="35" text-anchor="middle" class="label">2. 特徴量抽出</text>
+  <text x="207.5" y="55" text-anchor="middle" class="detail">時系列変化量の算出</text>
+  <text x="207.5" y="70" text-anchor="middle" class="detail">分散度の算出</text>
 
-  <line x1="270" y1="85" x2="285" y2="85" class="arrow" />
+  <line x1="270" y1="55" x2="285" y2="55" class="arrow" />
 
-  <rect x="285" y="40" width="120" height="90" class="node" />
-  <text x="345" y="65" text-anchor="middle" class="label">3. 識別子処理</text>
-  <text x="345" y="85" text-anchor="middle" class="detail">トークン分割</text>
-  <text x="345" y="100" text-anchor="middle" class="detail">TF-IDF変換</text>
+  <rect x="285" y="10" width="120" height="90" class="node" />
+  <text x="345" y="35" text-anchor="middle" class="label">3. 識別子処理</text>
+  <text x="345" y="55" text-anchor="middle" class="detail">トークン分割</text>
+  <text x="345" y="70" text-anchor="middle" class="detail">TF-IDF変換</text>
 
-  <line x1="405" y1="85" x2="420" y2="85" class="arrow" />
+  <line x1="405" y1="55" x2="420" y2="55" class="arrow" />
 
-  <rect x="420" y="40" width="120" height="90" class="node" />
-  <text x="480" y="65" text-anchor="middle" class="label">4. 学習・評価</text>
-  <text x="480" y="85" text-anchor="middle" class="detail">Random Forest</text>
-  <text x="480" y="100" text-anchor="middle" class="detail">10-fold CV</text>
+  <rect x="420" y="10" width="120" height="90" class="node" />
+  <text x="480" y="35" text-anchor="middle" class="label">4. 学習・評価</text>
+  <text x="480" y="55" text-anchor="middle" class="detail">Random Forest</text>
+  <text x="480" y="70" text-anchor="middle" class="detail">10-fold CV</text>
 
-  <line x1="540" y1="85" x2="555" y2="85" class="arrow" />
+  <line x1="540" y1="55" x2="555" y2="55" class="arrow" />
 
-  <rect x="555" y="40" width="120" height="90" class="node" />
-  <text x="615" y="65" text-anchor="middle" class="label">5. 優先度決定</text>
-  <text x="615" y="85" text-anchor="middle" class="detail">補正済み労力</text>
-  <text x="615" y="100" text-anchor="middle" class="detail">貪欲法による求解</text>
+  <rect x="555" y="10" width="120" height="90" class="node" />
+  <text x="615" y="35" text-anchor="middle" class="label">5. 優先度決定</text>
+  <text x="615" y="55" text-anchor="middle" class="detail">補正済み労力</text>
+  <text x="615" y="70" text-anchor="middle" class="detail">貪欲法による求解</text>
 </svg>
