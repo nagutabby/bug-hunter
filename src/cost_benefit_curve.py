@@ -10,7 +10,6 @@ def load_model(model_path: str):
     return model_data
 
 def calculate_effort(code_churn, num_files, entropy):
-    # まず、ベースとなる労力（raw_effort）を計算
     if num_files == 0 or code_churn == 0:
         raw_effort = 1.0
     elif num_files == 1:
@@ -92,7 +91,6 @@ def find_key_points(df_metrics, model_name):
     key_points = []
 
     for _, row in df_metrics.iterrows():
-        # 浮動小数点の誤差を考慮し、%単位の整数に丸める
         ratio_pct = round(row['capacity_ratio'] * 100)
 
         if ratio_pct > 0 and ratio_pct % 20 == 0:
@@ -111,6 +109,9 @@ def find_key_points(df_metrics, model_name):
 def plot_single_curve(df_data, save_path='cost_benefit_curve.png'):
     plt.rcParams['font.sans-serif'] = ['DejaVu Sans', 'Arial', 'Helvetica']
     plt.rcParams['axes.unicode_minus'] = False
+    plt.rcParams['font.size'] = 14
+    plt.rcParams['xtick.labelsize'] = 16
+    plt.rcParams['ytick.labelsize'] = 16
 
     fig, ax = plt.subplots(1, 1, figsize=(10, 7))
 
@@ -118,10 +119,10 @@ def plot_single_curve(df_data, save_path='cost_benefit_curve.png'):
             df_data['bug_detection_ratio'] * 100,
             'b-', linewidth=2.5, label='Improved')
 
-    ax.set_xlabel('Review Effort (%)', fontsize=13)
-    ax.set_ylabel('Bug Detection Rate (%)', fontsize=13)
+    ax.set_xlabel('Review Effort (%)', fontsize=20)
+    ax.set_ylabel('Bug Detection Rate (%)', fontsize=20)
     ax.grid(True, alpha=0.3)
-    ax.legend(fontsize=11)
+    ax.legend(fontsize=16)
     ax.set_xlim([0, 100])
     ax.set_ylim([0, 100])
 
@@ -133,6 +134,9 @@ def plot_single_curve(df_data, save_path='cost_benefit_curve.png'):
 def plot_comparison_curve(df_base, df_improved, save_path='comparison_cost_benefit_curve.png'):
     plt.rcParams['font.sans-serif'] = ['DejaVu Sans', 'Arial', 'Helvetica']
     plt.rcParams['axes.unicode_minus'] = False
+    plt.rcParams['font.size'] = 14
+    plt.rcParams['xtick.labelsize'] = 16
+    plt.rcParams['ytick.labelsize'] = 16
 
     fig, ax = plt.subplots(1, 1, figsize=(8, 6))
 
@@ -142,10 +146,10 @@ def plot_comparison_curve(df_base, df_improved, save_path='comparison_cost_benef
     ax.plot(df_improved['review_effort_ratio'] * 100,
             df_improved['bug_detection_ratio'] * 100,
             'b-', linewidth=2, label='Improved', alpha=0.7)
-    ax.set_xlabel('Review Effort (%)', fontsize=12)
-    ax.set_ylabel('Bug Detection Rate (%)', fontsize=12)
+    ax.set_xlabel('Review Effort (%)', fontsize=20)
+    ax.set_ylabel('Bug Detection Rate (%)', fontsize=20)
     ax.grid(True, alpha=0.3)
-    ax.legend()
+    ax.legend(fontsize=16)
     ax.set_xlim([0, 100])
     ax.set_ylim([0, 100])
 
@@ -406,7 +410,7 @@ def compare_models(base_model_path, improved_model_path, commit_metrics_path, ou
                          save_path=f'{output_dir}/comparison_cost_benefit_curve.png')
 
 def main():
-    project_name = "orientdb"
+    project_name = "neo4j"
 
     base_model_path = f"../data/remove/{project_name}/predictions_base.pkl"
     improved_model_path = f"../data/remove/{project_name}/predictions_add_method_commit_level_metrics.pkl"

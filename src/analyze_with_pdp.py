@@ -443,82 +443,85 @@ class ComprehensiveBugHunterAnalyzer:
         ax.legend(fontsize=8)
 
     def plot_feature_importance_chart(self, top_n: int = 5, save_path: Optional[str] = None):
-        feature_scores = self.model_data['feature_importance_scores']
-        selected_features = self.model_data['selected_features']
-        all_features = self.model_data['all_feature_names']
+            feature_scores = self.model_data['feature_importance_scores']
+            selected_features = self.model_data['selected_features']
+            all_features = self.model_data['all_feature_names']
 
-        selected_features_df = pd.DataFrame({
-            '特徴量': all_features,
-            'Feature Importance': feature_scores
-        })
+            selected_features_df = pd.DataFrame({
+                '特徴量': all_features,
+                'Feature Importance': feature_scores
+            })
 
-        selected_features_df = selected_features_df[
-            selected_features_df['特徴量'].isin(selected_features)
-        ].sort_values('Feature Importance', ascending=False)
+            selected_features_df = selected_features_df[
+                selected_features_df['特徴量'].isin(selected_features)
+            ].sort_values('Feature Importance', ascending=False)
 
-        top_features = selected_features_df.head(top_n)['特徴量'].tolist()
+            top_features = selected_features_df.head(top_n)['特徴量'].tolist()
 
-        sns.set_style("whitegrid")
-        sns.set_palette("husl")
-        sns.set(font='IPAexGothic')
+            sns.set_style("whitegrid")
+            sns.set_palette("husl")
+            sns.set(font='IPAexGothic')
 
-        plt.rcParams['font.size'] = 10
-        plt.rcParams['axes.titlesize'] = 12
-        plt.rcParams['axes.labelsize'] = 10
-        plt.rcParams['figure.titlesize'] = 16
+            plt.rcParams['font.size'] = 14
+            plt.rcParams['axes.titlesize'] = 18
+            plt.rcParams['axes.labelsize'] = 16
+            plt.rcParams['figure.titlesize'] = 22
+            plt.rcParams['xtick.labelsize'] = 16
+            plt.rcParams['ytick.labelsize'] = 16
 
-        importances = []
-        feature_types = []
-        short_names = []
+            importances = []
+            feature_types = []
+            short_names = []
 
-        for feature in top_features:
-            idx = all_features.index(feature)
-            importances.append(feature_scores[idx])
-            feature_types.append(self._get_feature_type(feature))
-            short_names.append(self._shorten_feature_name(feature))
+            for feature in top_features:
+                idx = all_features.index(feature)
+                importances.append(feature_scores[idx])
+                feature_types.append(self._get_feature_type(feature))
+                short_names.append(self._shorten_feature_name(feature))
 
-        type_colors = {
-            'LongName TF-IDF': '#FF6B6B',
-            'Parent TF-IDF': '#4ECDC4',
-            'operation_type': '#45B7D1',
-            '数値': '#96CEB4'
-        }
+            type_colors = {
+                'LongName TF-IDF': '#FF6B6B',
+                'Parent TF-IDF': '#4ECDC4',
+                'operation_type': '#45B7D1',
+                '数値': '#96CEB4'
+            }
 
-        colors = [type_colors.get(ft, '#95A5A6') for ft in feature_types]
+            colors = [type_colors.get(ft, '#95A5A6') for ft in feature_types]
 
-        fig, ax = plt.subplots(figsize=(12, max(8, len(top_features) * 0.4)))
+            fig, ax = plt.subplots(figsize=(12, max(8, len(top_features) * 0.4)))
 
-        y_pos = np.arange(len(top_features))
-        bars = ax.barh(y_pos, importances, color=colors, alpha=0.8, edgecolor='black', linewidth=0.5)
+            y_pos = np.arange(len(top_features))
+            bars = ax.barh(y_pos, importances, color=colors, alpha=0.8, edgecolor='black', linewidth=0.5)
 
-        ax.set_yticks(y_pos)
-        ax.set_yticklabels(short_names)
-        ax.set_xlabel('Feature Importance', fontsize=12)
+            ax.set_yticks(y_pos)
+            ax.set_yticklabels(short_names)
+            ax.set_xlabel('Feature Importance', fontsize=20)
 
-        for i, (bar, importance) in enumerate(zip(bars, importances)):
-            width = bar.get_width()
-            ax.text(width + max(importances) * 0.01, bar.get_y() + bar.get_height()/2,
-                   f'{importance:.4f}', ha='left', va='center', fontsize=9)
+            for i, (bar, importance) in enumerate(zip(bars, importances)):
+                width = bar.get_width()
+                ax.text(width + max(importances) * 0.01, bar.get_y() + bar.get_height()/2,
+                    f'{importance:.4f}', ha='left', va='center', fontsize=16)
 
-        unique_types = list(set(feature_types))
-        legend_elements = [plt.Rectangle((0,0),1,1, facecolor=type_colors.get(t, '#95A5A6'),
-                                       alpha=0.8, edgecolor='black') for t in unique_types]
-        ax.legend(legend_elements, unique_types, loc='lower right', fontsize=10)
+            unique_types = list(set(feature_types))
+            legend_elements = [plt.Rectangle((0,0),1,1, facecolor=type_colors.get(t, '#95A5A6'),
+                                        alpha=0.8, edgecolor='black') for t in unique_types]
+            ax.legend(legend_elements, unique_types, loc='lower right', fontsize=16)
 
-        ax.invert_yaxis()
-        ax.grid(True, alpha=0.3, linestyle='--', axis='x')
+            ax.invert_yaxis()
+            ax.grid(True, alpha=0.3, linestyle='--', axis='x')
 
-        plt.tight_layout()
+            plt.tight_layout()
 
-        if save_path is None:
-            save_path = "feature_importance_chart.png"
+            if save_path is None:
+                save_path = "feature_importance_chart.png"
 
-        plt.savefig(save_path, dpi=300, bbox_inches='tight',
-                   facecolor='white', edgecolor='none')
-        print(f"特徴量重要度チャートを '{save_path}' に保存しました")
+            plt.savefig(save_path, dpi=300, bbox_inches='tight',
+                    facecolor='white', edgecolor='none')
+            print(f"特徴量重要度チャートを '{save_path}' に保存しました")
 
-        plt.show()
-        print("特徴量重要度チャート描画完了")
+            plt.show()
+            print("特徴量重要度チャート描画完了")
+
 
     def plot_partial_dependence(self, data_path: str, top_n: int = 10,
                                save_path: Optional[str] = None, max_rows: int = 10000):

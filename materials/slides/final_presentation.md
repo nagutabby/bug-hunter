@@ -86,14 +86,23 @@ _paginate: false
     - 例：getUserName は user と name に分解
   - 頻出語を抑制しつつ、特定の機能を示す重要なキーワードに重みを付与
 
-## 4. 機械学習モデルの学習・評価
-### ToDo: ページを分割してワークフローを詳細に説明
-* ランダムフォレスト:
-特徴量間の非線形な相互作用を捉え、予測結果の透明性に優れたアルゴリズム
-* 交差検証:
-データの分割に依存しない頑健な性能評価を行う
-* F1スコア、AUCによる評価:
-データの不均衡の影響を受けにくい指標
+## 4. モデルの学習・評価: 複数の決定木の構築
+* 非線形な相互作用の抽出: 特徴量間の複雑な関係を学習可能
+  * 例: 変更の規模が小さく、変更の分散度が大きい場合の欠陥混入リスク
+* アンサンブル学習による安定性:
+  * 予測結果を多数決で集約することで過学習を抑制
+* モデルの説明可能性:
+  * 特徴量重要度、Partial Dependence Plot:
+    * どのメトリクスがどの程度予測に寄与したかを可視化
+
+## 4. モデルの学習・評価: 不均衡データの評価
+* 10分割交差検証
+  * データを10グループに分割し、学習とテストを繰り返すことで、特定のデータ分割に依存しない性能を評価
+  * 小さなデータセットにおいても信頼性の高い性能評価が可能
+* F1スコア: 適合率と再現率の調和平均
+  * 少数派クラス（欠陥を含むデータ）の識別性能を評価
+* AUC（Area Under the Curve）
+  * 分類のしきい値の変化に依存しないモデルの識別能力を評価
 
 
 ## 5. レビュー優先度付け: レビュー労力の推定
@@ -120,55 +129,53 @@ $$D_{i}=\frac{\hat{y}_{i}}{W_{i}}$$
     3. 抽出されたコミットのレビュー労力の総和を $C_{total}$ とする
 
 ## 実験結果: 予測性能の向上
-### ToDo: 各プロジェクトのソフトウェアとしての役割をカラムとして追加
-* 全てのプロジェクトで性能が向上し、F1スコアの平均改善幅は0.21を達成
+* 全てのプロジェクトで性能が向上し、F1スコアは平均0.21向上
 * 最終的なAUCは全プロジェクトで0.91を超え、高い識別能力を確認
 
 <table style="font-size: 2rem; margin: 0 auto;">
     <thead>
         <tr>
             <th>プロジェクト</th>
+            <th>分野</th>
             <th>既存手法 (F1)</th>
             <th>提案手法 (F1)</th>
-            <th>改善幅</th>
         </tr>
     </thead>
     <tbody>
         <tr>
             <td>Elasticsearch</td>
+            <td>検索</td>
             <td style="text-align:right;">0.575</td>
             <td style="text-align:right;">0.767</td>
-            <td style="text-align:right;">+0.192</td>
         </tr>
         <tr>
             <td>Hazelcast</td>
+            <td>キャッシュ</td>
             <td style="text-align:right;">0.678</td>
             <td style="text-align:right;">0.790</td>
-            <td style="text-align:right;">+0.112</td>
         </tr>
         <tr>
             <td>Neo4j</td>
+            <td>グラフDB</td>
             <td style="text-align:right;">0.478</td>
             <td style="text-align:right;">0.742</td>
-            <td style="text-align:right;">+0.264</td>
         </tr>
         <tr>
             <td>Netty</td>
+            <td>ネットワーク</td>
             <td style="text-align:right;">0.455</td>
             <td style="text-align:right;">0.747</td>
-            <td style="text-align:right;">+0.292</td>
         </tr>
         <tr>
             <td>OrientDB</td>
+            <td>DB</td>
             <td style="text-align:right;">0.483</td>
             <td style="text-align:right;">0.701</td>
-            <td style="text-align:right;">+0.218</td>
         </tr>
     </tbody>
 </table>
 
 ## 実験結果: 予測性能の向上
-### ToDo: 図のフォントサイズを大きくする
 * 特徴量重要度の分析により、コミット単位の追加・削除行数、メソッド単位のトークン数などが予測に寄与することが判明
 
 <figure style="max-width: 50vw; display: block; margin: 0 auto;">
@@ -176,7 +183,6 @@ $$D_{i}=\frac{\hat{y}_{i}}{W_{i}}$$
 </figure>
 
 ## 実験結果: レビュー効率の改善
-### ToDo: 図のフォントサイズを大きくする
 * 提案手法により、欠陥の70〜75%を20%のレビュー労力で特定
 * 労力40%時点での欠陥発見率は平均87.0%、既存手法から11.3%改善
 * 労力40%時点において、既存手法に対し統計的に有意な改善を確認した
