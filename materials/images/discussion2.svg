@@ -36,7 +36,7 @@
         <text y="5" font-family="sans-serif" font-size="10" text-anchor="middle" fill="#7f8c8d">A</text>
       </g>
       <g transform="translate(-60, 100)">
-        <rect x="-25" y="-15" width="50" height="30" rx="3" fill="#ecf0f1" stroke="#95a5a6" stroke-width="2" />
+        <rect x="-25" y="-15" width="50" height="30" rx="3" fill="#ecf0f1" stroke="#95a5a6" stroke-width="1" />
         <text y="5" font-family="sans-serif" font-size="10" text-anchor="middle" fill="#7f8c8d">B</text>
       </g>
       <g transform="translate(0, 100)">
