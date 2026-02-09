@@ -9,7 +9,7 @@
 
   <g transform="translate(50, 20)">
     <rect width="320" height="300" rx="10" fill="#f8f9fa" stroke="#dee2e6" stroke-width="2"/>
-    <text x="160" y="35" font-family="sans-serif" font-size="18" font-weight="bold" text-anchor="middle" fill="#666">既存：構造的メトリクスのみ</text>
+    <text x="160" y="35" font-family="sans-serif" font-size="18" font-weight="bold" text-anchor="middle" fill="#666">既存手法: 構造的メトリクスのみ</text>
 
     <rect x="80" y="150" width="40" height="100" fill="#adb5bd" />
     <rect x="130" y="100" width="40" height="150" fill="#ced4da" />
@@ -21,7 +21,7 @@
 
   <g transform="translate(430, 20)">
     <rect width="320" height="300" rx="10" fill="#e7f3ff" stroke="#a2d2ff" stroke-width="2"/>
-    <text x="160" y="35" font-family="sans-serif" font-size="18" font-weight="bold" text-anchor="middle" fill="#0056b3">提案：時系列変化の活用</text>
+    <text x="160" y="35" font-family="sans-serif" font-size="18" font-weight="bold" text-anchor="middle" fill="#0056b3">提案手法: 時系列変化の活用</text>
 
     <line x1="50" y1="200" x2="270" y2="200" stroke="#0056b3" stroke-width="1" />
 

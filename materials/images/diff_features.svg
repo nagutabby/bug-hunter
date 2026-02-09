@@ -3,57 +3,55 @@
 
   <defs>
     <style>
-      .title { font-family: sans-serif; font-size: 15px; font-weight: bold; fill: #333; }
+      .title { font-family: sans-serif; font-size: 16px; font-weight: bold; fill: #333; }
       .label { font-family: sans-serif; font-size: 12px; fill: #666; }
       .module-base { fill: #E1E4E8; stroke: #A3AAB1; stroke-width: 1.5; }
       .module-add { fill: #FF8C00; stroke: #E67E00; stroke-width: 1.5; }
-      .module-diff-zone { fill: #007BFF; stroke: #0056b3; stroke-width: 1.5; }
+      .module-diff-zone { fill: #007BFF; stroke: #0056b3; stroke-width: 1.5; opacity: 0.8; }
     </style>
     <marker id="arrow-gray" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
       <path d="M0,0 L8,4 L0,8 Z" fill="#A3AAB1" />
     </marker>
   </defs>
 
-  <line x1="305" x2="305" y1="30" y2="220" stroke="#eee" stroke-width="2" />
+  <line x1="320" x2="320" y1="30" y2="220" stroke="#eee" stroke-width="2" />
 
   <g transform="translate(15, 50)">
-    <text x="0" y="-10" class="title">複数モジュールの増分 (要素の追加)</text>
-    <g transform="translate(5, 30)">
-      <rect x="0" y="20" width="40" height="40" class="module-base" />
-      <rect x="55" y="10" width="30" height="50" class="module-base" />
-      <text x="45" y="85" text-anchor="middle" class="label">変更前</text>
+    <text x="0" y="-10" class="title">増分</text>
+    <g transform="translate(5, 40)">
+      <rect x="0" y="20" width="50" height="40" class="module-base" />
+      <rect x="70" y="10" width="40" height="60" class="module-base" />
+      <text x="55" y="125" text-anchor="middle" class="label">変更前</text>
 
-      <path d="M100,45 L135,45" fill="none" stroke="#A3AAB1" stroke-width="2" marker-end="url(#arrow-gray)" />
+      <path d="M125,40 L155,40" fill="none" stroke="#A3AAB1" stroke-width="2" marker-end="url(#arrow-gray)" />
 
-      <g transform="translate(150, 0)">
-        <rect x="0" y="20" width="40" height="40" class="module-base" />
-        <rect x="40" y="20" width="15" height="40" class="module-add" />
-        <rect x="75" y="10" width="30" height="50" class="module-base" />
-        <rect x="75" y="-5" width="30" height="15" class="module-add" />
-        <text x="55" y="85" text-anchor="middle" class="label">変更後</text>
+      <g transform="translate(175, 0)">
+        <rect x="0" y="20" width="50" height="40" class="module-base" />
+        <rect x="0" y="60" width="50" height="30" class="module-add" />
+
+        <rect x="70" y="10" width="40" height="60" class="module-base" />
+        <rect x="70" y="-20" width="40" height="30" class="module-add" />
+        <text x="55" y="125" text-anchor="middle" class="label">変更後</text>
       </g>
     </g>
   </g>
 
-  <g transform="translate(325, 50)">
-    <text x="0" y="-10" class="title">複数モジュールの差分 (状態の更新)</text>
-    <g transform="translate(5, 30)">
-      <g>
-        <rect x="0" y="10" width="50" height="40" class="module-base" />
-        <rect x="60" y="10" width="35" height="60" class="module-base" />
-        <rect x="105" y="30" width="45" height="30" class="module-base" />
-        <text x="75" y="95" text-anchor="middle" class="label">変更前</text>
-      </g>
+  <g transform="translate(350, 50)">
+    <text x="0" y="-10" class="title">差分</text>
+    <g transform="translate(5, 40)">
+      <rect x="0" y="20" width="50" height="40" class="module-base" />
+      <rect x="80" y="10" width="40" height="60" class="module-base" />
+      <text x="60" y="125" text-anchor="middle" class="label">変更前</text>
 
-      <path d="M170,45 L205,45" fill="none" stroke="#A3AAB1" stroke-width="2" marker-end="url(#arrow-gray)" />
+      <path d="M140,40 L170,40" fill="none" stroke="#A3AAB1" stroke-width="2" marker-end="url(#arrow-gray)" />
 
-      <g transform="translate(220, 0)">
-        <rect x="0" y="10" width="50" height="40" class="module-base" />
-        <rect x="35" y="10" width="15" height="40" class="module-diff-zone" />
-        <rect x="60" y="10" width="35" height="60" class="module-base" />
-        <rect x="70" y="30" width="15" height="20" class="module-diff-zone" />
-        <rect x="105" y="30" width="45" height="30" class="module-base" />
-        <text x="75" y="95" text-anchor="middle" class="label">変更後</text>
+      <g transform="translate(190, 0)">
+        <rect x="0" y="20" width="50" height="40" class="module-base" />
+        <rect x="0" y="30" width="50" height="30" class="module-diff-zone" />
+
+        <rect x="80" y="10" width="40" height="60" class="module-base" />
+        <rect x="80" y="10" width="40" height="30" class="module-diff-zone" />
+        <text x="60" y="125" text-anchor="middle" class="label">変更後</text>
       </g>
     </g>
   </g>

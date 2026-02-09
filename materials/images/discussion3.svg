@@ -1,4 +1,14 @@
 <svg width="780" height="330" viewBox="10 30 780 330" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .module-base { fill: #E1E4E8; stroke: #A3AAB1; stroke-width: 1.5; }
+      .module-add { fill: #FF8C00; stroke: #E67E00; stroke-width: 1.5; }
+    </style>
+    <marker id="arrow-gray" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#A3AAB1" />
+    </marker>
+  </defs>
+
   <rect x="10" y="30" width="780" height="330" fill="#ffffff" />
 
   <line x1="100" y1="300" x2="700" y2="300" stroke="#333" stroke-width="2" />
@@ -8,4 +18,33 @@
   <text x="80" y="175" font-family="sans-serif" font-size="14" text-anchor="middle" transform="rotate(-90, 80, 175)">欠陥混入確率</text>
 
   <path d="M 120 80 L 650 280" stroke="#ff4757" stroke-width="4" fill="none" />
+
+  <g transform="translate(120, 50) scale(0.6)">
+    <rect x="0" y="0" width="40" height="35" class="module-base" />
+    <rect x="50" y="-5" width="35" height="45" class="module-base" />
+
+    <path d="M95,20 L125,20" fill="none" stroke="#A3AAB1" stroke-width="1.5" marker-end="url(#arrow-gray)" />
+
+    <g transform="translate(135, 0)">
+      <rect x="0" y="0" width="40" height="35" class="module-base" />
+      <rect x="0" y="35" width="40" height="5" class="module-add" />
+      <rect x="50" y="-5" width="35" height="45" class="module-base" />
+      <rect x="50" y="-10" width="35" height="5" class="module-add" />
+    </g>
+  </g>
+
+  <g transform="translate(520, 180) scale(0.6)">
+    <rect x="0" y="0" width="40" height="35" class="module-base" />
+    <rect x="50" y="-5" width="35" height="45" class="module-base" />
+
+    <path d="M95,20 L125,20" fill="none" stroke="#A3AAB1" stroke-width="1.5" marker-end="url(#arrow-gray)" />
+
+    <g transform="translate(135, 0)">
+      <rect x="0" y="0" width="40" height="35" class="module-base" />
+      <rect x="0" y="35" width="40" height="45" class="module-add" />
+      <rect x="50" y="-5" width="35" height="45" class="module-base" />
+      <rect x="50" y="-50" width="35" height="45" class="module-add" />
+    </g>
+  </g>
+
 </svg>
